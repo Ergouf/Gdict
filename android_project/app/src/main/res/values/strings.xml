@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Gdict</string>
+    <string name="search">Search</string>
+    <string name="dictionaries">Dictionaries</string>
+    <string name="settings">Settings</string>
+    <string name="history">History</string>
+    <string name="bookmarks">Bookmarks</string>
+</resources>

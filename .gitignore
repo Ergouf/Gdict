@@ -1,0 +1,44 @@
+# Android SDK (build tools, JDK, etc.)
+/android_sdk/
+
+# MDX/MDD dictionary files (large binary data files)
+*.mdx
+*.mdd
+
+# Dictionary related binary data
+*.dsl
+*.dsl.dz
+*.bgl
+*.lsa
+*.lsd
+*.slob
+*.zim
+*.stardict
+*.ifo
+*.idx
+*.dict
+
+# IDE directories
+/.idea
+*.iml
+.DS_Store
+Thumbs.db
+
+# ========== Android project specific ==========
+android_project/.gradle/
+android_project/build/
+android_project/local.properties
+android_project/captures/
+android_project/.externalNativeBuild/
+android_project/.cxx/
+
+# APK/AAB files
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+
+# Build output
+/build/
+*/build/
