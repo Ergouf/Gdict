@@ -59,6 +59,7 @@ class DictionaryManager(private val context: Context) {
         val jsonStr = prefs.getString("dictionaries", null) ?: return
         try {
             val json = JSONArray(jsonStr)
+            android.util.Log.i("DictMgr", "Loading ${json.length()} persisted dictionaries from SharedPreferences...")
             for (i in 0 until json.length()) {
                 val obj = json.getJSONObject(i)
                 val entry = DictEntry(
@@ -68,9 +69,17 @@ class DictionaryManager(private val context: Context) {
                     dictFilePath = obj.getString("dictFilePath"),
                     isEnabled = obj.optBoolean("isEnabled", true)
                 )
+                val mdxFile = File(entry.dictFilePath)
+                val mdxTitle = readMdxHeaderTitle(mdxFile)
+                android.util.Log.i("DictMgr", "  Persisted[$i]: '${entry.name}' (id=${entry.id}) file=${mdxFile.name} exists=${mdxFile.exists()} size=${mdxFile.length()} mdxTitle='$mdxTitle'")
+
                 val dictDir = File(context.filesDir, "dictionaries/${entry.id}")
                 if (!dictDir.exists()) {
-                    android.util.Log.w("DictMgr", "Skipping persisted dict '${entry.name}': dir not found")
+                    android.util.Log.w("DictMgr", "  Skipping '${entry.name}': directory not found at ${dictDir.absolutePath}")
+                    continue
+                }
+                if (!mdxFile.exists() || mdxFile.length() == 0L) {
+                    android.util.Log.w("DictMgr", "  Skipping '${entry.name}': MDX file not found or empty at ${entry.dictFilePath}")
                     continue
                 }
                 synchronized(this) {
@@ -80,7 +89,7 @@ class DictionaryManager(private val context: Context) {
                     loadDictionary(entry)
                 }
             }
-            android.util.Log.i("DictMgr", "Loaded ${dictionaries.size} persisted dictionaries")
+            android.util.Log.i("DictMgr", "Loaded ${dictionaries.size}/${json.length()} persisted dictionaries (${loadedDicts.size} parsers ready)")
         } catch (e: Exception) {
             android.util.Log.e("DictMgr", "loadPersistedDictionaries FAILED: ${e.message}")
         }
@@ -163,6 +172,9 @@ class DictionaryManager(private val context: Context) {
             throw RuntimeException("未能从导入路径中找到 .mdx 词典文件，请确认选择了正确的 .mdx 文件")
         }
 
+        val mdxTitle = readMdxHeaderTitle(mdxFile)
+        android.util.Log.i("DictMgr", "  MDX file verified: '${mdxFile.name}' (${mdxFile.length()} bytes) title='$mdxTitle'")
+
         val entry = DictEntry(
             id = id,
             name = name,
@@ -175,7 +187,17 @@ class DictionaryManager(private val context: Context) {
             dictionaries.add(entry)
         }
         loadDictionary(entry)
-        saveDictionaries()
+        synchronized(this) {
+            val loadedParser = loadedDicts[entry.id]
+            if (loadedParser != null) {
+                android.util.Log.i("DictMgr", "  VERIFIED: '${entry.name}' → parser title='${loadedParser.title}' words=${loadedParser.wordCount} file=${mdxFile.name}")
+                saveDictionaries()
+            } else {
+                android.util.Log.e("DictMgr", "  FAILED: '${entry.name}' parser not loaded after loadDictionary!")
+                dictDir.deleteRecursively()
+                throw RuntimeException("词典 '${name}' 加载失败，无法读取词典数据")
+            }
+        }
         return entry
     }
 
@@ -402,6 +424,27 @@ class DictionaryManager(private val context: Context) {
         return name.replace(Regex("[:\\\\/*?|<>]"), "_")
     }
 
+    private fun readMdxHeaderTitle(file: File): String {
+        if (file.length() < 12) return "(invalid: too small)"
+        try {
+            java.io.RandomAccessFile(file, "r").use { raf ->
+                val b = ByteArray(4)
+                raf.readFully(b)
+                val headerLen = (b[0].toInt() and 0xFF shl 24) or (b[1].toInt() and 0xFF shl 16) or
+                        (b[2].toInt() and 0xFF shl 8) or (b[3].toInt() and 0xFF)
+                if (headerLen <= 0 || headerLen > 100 * 1024 * 1024) return "(invalid headerLen=$headerLen)"
+                val readLen = minOf(headerLen, 4096)
+                val headerBytes = ByteArray(readLen)
+                raf.readFully(headerBytes)
+                val headerStr = String(headerBytes, Charsets.UTF_16LE)
+                val titleMatch = Regex("""<Title[^>]*>([^<]*)</Title>""", RegexOption.IGNORE_CASE).find(headerStr)
+                return titleMatch?.groupValues?.get(1)?.trim() ?: "(no Title in header)"
+            }
+        } catch (e: Exception) {
+            return "(read error: ${e.message})"
+        }
+    }
+
     private fun copyToInternal(uri: Uri, displayName: String, targetDir: File): File? {
         return try {
             val targetFile = File(targetDir, displayName)
@@ -425,7 +468,7 @@ class DictionaryManager(private val context: Context) {
 
     private fun loadDictionary(entry: DictEntry) {
         val mdxFile = File(entry.dictFilePath)
-        android.util.Log.i("DictMgr", "Loading '${entry.name}' from: ${entry.dictFilePath}")
+        android.util.Log.i("DictMgr", "Loading '${entry.name}' (id=${entry.id}) from: ${entry.dictFilePath}")
         if (!mdxFile.exists()) {
             android.util.Log.e("DictMgr", "  File not found: ${entry.dictFilePath}")
             return
@@ -441,18 +484,17 @@ class DictionaryManager(private val context: Context) {
         }
 
         try {
-            android.util.Log.d("DictMgr", "  Creating MdxParser...")
             val parser = MdxParser(mdxFile)
             if (parser.wordCount <= 0) {
                 android.util.Log.e("DictMgr", "  Loaded '${entry.name}' but wordCount=${parser.wordCount}, keywords empty!")
-                android.util.Log.e("DictMgr", "  Title=${parser.title} Encoding=${parser.encoding} CaseSensitive=${parser.isKeyCaseSensitive}")
+                android.util.Log.e("DictMgr", "  Title='${parser.title}' Encoding='${parser.encoding}' CaseSensitive=${parser.isKeyCaseSensitive}")
+                parser.close()
                 return
             }
             synchronized(this) {
                 loadedDicts[entry.id] = parser
             }
-            android.util.Log.i("DictMgr", "  Loaded OK. Title: ${parser.title}, Encoding: ${parser.encoding}, " +
-                "Words: ${parser.wordCount}, CaseSensitive: ${parser.isKeyCaseSensitive}")
+            android.util.Log.i("DictMgr", "  LOADED OK: '${entry.name}' → title='${parser.title}' words=${parser.wordCount} encoding='${parser.encoding}' file=${mdxFile.name}")
         } catch (e: Exception) {
             android.util.Log.e("DictMgr", "  FAILED to load ${entry.name}: ${e.javaClass.simpleName}: ${e.message}", e)
         } catch (e: OutOfMemoryError) {
@@ -496,7 +538,7 @@ class DictionaryManager(private val context: Context) {
         for (dict in snapshot) {
             val parser = synchronized(this) { loadedDicts[dict.id] }
             if (parser != null) {
-                android.util.Log.d("DictMgr", "  Searching in '${dict.name}' (words=${parser.wordCount})")
+                android.util.Log.d("DictMgr", "  Searching '${dict.name}' (id=${dict.id}) using parser title='${parser.title}' words=${parser.wordCount}")
                 val dictResults = searchWithParser(parser, dict, query)
                 results.addAll(dictResults)
             } else {
