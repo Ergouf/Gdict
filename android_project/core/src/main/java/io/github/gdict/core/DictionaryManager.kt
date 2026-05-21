@@ -104,8 +104,11 @@ class DictionaryManager(private val context: Context) {
         android.util.Log.i("DictMgr", "  sourceUri: $sourceUri")
         android.util.Log.i("DictMgr", "  companionUris: ${companionUris.size}")
 
-        val copiedFiles = copyDictionaryFiles(sourceUri, dictDir).toMutableList()
-        android.util.Log.i("DictMgr", "  Primary copy: ${copiedFiles.size} files")
+        val copyResult = copyDictionaryFiles(sourceUri, dictDir)
+        val copiedFiles = copyResult.files.toMutableList()
+        val primaryFile = copyResult.primaryFile
+        android.util.Log.i("DictMgr", "  Primary copy: ${primaryFile?.name} (${primaryFile?.length()} bytes)")
+        android.util.Log.i("DictMgr", "  Total copied: ${copiedFiles.size} files")
         for (f in copiedFiles) {
             android.util.Log.i("DictMgr", "    -> ${f.name} (${f.length()} bytes)")
         }
@@ -124,7 +127,12 @@ class DictionaryManager(private val context: Context) {
             }
         }
 
-        var mdxFile = copiedFiles.firstOrNull { it.name.lowercase().endsWith(".mdx") }
+        var mdxFile = if (primaryFile != null && primaryFile.name.lowercase().endsWith(".mdx")) {
+            android.util.Log.i("DictMgr", "  Using primary file as MDX: ${primaryFile.name}")
+            primaryFile
+        } else {
+            copiedFiles.firstOrNull { it.name.lowercase().endsWith(".mdx") }
+        }
         if (mdxFile == null) {
             android.util.Log.w("DictMgr", "  No .mdx file found by extension, trying content detection...")
             for (i in copiedFiles.indices) {
@@ -136,12 +144,15 @@ class DictionaryManager(private val context: Context) {
                     if (file.renameTo(newFile)) {
                         android.util.Log.i("DictMgr", "  Detected MDX/MDD by header, renamed: ${file.name} -> $newName")
                         copiedFiles[i] = newFile
+                        if (primaryFile == file) mdxFile = newFile
                     } else {
                         android.util.Log.w("DictMgr", "  Failed to rename ${file.name} to $newName")
                     }
                 }
             }
-            mdxFile = copiedFiles.firstOrNull { it.name.lowercase().endsWith(".mdx") }
+            if (mdxFile == null || !mdxFile.exists()) {
+                mdxFile = copiedFiles.firstOrNull { it.name.lowercase().endsWith(".mdx") }
+            }
         }
         if (mdxFile == null) {
             android.util.Log.e("DictMgr", "  NO .mdx file found among ${copiedFiles.size} copied files!")
@@ -168,8 +179,11 @@ class DictionaryManager(private val context: Context) {
         return entry
     }
 
-    private fun copyDictionaryFiles(sourceUri: String, targetDir: File): List<File> {
+    private data class CopyResult(val files: List<File>, val primaryFile: File?)
+
+    private fun copyDictionaryFiles(sourceUri: String, targetDir: File): CopyResult {
         val copied = mutableListOf<File>()
+        var primaryFile: File? = null
         try {
             val uri = Uri.parse(sourceUri)
             if (sourceUri.startsWith("content://")) {
@@ -194,18 +208,19 @@ class DictionaryManager(private val context: Context) {
                             val displayName = c.getString(1)
                             if (displayName != null && isDictionaryFile(displayName)) {
                                 val childUri = DocumentsContract.buildDocumentUriUsingTree(uri, docId)
-                                copyToInternal(childUri, displayName, targetDir)?.let { copied.add(it) }
+                                copyToInternal(childUri, displayName, targetDir)?.let { f ->
+                                    copied.add(f)
+                                    if (primaryFile == null && f.name.lowercase().endsWith(".mdx")) primaryFile = f
+                                }
                             }
                         }
                     }
                 } else {
                     val realName = resolveDocumentName(uri)
                     android.util.Log.i("DictMgr", "  resolveDocumentName: '$realName' for uri: $sourceUri")
-                    if (isDictionaryFile(realName)) {
-                        copyToInternal(uri, realName, targetDir)?.let { copied.add(it) }
-                    } else {
-                        android.util.Log.w("DictMgr", "  '$realName' is not a dictionary file, but copying anyway")
-                        copyToInternal(uri, realName, targetDir)?.let { copied.add(it) }
+                    copyToInternal(uri, realName, targetDir)?.let { f ->
+                        copied.add(f)
+                        primaryFile = f
                     }
                 }
             } else {
@@ -214,18 +229,22 @@ class DictionaryManager(private val context: Context) {
                     file.listFiles()?.forEach { f ->
                         if (isDictionaryFile(f.name)) {
                             f.copyTo(File(targetDir, f.name), overwrite = true)
-                            copied.add(File(targetDir, f.name))
+                            val target = File(targetDir, f.name)
+                            copied.add(target)
+                            if (primaryFile == null && f.name.lowercase().endsWith(".mdx")) primaryFile = target
                         }
                     }
                 } else if (isDictionaryFile(file.name)) {
                     file.copyTo(File(targetDir, file.name), overwrite = true)
-                    copied.add(File(targetDir, file.name))
+                    val target = File(targetDir, file.name)
+                    copied.add(target)
+                    primaryFile = target
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e("DictMgr", "copyDictionaryFiles FAILED: ${e.message}", e)
         }
-        return copied
+        return CopyResult(copied, primaryFile)
     }
 
     private fun resolveDocumentName(uri: Uri): String {
