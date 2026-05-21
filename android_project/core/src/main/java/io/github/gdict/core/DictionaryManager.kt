@@ -505,12 +505,73 @@ class DictionaryManager(private val context: Context) {
 
     fun removeDictionary(id: Long) {
         synchronized(this) {
-            loadedDicts.remove(id)
+            loadedDicts.remove(id)?.close()
             dictionaries.removeAll { it.id == id }
         }
         val dictDir = File(context.filesDir, "dictionaries/$id")
         if (dictDir.exists()) dictDir.deleteRecursively()
         saveDictionaries()
+    }
+
+    fun diagnoseAllDictionaries(): String {
+        val sb = StringBuilder()
+        sb.appendLine("=== Gdict Dictionary Diagnostics ===")
+        sb.appendLine("Total dicts: ${dictionaries.size}, Loaded parsers: ${loadedDicts.size}")
+        sb.appendLine()
+
+        synchronized(this) {
+            for ((i, dict) in dictionaries.withIndex()) {
+                sb.appendLine("--- Dict[$i] ---")
+                sb.appendLine("  id=${dict.id} name='${dict.name}'")
+                sb.appendLine("  path='${dict.path}'")
+                sb.appendLine("  dictFilePath='${dict.dictFilePath}'")
+                sb.appendLine("  isEnabled=${dict.isEnabled}")
+
+                val mdxFile = File(dict.dictFilePath)
+                sb.appendLine("  fileExists=${mdxFile.exists()} fileSize=${mdxFile.length()}")
+
+                val parser = loadedDicts[dict.id]
+                if (parser != null) {
+                    sb.appendLine("  parser: title='${parser.title}' words=${parser.wordCount}")
+                    sb.appendLine("          encoding='${parser.encoding}' caseSensitive=${parser.isKeyCaseSensitive}")
+
+                    try {
+                        val testWord = "read"
+                        val articles = parser.readArticles(testWord)
+                        sb.appendLine("  search('$testWord'): ${articles.size} results")
+                        for ((word, def) in articles) {
+                            val preview = def?.take(80)?.replace("\n", "\\n") ?: "(null)"
+                            val hash = def?.hashCode() ?: 0
+                            sb.appendLine("    ['$word'] hash=$hash preview='$preview'")
+                        }
+                    } catch (e: Exception) {
+                        sb.appendLine("  search ERROR: ${e.javaClass.simpleName}: ${e.message}")
+                    }
+
+                    try {
+                        val first3Keywords = parser.getAllKeywords().take(3)
+                        sb.appendLine("  first keywords: $first3Keywords")
+                    } catch (_: Exception) {}
+                } else {
+                    sb.appendLine("  parser: NULL (not loaded!)")
+                }
+                sb.appendLine()
+            }
+
+            sb.appendLine("=== Parser identity check ===")
+            val parserIdentities = mutableMapOf<Int, String>()
+            for ((id, parser) in loadedDicts) {
+                val identity = "${parser.title}|${parser.wordCount}|${parser.hashCode()}"
+                parserIdentities[id.toInt()] = identity
+                sb.appendLine("  parser[$id] → $identity")
+            }
+            val uniqueParsers = parserIdentities.values.toSet()
+            sb.appendLine("  Unique parser identities: ${uniqueParsers.size}/${parserIdentities.size}")
+            if (uniqueParsers.size < parserIdentities.size) {
+                sb.appendLine("  ⚠️ WARNING: Duplicate parser detected!")
+            }
+        }
+        return sb.toString()
     }
 
     fun toggleDictionary(id: Long, enabled: Boolean) {
@@ -555,13 +616,20 @@ class DictionaryManager(private val context: Context) {
             val results = mutableListOf<SearchResult>()
 
             val exact = parser.readArticles(query)
+            android.util.Log.d("DictMgr", "    '${dict.name}' exact match: ${exact.size} articles")
             for ((word, def) in exact) {
+                val defHash = def?.hashCode() ?: 0
+                val preview = def?.take(60)?.replace("\n", "\\n") ?: "(null)"
+                android.util.Log.d("DictMgr", "      ['$word'] defHash=$defHash preview='$preview'")
                 results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name))
             }
 
             if (results.isEmpty()) {
                 val predictive = parser.readArticlesPredictive(query)
+                android.util.Log.d("DictMgr", "    '${dict.name}' predictive: ${predictive.size} articles")
                 for ((word, def) in predictive) {
+                    val defHash = def?.hashCode() ?: 0
+                    android.util.Log.d("DictMgr", "      ['$word'] defHash=$defHash")
                     results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name))
                 }
             }

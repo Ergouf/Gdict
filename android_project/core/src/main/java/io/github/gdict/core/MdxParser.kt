@@ -142,6 +142,44 @@ class MdxParser(private val mdxFile: File) {
 
     fun getAllKeywords(): List<String> = keywordIndex.map { it.word }
 
+    val filePath: String get() = mdxFile.absolutePath
+    val fileName: String get() = mdxFile.name
+    val fileSize: Long get() = mdxFile.length()
+
+    fun diagnose(): String {
+        val sb = StringBuilder()
+        sb.appendLine("MdxParser Diagnostics:")
+        sb.appendLine("  file='$mdxFile' (${mdxFile.length()} bytes)")
+        sb.appendLine("  title='$title' encoding='$encoding'")
+        sb.appendLine("  engineVersion=$engineVersion bpu=$bpu numberWidth=$numberWidth")
+        sb.appendLine("  wordCount=$wordCount caseSensitive=$isKeyCaseSensitive")
+        sb.appendLine("  keywordBlocks=${keywordIndex.size} recordBlocks=${recordBlockInfos.size}")
+        sb.appendLine("  closed=$closed")
+
+        if (recordBlockInfos.isNotEmpty()) {
+            sb.appendLine("  recordBlockInfo[0]: startOffset=${recordBlockInfos[0].recordStartOffset} " +
+                "compOffset=${recordBlockInfos[0].compressedOffset} compSize=${recordBlockInfos[0].compressedSize} decompSize=${recordBlockInfos[0].decompressedSize}")
+        }
+
+        if (keywordIndex.isNotEmpty()) {
+            val first = keywordIndex.first()
+            sb.appendLine("  firstKeyword: word='${first.word}' recordOffset=${first.recordOffset} recordSize=${first.recordSize}")
+            val last = keywordIndex.last()
+            sb.appendLine("  lastKeyword: word='${last.word}' recordOffset=${last.recordOffset} recordSize=${last.recordSize}")
+
+            val testResult = try {
+                val articles = readArticles(first.word)
+                val def = articles.values.firstOrNull()
+                val preview = def?.take(100)?.replace("\n", "\\n") ?: "(null)"
+                "readArticles('${first.word}') → ${articles.size} results, first_def='$preview'"
+            } catch (e: Exception) {
+                "readArticles ERROR: ${e.javaClass.simpleName}: ${e.message}"
+            }
+            sb.appendLine("  $testResult")
+        }
+        return sb.toString()
+    }
+
     /**
      * 根据记录偏移和大小读取词条的释义内容
      *
