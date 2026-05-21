@@ -18,6 +18,10 @@
 *.idx
 *.dict
 
+# Dictionary related text & style files
+*.txt
+*.css
+
 # IDE directories
 /.idea
 *.iml
