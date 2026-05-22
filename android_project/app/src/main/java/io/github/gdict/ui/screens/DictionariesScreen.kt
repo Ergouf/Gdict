@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.core.DictionaryManager
 import io.github.gdict.data.Dictionary
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
 import kotlinx.coroutines.delay
 
@@ -77,6 +79,7 @@ fun DictionariesScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(GdictColors.NavyBlue)
                         .statusBarsPadding()
                         .height(56.dp)
                         .padding(horizontal = 20.dp),
@@ -84,52 +87,52 @@ fun DictionariesScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "词典管理",
+                        "Dictionaries",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color.White
                     )
                     Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                        ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "更多",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "更多",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Scan Import") },
+                                    onClick = {
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Diagnostics") },
+                                    onClick = {
+                                        showMenu = false
+                                        viewModel.diagnoseDictionaries()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.BugReport, contentDescription = null)
+                                    }
+                                )
+                            }
                         }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("扫码导入") },
-                                onClick = {
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("诊断") },
-                                onClick = {
-                                    showMenu = false
-                                    viewModel.diagnoseDictionaries()
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.BugReport, contentDescription = null)
-                                }
-                            )
-                        }
-                    }
                 }
             }
         },
@@ -142,18 +145,18 @@ fun DictionariesScreen(
             ) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = GdictColors.TealAccent,
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "添加词典",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = Color.White
                     )
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = GdictColors.LightGray
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -171,7 +174,7 @@ fun DictionariesScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        containerColor = GdictColors.NavyBlue.copy(alpha = 0.1f)
                     ),
                     shape = RoundedCornerShape(24.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -183,20 +186,20 @@ fun DictionariesScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            color = GdictColors.NavyBlue.copy(alpha = 0.15f)
                         ) {
                             Icon(
                                 Icons.Default.MenuBook,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = GdictColors.NavyBlue,
                                 modifier = Modifier.padding(12.dp)
                             )
                         }
                         Text(
-                            "已添加 ${dictionaries.size} 本词典",
+                            "${dictionaries.size} dictionaries added",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = GdictColors.NavyBlue
                         )
                     }
                 }
@@ -242,27 +245,27 @@ fun DictionariesScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                color = GdictColors.NavyBlue.copy(alpha = 0.1f)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LibraryBooks,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = GdictColors.NavyBlue,
                                     modifier = Modifier
                                         .size(100.dp)
                                         .padding(24.dp)
                                 )
                             }
                             Text(
-                                "暂无词典",
+                                "No dictionaries",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = GdictColors.DarkGray
                             )
                             Text(
-                                "点击右下角按钮添加词典",
+                                "Tap the button to add dictionaries",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = GdictColors.MediumGray
                             )
                         }
                     }
@@ -414,7 +417,7 @@ fun DictionaryItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = Color.White
         )
     ) {
         Row(
@@ -432,17 +435,17 @@ fun DictionaryItemCard(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = if (dictionary.isEnabled)
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        GdictColors.NavyBlue.copy(alpha = 0.1f)
                     else
-                        MaterialTheme.colorScheme.surfaceContainerHighest
+                        GdictColors.LightGray
                 ) {
                     Icon(
                         Icons.Default.Book,
                         contentDescription = null,
                         tint = if (dictionary.isEnabled)
-                            MaterialTheme.colorScheme.primary
+                            GdictColors.NavyBlue
                         else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            GdictColors.MediumGray,
                         modifier = Modifier
                             .padding(8.dp)
                             .size(18.dp)
@@ -455,13 +458,13 @@ fun DictionaryItemCard(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = GdictColors.DarkGray
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = dictionary.path.take(40),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = GdictColors.MediumGray,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -475,10 +478,10 @@ fun DictionaryItemCard(
                     checked = dictionary.isEnabled,
                     onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.outline
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = GdictColors.TealAccent,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = GdictColors.LightGray
                     )
                 )
                 IconButton(
@@ -488,7 +491,7 @@ fun DictionaryItemCard(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "移除",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        tint = GdictColors.MediumGray,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -556,12 +559,12 @@ fun AddDictionaryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = Color.White,
         title = {
             Text(
-                "添加词典",
+                "Add Dictionary",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = GdictColors.DarkGray
             )
         },
         text = {
@@ -572,31 +575,31 @@ fun AddDictionaryDialog(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("词典名称") },
+                    label = { Text("Dictionary Name") },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                        focusedBorderColor = GdictColors.NavyBlue,
+                        unfocusedBorderColor = GdictColors.LightGray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        cursorColor = GdictColors.NavyBlue
                     )
                 )
                 OutlinedTextField(
                     value = path,
                     onValueChange = { path = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("词典路径") },
-                    placeholder = { Text("选择词典文件或扫描文件夹...") },
+                    label = { Text("Dictionary Path") },
+                    placeholder = { Text("Select file or scan folder...") },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                        focusedBorderColor = GdictColors.NavyBlue,
+                        unfocusedBorderColor = GdictColors.LightGray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        cursorColor = GdictColors.NavyBlue
                     ),
                     trailingIcon = {
                         IconButton(onClick = {
@@ -605,7 +608,7 @@ fun AddDictionaryDialog(
                             Icon(
                                 Icons.Default.InsertDriveFile,
                                 contentDescription = "选择文件",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = GdictColors.NavyBlue
                             )
                         }
                     }
@@ -616,19 +619,19 @@ fun AddDictionaryDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                        contentColor = GdictColors.NavyBlue
                     ),
                     border = ButtonDefaults.outlinedButtonBorder
                 ) {
                     Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("扫描文件夹中的词典")
+                    Text("Scan folder for dictionaries")
                 }
 
                 if (scanError != null) {
                     Text(
                         text = scanError ?: "",
-                        color = MaterialTheme.colorScheme.error,
+                        color = GdictColors.CoralAccent,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -644,21 +647,21 @@ fun AddDictionaryDialog(
                 enabled = name.isNotEmpty() && path.isNotEmpty(),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                    containerColor = GdictColors.TealAccent,
+                    disabledContainerColor = GdictColors.TealAccent.copy(alpha = 0.38f)
                 )
             ) {
                 Text(
-                    "添加",
-                    color = MaterialTheme.colorScheme.onPrimary
+                    "Add",
+                    color = Color.White
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    "取消",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    "Cancel",
+                    color = GdictColors.MediumGray
                 )
             }
         }
@@ -675,12 +678,12 @@ fun BatchImportDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = Color.White,
         title = {
             Text(
-                "选择要导入的词典",
+                "Select dictionaries to import",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = GdictColors.DarkGray
             )
         },
         text = {
@@ -709,8 +712,8 @@ fun BatchImportDialog(
                                 else selected - candidate
                             },
                             colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary,
-                                uncheckedColor = MaterialTheme.colorScheme.outline
+                                checkedColor = GdictColors.TealAccent,
+                                uncheckedColor = GdictColors.MediumGray
                             )
                         )
                         Column {
@@ -718,12 +721,12 @@ fun BatchImportDialog(
                                 text = candidate.name,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = GdictColors.DarkGray
                             )
                             Text(
                                 text = candidate.displayName,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = GdictColors.MediumGray
                             )
                         }
                     }
@@ -736,21 +739,21 @@ fun BatchImportDialog(
                 enabled = selected.isNotEmpty(),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                    containerColor = GdictColors.TealAccent,
+                    disabledContainerColor = GdictColors.TealAccent.copy(alpha = 0.38f)
                 )
             ) {
                 Text(
-                    "导入 ${selected.size} 本",
-                    color = MaterialTheme.colorScheme.onPrimary
+                    "Import ${selected.size}",
+                    color = Color.White
                 )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    "取消",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    "Cancel",
+                    color = GdictColors.MediumGray
                 )
             }
         }

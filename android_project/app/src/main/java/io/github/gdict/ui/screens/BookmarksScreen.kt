@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.AlertDialog
@@ -27,7 +29,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,12 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.BookmarkItem
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
 
 @Composable
@@ -52,44 +55,31 @@ fun BookmarksScreen(
     onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> }
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
-    var showRemoveDialog by remember { mutableStateOf<BookmarkItem?>(null) }
+    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
+    val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
+
+    var bookmarkToDelete by remember { mutableStateOf<BookmarkItem?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(bgColor)
             .statusBarsPadding()
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                "生词本",
-                style = MaterialTheme.typography.headlineMedium,
+                "My Vocabulary",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = textColor
             )
-            if (bookmarks.isNotEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Text(
-                        "${bookmarks.size} 词",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         if (bookmarks.isNotEmpty()) {
             LazyColumn(
@@ -101,9 +91,16 @@ fun BookmarksScreen(
                 items(bookmarks, key = { it.word }) { item ->
                     BookmarkItemCard(
                         item = item,
+                        cardColor = cardColor,
+                        textColor = textColor,
                         onClick = { onWordClick(item.word, item.definition, item.dictionaryName, "") },
-                        onRemove = { showRemoveDialog = item }
+                        onDelete = { bookmarkToDelete = item }
                     )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FlashcardPromoCard()
                 }
             }
         } else {
@@ -115,58 +112,54 @@ fun BookmarksScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                        modifier = Modifier.size(88.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(GdictColors.NavyBlue.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.BookmarkBorder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Outlined.BookmarkBorder,
+                            contentDescription = null,
+                            tint = GdictColors.NavyBlue.copy(alpha = 0.6f),
+                            modifier = Modifier.size(40.dp)
+                        )
                     }
                     Text(
-                        "暂无收藏",
+                        "No favorites yet",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = textColor
                     )
                     Text(
-                        "收藏你想记住的单词",
+                        "Save words you want to remember",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = GdictColors.MediumGray
                     )
                 }
             }
         }
     }
 
-    showRemoveDialog?.let { item ->
+    bookmarkToDelete?.let { item ->
         AlertDialog(
-            onDismissRequest = { showRemoveDialog = null },
-            title = {
-                Text("取消收藏", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text("确定要从生词本中移除\"${item.word}\"吗？")
-            },
+            onDismissRequest = { bookmarkToDelete = null },
+            title = { Text("Remove Bookmark", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to remove \"${item.word}\" from your vocabulary?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.removeBookmark(item)
-                        showRemoveDialog = null
+                        bookmarkToDelete = null
                     }
                 ) {
-                    Text("移除", color = MaterialTheme.colorScheme.error)
+                    Text("Remove", color = GdictColors.CoralAccent)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRemoveDialog = null }) {
-                    Text("取消")
+                TextButton(onClick = { bookmarkToDelete = null }) {
+                    Text("Cancel")
                 }
             }
         )
@@ -176,53 +169,122 @@ fun BookmarksScreen(
 @Composable
 private fun BookmarkItemCard(
     item: BookmarkItem,
+    cardColor: Color,
+    textColor: Color,
     onClick: () -> Unit,
-    onRemove: () -> Unit
+    onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = cardColor
         ),
-        onClick = onClick
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(GdictColors.NavyBlue.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Bookmark,
+                    contentDescription = null,
+                    tint = GdictColors.NavyBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.word,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = textColor
                 )
-                if (item.definition.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = item.definition,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = item.dictionaryName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GdictColors.MediumGray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             IconButton(
-                onClick = onRemove,
+                onClick = onDelete,
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "移除",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    contentDescription = "Remove",
+                    tint = GdictColors.MediumGray,
                     modifier = Modifier.size(16.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FlashcardPromoCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = GdictColors.NavyBlue
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Bookmark,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Flashcard",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                Text(
+                    "To practice and learn your word lists.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

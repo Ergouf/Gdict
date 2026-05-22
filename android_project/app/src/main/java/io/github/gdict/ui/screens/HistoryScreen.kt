@@ -1,4 +1,4 @@
-﻿package io.github.gdict.ui.screens
+package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,7 +29,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,11 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.HistoryItem
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
 
 @Composable
@@ -53,51 +54,60 @@ fun HistoryScreen(
     onWordClick: (String) -> Unit = {}
 ) {
     val history by viewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
+    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
+    val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
     var showClearDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(bgColor)
             .statusBarsPadding()
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .background(GdictColors.NavyBlue)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Text(
-                "历史记录",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (history.isNotEmpty()) {
-                IconButton(onClick = { showClearDialog = true }) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = "清除历史",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Learning",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                if (history.isNotEmpty()) {
+                    IconButton(onClick = { showClearDialog = true }) {
+                        Icon(
+                            Icons.Outlined.DeleteOutline,
+                            contentDescription = "清除历史",
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         if (history.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(history, key = { it.word }) { item ->
-                    HistoryItemRow(
+                    HistoryItemCard(
                         word = item.word,
+                        cardColor = cardColor,
+                        textColor = textColor,
                         onClick = { onWordClick(item.word) },
                         onDelete = { viewModel.removeFromHistory(item) }
                     )
@@ -112,30 +122,30 @@ fun HistoryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                        modifier = Modifier.size(88.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(GdictColors.NavyBlue.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.History,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Outlined.History,
+                            contentDescription = null,
+                            tint = GdictColors.NavyBlue.copy(alpha = 0.6f),
+                            modifier = Modifier.size(40.dp)
+                        )
                     }
                     Text(
-                        "暂无搜索历史",
+                        "No history yet",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = textColor
                     )
                     Text(
-                        "搜索历史将在此显示",
+                        "Your search history will appear here",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = GdictColors.MediumGray
                     )
                 }
             }
@@ -146,10 +156,10 @@ fun HistoryScreen(
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
             title = {
-                Text("清除历史", fontWeight = FontWeight.Bold)
+                Text("Clear History", fontWeight = FontWeight.Bold)
             },
             text = {
-                Text("确定要清除所有搜索历史吗？此操作无法撤销。")
+                Text("Are you sure you want to clear all search history?")
             },
             confirmButton = {
                 TextButton(
@@ -158,12 +168,12 @@ fun HistoryScreen(
                         showClearDialog = false
                     }
                 ) {
-                    Text("清除", color = MaterialTheme.colorScheme.error)
+                    Text("Clear", color = GdictColors.CoralAccent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("取消")
+                    Text("Cancel")
                 }
             }
         )
@@ -171,42 +181,53 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistoryItemRow(
+private fun HistoryItemCard(
     word: String,
+    cardColor: Color,
+    textColor: Color,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cardColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Icon(
-            Icons.Outlined.Search,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = word,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(32.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Close,
-                contentDescription = "删除",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(16.dp)
+                Icons.Outlined.Search,
+                contentDescription = null,
+                tint = GdictColors.MediumGray,
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = word,
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "删除",
+                    tint = GdictColors.MediumGray,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }

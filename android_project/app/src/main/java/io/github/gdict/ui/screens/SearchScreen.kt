@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,23 +24,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,12 +47,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.HistoryItem
 import io.github.gdict.data.SearchResultItem
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun SearchScreen(
@@ -69,7 +65,7 @@ fun SearchScreen(
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
     val history by viewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle(initialValue = null)
-    var showScannerDialog by remember { mutableStateOf(false) }
+    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
@@ -80,106 +76,50 @@ fun SearchScreen(
         }
     }
 
+    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
+    val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
+            .background(bgColor)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .background(GdictColors.NavyBlue)
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Text(
-                "Gdict",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                modifier = Modifier.size(40.dp)
-            ) {
-                IconButton(
-                    onClick = { showScannerDialog = true },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        Icons.Default.QrCodeScanner,
-                        contentDescription = "扫码",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            Column {
+                Text(
+                    "Home & Search",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SearchBar(
+                    query = searchQuery,
+                    cardColor = cardColor,
+                    onQueryChange = { searchQuery = it },
+                    onSearch = {
+                        if (searchQuery.isNotEmpty()) {
+                            viewModel.searchWord(searchQuery)
+                        }
+                    }
+                )
             }
         }
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .height(56.dp),
-            placeholder = {
-                Text(
-                    "搜索单词...",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "搜索",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(22.dp)
-                )
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "清除",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = {
-                    if (searchQuery.isNotEmpty()) {
-                        viewModel.searchWord(searchQuery)
-                    }
-                }
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                cursorColor = MaterialTheme.colorScheme.primary
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         errorMessage?.let { msg ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                    containerColor = GdictColors.CoralAccent.copy(alpha = 0.1f)
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -190,76 +130,310 @@ fun SearchScreen(
                     Text(
                         msg,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        color = GdictColors.CoralAccent,
                         modifier = Modifier.weight(1f)
                     )
-                    TextButton(onClick = { viewModel.clearError() }) {
-                        Text("关闭", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    androidx.compose.material3.TextButton(onClick = { viewModel.clearError() }) {
+                        Text("Dismiss", color = GdictColors.MediumGray)
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
         if (searchResults.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 4.dp)
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
             ) {
                 items(items = searchResults, key = { "${it.word}_${it.dictionaryName}" }) { result ->
                     SearchResultCard(
                         word = result.word,
                         definition = result.definition,
                         dictionaryName = result.dictionaryName,
-                        onClick = { onWordClick(result.word, result.definition, result.dictionaryName, result.css) },
-                        onBookmark = { viewModel.toggleBookmark(result.word, result.definition, result.dictionaryName) }
+                        cardColor = cardColor,
+                        textColor = textColor,
+                        onClick = { onWordClick(result.word, result.definition, result.dictionaryName, result.css) }
                     )
                 }
             }
         } else if (searchQuery.isNotEmpty()) {
             EmptySearchResult(
                 query = searchQuery,
+                textColor = textColor,
                 onSuggestionClick = { suggestion ->
                     searchQuery = suggestion
                     viewModel.searchWord(suggestion)
                 }
             )
-        } else if (history.isNotEmpty()) {
-            RecentSearchSection(
-                history = history,
-                onWordClick = { word ->
-                    searchQuery = word
-                    viewModel.searchWord(word)
-                },
-                onDelete = { viewModel.removeFromHistory(it) }
-            )
         } else {
-            WelcomeEmptyState()
-        }
-    }
-
-    if (showScannerDialog) {
-        AlertDialog(
-            onDismissRequest = { showScannerDialog = false },
-            title = {
-                Text("扫码功能", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text("扫码功能正在开发中，敬请期待！")
-            },
-            confirmButton = {
-                TextButton(onClick = { showScannerDialog = false }) {
-                    Text("确定")
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                if (history.isNotEmpty()) {
+                    item {
+                        RecentSearchSection(
+                            history = history,
+                            textColor = textColor,
+                            onWordClick = { word ->
+                                searchQuery = word
+                                viewModel.searchWord(word)
+                            }
+                        )
+                    }
+                }
+                item {
+                    WordOfTheDaySection(
+                        textColor = textColor,
+                        onWordClick = { word ->
+                            viewModel.searchWord(word)
+                        }
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    query: String,
+    cardColor: Color,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(cardColor)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Search,
+            contentDescription = "搜索",
+            tint = GdictColors.MediumGray,
+            modifier = Modifier.size(20.dp)
         )
+        Spacer(modifier = Modifier.width(8.dp))
+        androidx.compose.foundation.text.BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            decorationBox = { innerTextField ->
+                if (query.isEmpty()) {
+                    Text(
+                        "Search",
+                        color = GdictColors.MediumGray,
+                        fontSize = 16.sp
+                    )
+                }
+                innerTextField()
+            }
+        )
+        if (query.isNotEmpty()) {
+            IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "清除",
+                    tint = GdictColors.MediumGray,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        } else {
+            Icon(
+                Icons.Default.Mic,
+                contentDescription = "语音",
+                tint = GdictColors.AmberAccent,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchResultCard(
+    word: String,
+    definition: String,
+    dictionaryName: String,
+    cardColor: Color,
+    textColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cardColor
+        ),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = word,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GdictColors.NavyBlue
+                    )
+                    if (dictionaryName.isNotEmpty()) {
+                        Text(
+                            text = dictionaryName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GdictColors.MediumGray,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+            }
+            if (definition.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = definition,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentSearchSection(
+    history: List<HistoryItem>,
+    textColor: Color,
+    onWordClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        Text(
+            "Recent searches",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        history.take(5).forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onWordClick(item.word) }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Outlined.History,
+                    contentDescription = null,
+                    tint = GdictColors.MediumGray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = item.word,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordOfTheDaySection(
+    textColor: Color,
+    onWordClick: (String) -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
+        Text(
+            "Word of the Day",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(listOf(
+                Pair("Amiable", "adj., friendly and pleasant"),
+                Pair("Amitant", "adj., frielly fine")
+            )) { (word, meaning) ->
+                WordOfDayCard(
+                    word = word,
+                    meaning = meaning,
+                    onClick = { onWordClick(word) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordOfDayCard(
+    word: String,
+    meaning: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(200.dp)
+            .height(120.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = GdictColors.NavyBlue
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = meaning,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
     }
 }
 
 @Composable
 private fun EmptySearchResult(
     query: String,
+    textColor: Color,
     onSuggestionClick: (String) -> Unit
 ) {
     val suggestions = generateSuggestions(query)
@@ -275,15 +449,15 @@ private fun EmptySearchResult(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "未找到完全匹配的结果",
+                "No exact match found",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = textColor
             )
             Text(
-                "你是否想查找以下单词？",
+                "Did you mean?",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = GdictColors.MediumGray
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -292,23 +466,32 @@ private fun EmptySearchResult(
                 suggestions.forEach { suggestion ->
                     SuggestionChip(
                         onClick = { onSuggestionClick(suggestion) },
-                        label = {
-                            Text(
-                                suggestion,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            labelColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        border = null
+                        label = suggestion
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SuggestionChip(
+    onClick: () -> Unit,
+    label: String
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(GdictColors.LightGray)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = GdictColors.DarkGray
+        )
     }
 }
 
@@ -317,181 +500,4 @@ private fun generateSuggestions(query: String): List<String> {
     val pool = listOf("witch", "stitch", "switchable", "twitch", "pitch", "ditch", "rich", "which", "niche", "cache")
     val filtered = pool.filter { it != q && (it.contains(q.dropLast(1)) || q.dropLast(1).contains(it.dropLast(1))) }
     return if (filtered.size >= 3) filtered.take(3) else pool.take(3)
-}
-
-@Composable
-private fun SearchResultCard(
-    word: String,
-    definition: String,
-    dictionaryName: String,
-    onClick: () -> Unit,
-    onBookmark: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = word,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (dictionaryName.isNotEmpty()) {
-                        Text(
-                            text = dictionaryName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
-                IconButton(onClick = onBookmark) {
-                    Icon(
-                        imageVector = Icons.Outlined.MenuBook,
-                        contentDescription = "收藏",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            if (definition.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = definition,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentSearchSection(
-    history: List<HistoryItem>,
-    onWordClick: (String) -> Unit,
-    onDelete: (HistoryItem) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp)
-    ) {
-        Text(
-            "最近搜索",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items(items = history, key = { it.word }) { item ->
-                HistoryItemRow(
-                    word = item.word,
-                    onClick = { onWordClick(item.word) },
-                    onDelete = { onDelete(item) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistoryItemRow(
-    word: String,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            Icons.Outlined.History,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = word,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "删除",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun WelcomeEmptyState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                modifier = Modifier.size(88.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.MenuBook,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-            Text(
-                "开始搜索",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                "在上方输入单词开始搜索",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }

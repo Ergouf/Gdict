@@ -3,20 +3,28 @@
 import androidx.compose.ui.graphics.Color
 
 object GdictColors {
-    val Primary = Color(0xFF5E9634)
+    val NavyBlue = Color(0xFF2C4A6E)
+    val NavyBlueLight = Color(0xFF3D5F85)
+    val NavyBlueDark = Color(0xFF1E3A5F)
+    val TealAccent = Color(0xFF4ECDC4)
+    val CoralAccent = Color(0xFFFF6B6B)
+    val AmberAccent = Color(0xFFFFB347)
+    val MintGreen = Color(0xFF6BCB77)
+
+    val Primary = Color(0xFF2C4A6E)
     val OnPrimary = Color(0xFFFFFFFF)
-    val PrimaryContainer = Color(0xFFDFF0C8)
+    val PrimaryContainer = Color(0xFFE8F0FE)
     val OnPrimaryContainer = Color(0xFF1A2E00)
 
-    val Secondary = Color(0xFF58624A)
+    val Secondary = Color(0xFF4ECDC4)
     val OnSecondary = Color(0xFFFFFFFF)
-    val SecondaryContainer = Color(0xFFDCE7C6)
-    val OnSecondaryContainer = Color(0xFF161E0B)
+    val SecondaryContainer = Color(0xFFDFF6F4)
+    val OnSecondaryContainer = Color(0xFF003735)
 
-    val Tertiary = Color(0xFF386667)
+    val Tertiary = Color(0xFFFF6B6B)
     val OnTertiary = Color(0xFFFFFFFF)
-    val TertiaryContainer = Color(0xFFBBEBEC)
-    val OnTertiaryContainer = Color(0xFF002021)
+    val TertiaryContainer = Color(0xFFFFE5E5)
+    val OnTertiaryContainer = Color(0xFF3D0000)
 
     val Error = Color(0xFFB3261E)
     val OnError = Color(0xFFFFFFFF)
@@ -52,4 +60,9 @@ object GdictColors {
     val DarkBackground = Color(0xFF1A1C17)
 
     val Scrim = Color(0xFF000000)
+
+    val CardBackground = Color(0xFFFFFFFF)
+    val LightGray = Color(0xFFF5F5F5)
+    val MediumGray = Color(0xFF9E9E9E)
+    val DarkGray = Color(0xFF424242)
 }

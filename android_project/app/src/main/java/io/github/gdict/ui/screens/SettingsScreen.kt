@@ -3,6 +3,7 @@ package io.github.gdict.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -15,9 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -42,10 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
 
 @Composable
@@ -59,132 +66,153 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(GdictColors.LightGray)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
     ) {
-        Text(
-            "设置",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(vertical = 12.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        SettingsSection(title = "词典", icon = Icons.Outlined.MenuBook) {
-            SettingsButtonItem(
-                title = "词典管理",
-                description = "添加、删除和管理词典",
-                icon = Icons.Outlined.MenuBook,
-                onClick = onNavigateToDictionaries
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsSection(title = "外观", icon = Icons.Outlined.Palette) {
-            SettingsSwitchItem(
-                title = "深色模式",
-                description = "切换深色/浅色主题",
-                icon = Icons.Outlined.DarkMode,
-                checked = darkMode,
-                onCheckedChange = { viewModel.setDarkMode(it) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsSection(title = "功能", icon = Icons.Outlined.QrCodeScanner) {
-            SettingsSwitchItem(
-                title = "扫码弹窗",
-                description = "启用扫码功能弹窗",
-                icon = Icons.Outlined.QrCodeScanner,
-                checked = scanPopup,
-                onCheckedChange = { viewModel.setScanPopup(it) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsSection(title = "关于", icon = Icons.Outlined.Info) {
-            SettingsButtonItem(
-                title = "版本信息",
-                description = "Gdict v1.0.0",
-                icon = Icons.Outlined.Info,
-                onClick = { }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            var showClearDialog by remember { mutableStateOf(false) }
-            SettingsButtonItem(
-                title = "清除数据",
-                description = "清除所有历史记录和收藏",
-                icon = Icons.Outlined.DeleteOutline,
-                onClick = { showClearDialog = true }
-            )
-            if (showClearDialog) {
-                AlertDialog(
-                    onDismissRequest = { showClearDialog = false },
-                    title = { Text("确认清除") },
-                    text = { Text("确定要清除所有历史记录和收藏吗？此操作不可撤销。") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            viewModel.clearAllData()
-                            showClearDialog = false
-                        }) {
-                            Text("清除", color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showClearDialog = false }) {
-                            Text("取消")
-                        }
-                    }
-                )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(GdictColors.NavyBlue)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        "Profile",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        "Manage your settings",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            SettingsSection(title = "Dictionaries") {
+                SettingsButtonItem(
+                    title = "Dictionary Management",
+                    description = "Add, remove and manage dictionaries",
+                    icon = Icons.Outlined.MenuBook,
+                    onClick = onNavigateToDictionaries
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SettingsSection(title = "Appearance") {
+                SettingsSwitchItem(
+                    title = "Dark Mode",
+                    description = "Toggle dark/light theme",
+                    icon = Icons.Outlined.DarkMode,
+                    checked = darkMode,
+                    onCheckedChange = { viewModel.setDarkMode(it) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SettingsSection(title = "Features") {
+                SettingsSwitchItem(
+                    title = "Scan Popup",
+                    description = "Enable scan popup feature",
+                    icon = Icons.Outlined.QrCodeScanner,
+                    checked = scanPopup,
+                    onCheckedChange = { viewModel.setScanPopup(it) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SettingsSection(title = "About") {
+                SettingsButtonItem(
+                    title = "Version Info",
+                    description = "Gdict v1.0.0",
+                    icon = Icons.Outlined.Info,
+                    onClick = { }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                var showClearDialog by remember { mutableStateOf(false) }
+                SettingsButtonItem(
+                    title = "Clear Data",
+                    description = "Clear all history and bookmarks",
+                    icon = Icons.Outlined.DeleteOutline,
+                    onClick = { showClearDialog = true }
+                )
+                if (showClearDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showClearDialog = false },
+                        title = { Text("Confirm Clear") },
+                        text = { Text("Are you sure you want to clear all history and bookmarks?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.clearAllData()
+                                showClearDialog = false
+                            }) {
+                                Text("Clear", color = GdictColors.CoralAccent)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showClearDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
     }
 }
 
 @Composable
 private fun SettingsSection(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = Color.White
         )
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = GdictColors.DarkGray,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
             content()
         }
     }
@@ -194,7 +222,7 @@ private fun SettingsSection(
 private fun SettingsSwitchItem(
     title: String,
     description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -210,8 +238,7 @@ private fun SettingsSwitchItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (checked) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (checked) GdictColors.TealAccent else GdictColors.MediumGray,
                 modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -220,12 +247,12 @@ private fun SettingsSwitchItem(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = GdictColors.DarkGray
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = GdictColors.MediumGray
                 )
             }
         }
@@ -233,10 +260,10 @@ private fun SettingsSwitchItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                uncheckedTrackColor = MaterialTheme.colorScheme.outline
+                checkedThumbColor = Color.White,
+                checkedTrackColor = GdictColors.TealAccent,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = GdictColors.LightGray
             )
         )
     }
@@ -246,7 +273,7 @@ private fun SettingsSwitchItem(
 private fun SettingsButtonItem(
     title: String,
     description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     onClick: () -> Unit
 ) {
     Row(
@@ -265,7 +292,7 @@ private fun SettingsButtonItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = GdictColors.MediumGray,
                 modifier = Modifier.size(22.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -274,19 +301,19 @@ private fun SettingsButtonItem(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = GdictColors.DarkGray
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = GdictColors.MediumGray
                 )
             }
         }
         Icon(
-            imageVector = Icons.Outlined.ChevronRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            tint = GdictColors.MediumGray,
             modifier = Modifier.size(20.dp)
         )
     }
