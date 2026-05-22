@@ -47,6 +47,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _scanPopup = MutableStateFlow(false)
     val scanPopup: StateFlow<Boolean> = _scanPopup.asStateFlow()
 
+    private var searchVersion = 0L
+
+    private val _diagnosticResult = MutableStateFlow<String?>(null)
+    val diagnosticResult: StateFlow<String?> = _diagnosticResult.asStateFlow()
+
     fun clearError() {
         _errorMessage.value = null
     }
@@ -57,15 +62,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun searchWord(word: String) {
         if (word.isNotBlank()) {
+            val currentVersion = ++searchVersion
             viewModelScope.launch {
                 try {
                     val results = repository.searchWord(word)
-                    _searchResults.value = results
-                    if (results.isNotEmpty()) {
-                        repository.addToHistory(word)
+                    if (currentVersion == searchVersion) {
+                        _searchResults.value = results
+                        if (results.isNotEmpty()) {
+                            repository.addToHistory(word)
+                        }
                     }
                 } catch (e: Exception) {
-                    _errorMessage.value = "搜索失败: ${e.message}"
+                    if (currentVersion == searchVersion) {
+                        _errorMessage.value = "搜索失败: ${e.message}"
+                    }
                 }
             }
         }
@@ -180,5 +190,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeBookmark(item: BookmarkItem) {
         repository.removeBookmark(item)
+    }
+
+    fun clearAllData() {
+        repository.clearHistory()
+        repository.clearBookmarks()
+    }
+
+    fun diagnoseDictionaries() {
+        viewModelScope.launch {
+            _diagnosticResult.value = withContext(Dispatchers.IO) {
+                repository.diagnoseDictionaries()
+            }
+        }
+    }
+
+    fun clearDiagnosticResult() {
+        _diagnosticResult.value = null
+    }
+
+    fun getCssForDictionary(dictionaryName: String): String {
+        return repository.getCssForDictionary(dictionaryName)
     }
 }

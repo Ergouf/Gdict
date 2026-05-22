@@ -1,8 +1,9 @@
-﻿package io.github.gdict.ui.screens
+package io.github.gdict.ui.screens
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +39,7 @@ fun WordDetailScreen(
     word: String,
     definition: String,
     dictionaryName: String,
+    css: String = "",
     isBookmarked: Boolean,
     onBack: () -> Unit,
     onToggleBookmark: () -> Unit
@@ -94,7 +96,8 @@ fun WordDetailScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            val htmlContent = buildHtmlContent(definition)
+            val isDarkTheme = isSystemInDarkTheme()
+            val htmlContent = buildHtmlContent(definition, css, isDarkTheme)
 
             AndroidView(
                 factory = { context ->
@@ -114,11 +117,20 @@ fun WordDetailScreen(
     }
 }
 
-private fun buildHtmlContent(definition: String): String {
-    val bgColor = "#FFFBFE"
-    val textColor = "#1C1B1F"
-    val headerColor = "#6750A4"
-    val linkColor = "#6750A4"
+private fun buildHtmlContent(definition: String, css: String = "", isDarkTheme: Boolean): String {
+    val bgColor = if (isDarkTheme) "#1C1B1F" else "#FFFBFE"
+    val textColor = if (isDarkTheme) "#E6E1E5" else "#1C1B1F"
+    val headerColor = if (isDarkTheme) "#D0BCFF" else "#6750A4"
+    val linkColor = if (isDarkTheme) "#D0BCFF" else "#6750A4"
+    val borderColor = if (isDarkTheme) "#49454F" else "#CAC4D0"
+
+    val transformedDef = transformMdxTags(definition)
+
+    val cssBlock = if (css.isNotEmpty()) {
+        "<style>\n$css\n</style>\n"
+    } else {
+        ""
+    }
 
     return """
 <!DOCTYPE html>
@@ -126,7 +138,7 @@ private fun buildHtmlContent(definition: String): String {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
+${cssBlock}<style>
   body {
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 16px;
@@ -141,12 +153,38 @@ private fun buildHtmlContent(definition: String): String {
   a { color: $linkColor; text-decoration: none; }
   img { max-width: 100%; height: auto; }
   table { border-collapse: collapse; width: 100%; }
-  td, th { border: 1px solid #CAC4D0; padding: 8px; }
+  td, th { border: 1px solid $borderColor; padding: 8px; }
+  SEP { display: inline-block; width: 8px; }
+  hw { font-weight: bold; color: $headerColor; }
+  inf { font-style: italic; }
+  .arl { display: block; margin-bottom: 12px; }
+  .results { display: inline-block; }
+  .base { font-weight: bold; }
+  .comment { font-style: italic; color: #666; margin-left: 6px; }
+  .inflections { margin-left: 4px; }
+  .forms { display: inline; }
+  br.sep { display: block; content: ''; margin: 4px 0; }
 </style>
 </head>
 <body>
-  $definition
+  $transformedDef
 </body>
 </html>
     """.trimIndent()
+}
+
+private fun transformMdxTags(input: String): String {
+    var result = input
+    result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " <span class='sep'>|</span> ")
+    result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
+    result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
+    result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
+    result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
+    result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
+    result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
+    return result
 }

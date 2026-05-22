@@ -1,6 +1,7 @@
 package io.github.gdict.core
 
 import android.util.Log
+import java.io.Closeable
 import java.io.File
 import java.io.RandomAccessFile
 import java.util.zip.Adler32
@@ -27,7 +28,7 @@ import java.util.zip.Inflater
  *   [4..7] Adler32校验和（大端序）
  *   [8..]  实际压缩数据
  */
-class MdxParser(private val mdxFile: File) {
+class MdxParser(private val mdxFile: File) : Closeable {
 
     var title: String = ""
     var encoding: String = "UTF-8"
@@ -46,25 +47,117 @@ class MdxParser(private val mdxFile: File) {
 
     private val raf: RandomAccessFile = RandomAccessFile(mdxFile, "r")
     private var closed = false
+    private var parseFailed = false
 
     init {
         try {
             parse()
         } catch (e: Exception) {
             Log.e(TAG, "解析MDX文件失败: ${e.message}", e)
+            parseFailed = true
             close()
         }
     }
 
-    fun close() {
+    override fun close() {
         if (closed) return
         closed = true
         try { raf.close() } catch (_: Exception) {}
     }
 
+    val companionCss: String by lazy {
+        loadCompanionCss()
+    }
+
+    private fun loadCompanionCss(): String {
+        val sb = StringBuilder()
+        val parentDir = mdxFile.parentFile ?: return ""
+        val baseName = mdxFile.nameWithoutExtension
+
+        val cssCandidates = listOf(
+            File(parentDir, "$baseName.css"),
+            File(parentDir, "${mdxFile.name}.css")
+        )
+        for (cssFile in cssCandidates) {
+            if (cssFile.exists() && cssFile.length() > 0 && cssFile.length() < 5 * 1024 * 1024) {
+                try {
+                    sb.append(cssFile.readText(Charsets.UTF_8))
+                    Log.i(TAG, "Loaded CSS from: ${cssFile.name} (${cssFile.length()} bytes)")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to read CSS: ${cssFile.name}: ${e.message}")
+                }
+            }
+        }
+
+        val mddCandidates = listOf(
+            File(parentDir, "$baseName.mdd"),
+            File(parentDir, "${mdxFile.name}.mdd")
+        )
+        for (mddFile in mddCandidates) {
+            if (mddFile.exists() && mddFile.length() > 0 && mddFile.length() < 50 * 1024 * 1024) {
+                try {
+                    extractCssFromMdd(mddFile, sb)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to read MDD: ${mddFile.name}: ${e.message}")
+                }
+            }
+        }
+
+        return sb.toString()
+    }
+
+    private fun extractCssFromMdd(mddFile: File, sb: StringBuilder) {
+        RandomAccessFile(mddFile, "r").use { mddRaf ->
+            if (mddRaf.length() < 12) return
+            val headerBytes = ByteArray(4)
+            mddRaf.readFully(headerBytes)
+            val headerLen = ((headerBytes[0].toInt() and 0xFF shl 24) or
+                    (headerBytes[1].toInt() and 0xFF shl 16) or
+                    (headerBytes[2].toInt() and 0xFF shl 8) or
+                    (headerBytes[3].toInt() and 0xFF))
+            if (headerLen <= 0 || headerLen > 10 * 1024 * 1024) return
+            val readLen = minOf(headerLen.toInt(), mddRaf.length().toInt() - 4)
+            if (readLen <= 0) return
+            val headerData = ByteArray(readLen)
+            mddRaf.readFully(headerData)
+            val headerStr = String(headerData, Charsets.UTF_16LE)
+
+            val cssPattern = Regex("""<style[^>]*>(.*?)</style>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+            for (match in cssPattern.findAll(headerStr)) {
+                sb.append(match.groupValues[1]).append("\n")
+            }
+
+            if (sb.isEmpty()) {
+                val linkPattern = Regex("""href=["']([^"']*\.css)["']""", RegexOption.IGNORE_CASE)
+                for (match in linkPattern.findAll(headerStr)) {
+                    Log.i(TAG, "  MDD references CSS: ${match.groupValues[1]}")
+                }
+            }
+        }
+        if (sb.isNotEmpty()) {
+            Log.i(TAG, "Extracted CSS from MDD: ${mddFile.name} (${sb.length} chars)")
+        }
+    }
+
+    fun transformHtml(raw: String): String {
+        var result = raw
+        result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), "<br>")
+        result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b>")
+        result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
+        result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i>")
+        result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
+        result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span style='color:#666;font-size:0.95em'>")
+        result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
+        result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
+        return result
+    }
+
     fun readArticles(word: String): Map<String, String?> {
         val results = mutableMapOf<String, String?>()
-        if (keywordIndex.isEmpty()) return results
+        if (closed || parseFailed || keywordIndex.isEmpty()) return results
 
         val idx = findFirstKeywordIndex(word)
         if (idx != null) {
@@ -92,7 +185,7 @@ class MdxParser(private val mdxFile: File) {
 
     fun readArticlesPredictive(prefix: String): Map<String, String?> {
         val results = mutableMapOf<String, String?>()
-        if (keywordIndex.isEmpty() || prefix.isEmpty()) return results
+        if (closed || parseFailed || keywordIndex.isEmpty() || prefix.isEmpty()) return results
 
         val lower = prefix.lowercase()
 
@@ -107,10 +200,7 @@ class MdxParser(private val mdxFile: File) {
             }
         }
 
-        var idx = lo
-        while (idx > 0 && sortedLowercaseEntries[idx - 1].first.startsWith(lower)) idx--
-
-        for (i in idx until sortedLowercaseEntries.size) {
+        for (i in lo until sortedLowercaseEntries.size) {
             val (wordLower, origIdx) = sortedLowercaseEntries[i]
             if (!wordLower.startsWith(lower)) break
             val entry = keywordIndex[origIdx]
@@ -193,9 +283,13 @@ class MdxParser(private val mdxFile: File) {
      * 必须确保偏移对齐到2字节边界。
      */
     private fun readRecord(offset: Long, size: Int): String? {
-        if (closed || recordBlockInfos.isEmpty()) return null
+        if (closed || parseFailed || recordBlockInfos.isEmpty()) return null
         val idx = findRecordBlockIndex(offset) ?: return null
         val rbInfo = recordBlockInfos[idx]
+        if (rbInfo.compressedSize > Int.MAX_VALUE || rbInfo.decompressedSize > Int.MAX_VALUE) {
+            Log.e(TAG, "readRecord: block size exceeds Int.MAX_VALUE")
+            return null
+        }
         synchronized(raf) {
             try {
                 raf.seek(rbInfo.compressedOffset)
@@ -402,6 +496,14 @@ class MdxParser(private val mdxFile: File) {
         val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
         raf.readFully(keyIndexRaw)
 
+        if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
+            val checksumBytes = keyIndexRaw.copyOfRange(4, 8)
+            val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
+            val key = RipeMD128.digest(keyInput)
+            fastDecrypt(keyIndexRaw, 8, key)
+            Log.i(TAG, "Keyword index decrypted: keyIndexCompLen=$keyIndexCompLen")
+        }
+
         val keyIndexData = if (engineVersion >= 2.0) {
             decompressBlock(keyIndexRaw, keyIndexDecompLen.toInt())
         } else {
@@ -580,6 +682,19 @@ class MdxParser(private val mdxFile: File) {
         }
 
         Log.i(TAG, "Record blocks加载完成: ${recordBlockInfos.size}")
+    }
+
+    private fun fastDecrypt(buf: ByteArray, startOffset: Int, key: ByteArray) {
+        var prev: Int = 0x36
+        var relIdx = 0
+        for (i in startOffset until buf.size) {
+            val original = buf[i].toInt() and 0xFF
+            val swappedNibble = ((original ushr 4) or (original shl 4)) and 0xFF
+            val decrypted = (swappedNibble xor (prev xor (relIdx and 0xFF) xor (key[relIdx % key.size].toInt() and 0xFF))) and 0xFF
+            prev = original
+            buf[i] = decrypted.toByte()
+            relIdx++
+        }
     }
 
     private fun decompressBlock(data: ByteArray, expectedDecompSize: Int): ByteArray {

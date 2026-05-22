@@ -1,4 +1,4 @@
-﻿package io.github.gdict.ui.screens
+package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +49,7 @@ import io.github.gdict.viewmodel.AppViewModel
 @Composable
 fun BookmarksScreen(
     viewModel: AppViewModel = viewModel(),
-    onWordClick: (word: String, definition: String, dictionaryName: String) -> Unit = { _, _, _ -> }
+    onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> }
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
     var showRemoveDialog by remember { mutableStateOf<BookmarkItem?>(null) }
@@ -101,7 +101,7 @@ fun BookmarksScreen(
                 items(bookmarks, key = { it.word }) { item ->
                     BookmarkItemCard(
                         item = item,
-                        onClick = { onWordClick(item.word, item.definition, item.dictionaryName) },
+                        onClick = { onWordClick(item.word, item.definition, item.dictionaryName, "") },
                         onRemove = { showRemoveDialog = item }
                     )
                 }

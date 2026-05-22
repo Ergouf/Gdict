@@ -44,3 +44,10 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
+
+tasks.withType<Test> {
+    val mdxPath = System.getProperty("mdx.file.path")
+    if (mdxPath != null) {
+        systemProperty("mdx.file.path", mdxPath)
+    }
+}

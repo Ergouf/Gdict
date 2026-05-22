@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import androidx.annotation.WorkerThread
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -22,7 +23,8 @@ class DictionaryManager(private val context: Context) {
     data class SearchResult(
         val word: String,
         val definition: String,
-        val dictionaryName: String
+        val dictionaryName: String,
+        val css: String = ""
     )
 
     private val dictionaries = mutableListOf<DictEntry>()
@@ -35,7 +37,13 @@ class DictionaryManager(private val context: Context) {
     }
 
     private fun nextId(): Long {
-        return System.currentTimeMillis() * 1000 + idCounter.getAndIncrement()
+        synchronized(this) {
+            var candidate: Long
+            do {
+                candidate = System.currentTimeMillis() * 1000 + idCounter.getAndIncrement()
+            } while (dictionaries.any { it.id == candidate } || loadedDicts.containsKey(candidate))
+            return candidate
+        }
     }
 
     private fun saveDictionaries() {
@@ -183,6 +191,10 @@ class DictionaryManager(private val context: Context) {
             isEnabled = true
         )
         synchronized(this) {
+            val removed = dictionaries.filter { it.name == name || it.path == sourceUri }
+            for (old in removed) {
+                loadedDicts.remove(old.id)?.close()
+            }
             dictionaries.removeAll { it.name == name || it.path == sourceUri }
             dictionaries.add(entry)
         }
@@ -210,7 +222,7 @@ class DictionaryManager(private val context: Context) {
             val uri = Uri.parse(sourceUri)
             if (sourceUri.startsWith("content://")) {
                 val isTree = try {
-                    DocumentsContract.isTreeUri(uri)
+                    DocumentsContract.isTreeUri(uri) && !uri.toString().contains("/document/", ignoreCase = true)
                 } catch (_: Exception) { false }
 
                 if (isTree) {
@@ -484,7 +496,19 @@ class DictionaryManager(private val context: Context) {
         }
 
         try {
+            val mdxCanonical = mdxFile.canonicalPath
+            val headerPreview = try {
+                java.io.RandomAccessFile(mdxFile, "r").use { raf ->
+                    val b = ByteArray(16)
+                    raf.readFully(b)
+                    b.joinToString("") { "%02X".format(it) }
+                }
+            } catch (_: Exception) { "(unreadable)" }
+            android.util.Log.i("DictMgr", "  canonicalPath=$mdxCanonical header=$headerPreview")
+
             val parser = MdxParser(mdxFile)
+            android.util.Log.i("DictMgr", "  PARSER IDENTITY: hashCode=${parser.hashCode()} filePath='${parser.filePath}' fileName='${parser.fileName}' fileSize=${parser.fileSize} title='${parser.title}' words=${parser.wordCount}")
+
             if (parser.wordCount <= 0) {
                 android.util.Log.e("DictMgr", "  Loaded '${entry.name}' but wordCount=${parser.wordCount}, keywords empty!")
                 android.util.Log.e("DictMgr", "  Title='${parser.title}' Encoding='${parser.encoding}' CaseSensitive=${parser.isKeyCaseSensitive}")
@@ -492,6 +516,7 @@ class DictionaryManager(private val context: Context) {
                 return
             }
             synchronized(this) {
+                loadedDicts.remove(entry.id)?.close()
                 loadedDicts[entry.id] = parser
             }
             android.util.Log.i("DictMgr", "  LOADED OK: '${entry.name}' → title='${parser.title}' words=${parser.wordCount} encoding='${parser.encoding}' file=${mdxFile.name}")
@@ -542,7 +567,23 @@ class DictionaryManager(private val context: Context) {
                         for ((word, def) in articles) {
                             val preview = def?.take(80)?.replace("\n", "\\n") ?: "(null)"
                             val hash = def?.hashCode() ?: 0
-                            sb.appendLine("    ['$word'] hash=$hash preview='$preview'")
+                            sb.appendLine("    ['$word'] hash=$hash len=${def?.length ?: 0} preview='$preview'")
+                            if (def != null && def.length <= 2000) {
+                                val rawEscaped = def
+                                    .replace("&", "&amp;")
+                                    .replace("<", "&lt;")
+                                    .replace(">", "&gt;")
+                                    .replace("\n", "\\n")
+                                    .replace("\r", "\\r")
+                                sb.appendLine("    RAW(first500): '${rawEscaped.take(500)}'")
+                            } else if (def != null) {
+                                val rawEscaped = def.take(500)
+                                    .replace("&", "&amp;")
+                                    .replace("<", "&lt;")
+                                    .replace(">", "&gt;")
+                                    .replace("\n", "\\n")
+                                sb.appendLine("    RAW(first500): '${rawEscaped}' ... (truncated, total=${def.length})")
+                            }
                         }
                     } catch (e: Exception) {
                         sb.appendLine("  search ERROR: ${e.javaClass.simpleName}: ${e.message}")
@@ -561,7 +602,7 @@ class DictionaryManager(private val context: Context) {
             sb.appendLine("=== Parser identity check ===")
             val parserIdentities = mutableMapOf<Int, String>()
             for ((id, parser) in loadedDicts) {
-                val identity = "${parser.title}|${parser.wordCount}|${parser.hashCode()}"
+                val identity = "${parser.title}|${parser.wordCount}|${parser.hashCode()}|${parser.fileName}"
                 parserIdentities[id.toInt()] = identity
                 sb.appendLine("  parser[$id] → $identity")
             }
@@ -589,6 +630,9 @@ class DictionaryManager(private val context: Context) {
 
     fun getDictionaries(): List<DictEntry> = synchronized(this) { dictionaries.toList() }
 
+    fun getParserForDictionary(id: Long): MdxParser? = synchronized(this) { loadedDicts[id] }
+
+    @WorkerThread
     fun searchWord(query: String): List<SearchResult> {
         if (query.isBlank()) return emptyList()
         val results = mutableListOf<SearchResult>()
@@ -614,6 +658,11 @@ class DictionaryManager(private val context: Context) {
     private fun searchWithParser(parser: MdxParser, dict: DictEntry, query: String): List<SearchResult> {
         return try {
             val results = mutableListOf<SearchResult>()
+            android.util.Log.i("DictMgr", "    [SEARCH] dict='${dict.name}' parserHash=${parser.hashCode()} parserTitle='${parser.title}' parserFile='${parser.fileName}' parserWords=${parser.wordCount}")
+            val css = parser.companionCss
+            if (css.isNotEmpty()) {
+                android.util.Log.i("DictMgr", "    [SEARCH] CSS loaded for '${dict.name}': ${css.length} chars")
+            }
 
             val exact = parser.readArticles(query)
             android.util.Log.d("DictMgr", "    '${dict.name}' exact match: ${exact.size} articles")
@@ -621,7 +670,7 @@ class DictionaryManager(private val context: Context) {
                 val defHash = def?.hashCode() ?: 0
                 val preview = def?.take(60)?.replace("\n", "\\n") ?: "(null)"
                 android.util.Log.d("DictMgr", "      ['$word'] defHash=$defHash preview='$preview'")
-                results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name))
+                results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name, css = css))
             }
 
             if (results.isEmpty()) {
@@ -630,7 +679,7 @@ class DictionaryManager(private val context: Context) {
                 for ((word, def) in predictive) {
                     val defHash = def?.hashCode() ?: 0
                     android.util.Log.d("DictMgr", "      ['$word'] defHash=$defHash")
-                    results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name))
+                    results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name, css = css))
                 }
             }
 
@@ -662,10 +711,18 @@ class DictionaryManager(private val context: Context) {
                     val docId = c.getString(0)
                     val displayName = c.getString(1) ?: continue
                     if (!isDictionaryFile(displayName)) continue
-                    val baseName = displayName.removeSuffix(".mdx").removeSuffix(".mdd")
-                        .removeSuffix(".dsl").removeSuffix(".bgl")
-                        .removeSuffix(".lsa").removeSuffix(".slob")
-                        .removeSuffix(".css")
+                    val lowerName = displayName.lowercase()
+                    val suffixLen = when {
+                        lowerName.endsWith(".mdx") -> 4
+                        lowerName.endsWith(".mdd") -> 4
+                        lowerName.endsWith(".dsl") -> 4
+                        lowerName.endsWith(".bgl") -> 4
+                        lowerName.endsWith(".lsa") -> 4
+                        lowerName.endsWith(".slob") -> 5
+                        lowerName.endsWith(".css") -> 4
+                        else -> 0
+                    }
+                    val baseName = displayName.dropLast(suffixLen)
                     val childUri = DocumentsContract.buildDocumentUriUsingTree(uri, docId)
                     filesByBaseName.getOrPut(baseName) { mutableListOf() }
                         .add(displayName to childUri.toString())

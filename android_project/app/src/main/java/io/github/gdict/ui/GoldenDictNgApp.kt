@@ -1,4 +1,4 @@
-﻿package io.github.gdict.ui
+package io.github.gdict.ui
 
 import android.net.Uri
 import androidx.compose.animation.core.spring
@@ -136,7 +136,7 @@ private fun GdictAppContent(
             composable(Screen.Search.route) {
                 SearchScreen(
                     viewModel = viewModel,
-                    onWordClick = { word, definition, dictName ->
+                    onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
                         navController.navigate("word_detail/$word/$encodedDef/$encodedDict")
@@ -146,7 +146,7 @@ private fun GdictAppContent(
             composable(Screen.Bookmarks.route) {
                 BookmarksScreen(
                     viewModel = viewModel,
-                    onWordClick = { word, definition, dictName ->
+                    onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
                         navController.navigate("word_detail/$word/$encodedDef/$encodedDict")
@@ -182,11 +182,13 @@ private fun GdictAppContent(
                 val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
                 val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
                 val isBookmarked = viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList()).value.any { it.word == word }
+                val css = viewModel.getCssForDictionary(dictionaryName)
 
                 WordDetailScreen(
                     word = word,
                     definition = definition,
                     dictionaryName = dictionaryName,
+                    css = css,
                     isBookmarked = isBookmarked,
                     onBack = { navController.popBackStack() },
                     onToggleBookmark = { viewModel.toggleBookmark(word, definition, dictionaryName) }

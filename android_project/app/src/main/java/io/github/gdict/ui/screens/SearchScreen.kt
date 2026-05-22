@@ -53,8 +53,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.HistoryItem
 import io.github.gdict.data.SearchResultItem
@@ -63,7 +63,7 @@ import io.github.gdict.viewmodel.AppViewModel
 @Composable
 fun SearchScreen(
     viewModel: AppViewModel = viewModel(),
-    onWordClick: (word: String, definition: String, dictionaryName: String) -> Unit = { _, _, _ -> }
+    onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> }
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -212,7 +212,7 @@ fun SearchScreen(
                         word = result.word,
                         definition = result.definition,
                         dictionaryName = result.dictionaryName,
-                        onClick = { onWordClick(result.word, result.definition, result.dictionaryName) },
+                        onClick = { onWordClick(result.word, result.definition, result.dictionaryName, result.css) },
                         onBookmark = { viewModel.toggleBookmark(result.word, result.definition, result.dictionaryName) }
                     )
                 }

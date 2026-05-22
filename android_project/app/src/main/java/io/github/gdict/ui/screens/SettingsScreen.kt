@@ -1,4 +1,4 @@
-﻿package io.github.gdict.ui.screens
+package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -32,8 +33,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,12 +117,33 @@ fun SettingsScreen(
                 onClick = { }
             )
             Spacer(modifier = Modifier.height(4.dp))
+            var showClearDialog by remember { mutableStateOf(false) }
             SettingsButtonItem(
                 title = "清除数据",
                 description = "清除所有历史记录和收藏",
                 icon = Icons.Outlined.DeleteOutline,
-                onClick = { }
+                onClick = { showClearDialog = true }
             )
+            if (showClearDialog) {
+                AlertDialog(
+                    onDismissRequest = { showClearDialog = false },
+                    title = { Text("确认清除") },
+                    text = { Text("确定要清除所有历史记录和收藏吗？此操作不可撤销。") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.clearAllData()
+                            showClearDialog = false
+                        }) {
+                            Text("清除", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showClearDialog = false }) {
+                            Text("取消")
+                        }
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

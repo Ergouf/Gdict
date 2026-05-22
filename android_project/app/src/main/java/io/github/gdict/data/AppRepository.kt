@@ -1,4 +1,4 @@
-﻿package io.github.gdict.data
+package io.github.gdict.data
 
 import android.content.Context
 import android.net.Uri
@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONArray
 
 data class Dictionary(
     val id: Long = 0,
@@ -31,11 +32,14 @@ data class BookmarkItem(
 data class SearchResultItem(
     val word: String,
     val definition: String,
-    val dictionaryName: String
+    val dictionaryName: String,
+    val css: String = ""
 )
 
 class AppRepository(private val context: Context) {
     private val dictionaryManager = DictionaryManager(context)
+
+    private val prefs = context.getSharedPreferences("gdict_data", Context.MODE_PRIVATE)
 
     private val _dictionaries = MutableStateFlow<List<Dictionary>>(emptyList())
     val dictionaries: StateFlow<List<Dictionary>> = _dictionaries.asStateFlow()
@@ -55,6 +59,8 @@ class AppRepository(private val context: Context) {
                 isEnabled = entry.isEnabled
             )
         }
+        _history.value = loadHistory()
+        _bookmarks.value = loadBookmarks()
     }
 
     suspend fun searchWord(word: String): List<SearchResultItem> = withContext(Dispatchers.IO) {
@@ -62,7 +68,8 @@ class AppRepository(private val context: Context) {
             SearchResultItem(
                 word = result.word,
                 definition = result.definition,
-                dictionaryName = result.dictionaryName
+                dictionaryName = result.dictionaryName,
+                css = result.css
             )
         }
     }
@@ -86,6 +93,10 @@ class AppRepository(private val context: Context) {
         _dictionaries.value = _dictionaries.value.filter { it.id != dictionary.id }
     }
 
+    fun diagnoseDictionaries(): String {
+        return dictionaryManager.diagnoseAllDictionaries()
+    }
+
     fun toggleDictionary(dictionary: Dictionary) {
         dictionaryManager.toggleDictionary(dictionary.id, !dictionary.isEnabled)
         _dictionaries.value = _dictionaries.value.map {
@@ -96,22 +107,99 @@ class AppRepository(private val context: Context) {
     fun addToHistory(word: String) {
         val item = HistoryItem(word = word)
         _history.value = listOf(item) + _history.value.filter { it.word != word }
+        saveHistory(_history.value)
     }
 
     fun removeFromHistory(item: HistoryItem) {
         _history.value = _history.value.filter { it.word != item.word }
+        saveHistory(_history.value)
     }
 
     fun clearHistory() {
         _history.value = emptyList()
+        saveHistory(emptyList())
     }
 
     fun addBookmark(word: String, definition: String, dictionaryName: String = "") {
         val item = BookmarkItem(word = word, definition = definition, dictionaryName = dictionaryName)
         _bookmarks.value = _bookmarks.value.filter { it.word != word } + item
+        saveBookmarks(_bookmarks.value)
     }
 
     fun removeBookmark(item: BookmarkItem) {
         _bookmarks.value = _bookmarks.value.filter { it.word != item.word }
+        saveBookmarks(_bookmarks.value)
+    }
+
+    fun clearBookmarks() {
+        _bookmarks.value = emptyList()
+        saveBookmarks(emptyList())
+    }
+
+    private fun saveHistory(items: List<HistoryItem>) {
+        val arr = JSONArray()
+        for (item in items) {
+            val obj = org.json.JSONObject().apply {
+                put("word", item.word)
+                put("timestamp", item.timestamp)
+            }
+            arr.put(obj)
+        }
+        prefs.edit().putString("history", arr.toString()).apply()
+    }
+
+    private fun loadHistory(): List<HistoryItem> {
+        val json = prefs.getString("history", null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                HistoryItem(
+                    word = obj.getString("word"),
+                    timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveBookmarks(items: List<BookmarkItem>) {
+        val arr = JSONArray()
+        for (item in items) {
+            val obj = org.json.JSONObject().apply {
+                put("word", item.word)
+                put("definition", item.definition)
+                put("dictionaryName", item.dictionaryName)
+                put("timestamp", item.timestamp)
+            }
+            arr.put(obj)
+        }
+        prefs.edit().putString("bookmarks", arr.toString()).apply()
+    }
+
+    private fun loadBookmarks(): List<BookmarkItem> {
+        val json = prefs.getString("bookmarks", null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                BookmarkItem(
+                    word = obj.getString("word"),
+                    definition = obj.optString("definition", ""),
+                    dictionaryName = obj.optString("dictionaryName", ""),
+                    timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun getCssForDictionary(dictionaryName: String): String {
+        val dict = dictionaryManager.getDictionaries().find { it.name == dictionaryName }
+        if (dict == null) return ""
+        val parser = dictionaryManager.getParserForDictionary(dict.id)
+        return parser?.companionCss ?: ""
     }
 }
