@@ -62,11 +62,14 @@ fun SettingsScreen(
 ) {
     val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
     val scanPopup by viewModel.scanPopup.collectAsStateWithLifecycle()
+    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
+    val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(GdictColors.LightGray)
+            .background(bgColor)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
@@ -113,46 +116,50 @@ fun SettingsScreen(
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            SettingsSection(title = "Dictionaries") {
+            SettingsSection(title = "Dictionaries", cardColor = cardColor, textColor = textColor) {
                 SettingsButtonItem(
                     title = "Dictionary Management",
                     description = "Add, remove and manage dictionaries",
                     icon = Icons.Outlined.MenuBook,
+                    textColor = textColor,
                     onClick = onNavigateToDictionaries
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "Appearance") {
+            SettingsSection(title = "Appearance", cardColor = cardColor, textColor = textColor) {
                 SettingsSwitchItem(
                     title = "Dark Mode",
                     description = "Toggle dark/light theme",
                     icon = Icons.Outlined.DarkMode,
                     checked = darkMode,
+                    textColor = textColor,
                     onCheckedChange = { viewModel.setDarkMode(it) }
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "Features") {
+            SettingsSection(title = "Features", cardColor = cardColor, textColor = textColor) {
                 SettingsSwitchItem(
                     title = "Scan Popup",
                     description = "Enable scan popup feature",
                     icon = Icons.Outlined.QrCodeScanner,
                     checked = scanPopup,
+                    textColor = textColor,
                     onCheckedChange = { viewModel.setScanPopup(it) }
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "About") {
+            SettingsSection(title = "About", cardColor = cardColor, textColor = textColor) {
                 SettingsButtonItem(
                     title = "Version Info",
                     description = "Gdict v1.0.0",
                     icon = Icons.Outlined.Info,
+                    textColor = textColor,
                     onClick = { }
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -161,6 +168,7 @@ fun SettingsScreen(
                     title = "Clear Data",
                     description = "Clear all history and bookmarks",
                     icon = Icons.Outlined.DeleteOutline,
+                    textColor = textColor,
                     onClick = { showClearDialog = true }
                 )
                 if (showClearDialog) {
@@ -193,6 +201,8 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSection(
     title: String,
+    cardColor: Color,
+    textColor: Color,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -200,7 +210,7 @@ private fun SettingsSection(
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = cardColor
         )
     ) {
         Column(
@@ -210,7 +220,7 @@ private fun SettingsSection(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = GdictColors.DarkGray,
+                color = textColor,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
             content()
@@ -224,6 +234,7 @@ private fun SettingsSwitchItem(
     description: String,
     icon: ImageVector,
     checked: Boolean,
+    textColor: Color,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -247,7 +258,7 @@ private fun SettingsSwitchItem(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = GdictColors.DarkGray
+                    color = textColor
                 )
                 Text(
                     text = description,
@@ -274,6 +285,7 @@ private fun SettingsButtonItem(
     title: String,
     description: String,
     icon: ImageVector,
+    textColor: Color,
     onClick: () -> Unit
 ) {
     Row(
@@ -301,7 +313,7 @@ private fun SettingsButtonItem(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = GdictColors.DarkGray
+                    color = textColor
                 )
                 Text(
                     text = description,

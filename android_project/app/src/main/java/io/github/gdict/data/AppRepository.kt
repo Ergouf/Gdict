@@ -202,4 +202,12 @@ class AppRepository(private val context: Context) {
         val parser = dictionaryManager.getParserForDictionary(dict.id)
         return parser?.companionCss ?: ""
     }
+
+    suspend fun getRandomWords(count: Int = 5): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+        dictionaryManager.getRandomWords(count)
+    }
+
+    suspend fun getAudioResource(word: String): ByteArray? = withContext(Dispatchers.IO) {
+        dictionaryManager.getAudioResource(word)
+    }
 }

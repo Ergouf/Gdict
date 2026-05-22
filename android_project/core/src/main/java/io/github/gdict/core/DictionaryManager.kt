@@ -29,6 +29,7 @@ class DictionaryManager(private val context: Context) {
 
     private val dictionaries = mutableListOf<DictEntry>()
     private val loadedDicts = mutableMapOf<Long, MdxParser>()
+    private val loadedMdds = mutableMapOf<Long, MdxParser>()
     private val idCounter = AtomicLong(1)
     private val prefs = context.getSharedPreferences("dict_manager", Context.MODE_PRIVATE)
 
@@ -519,6 +520,25 @@ class DictionaryManager(private val context: Context) {
                 loadedDicts.remove(entry.id)?.close()
                 loadedDicts[entry.id] = parser
             }
+
+            val mddFile = findCompanionMdd(mdxFile)
+            if (mddFile != null) {
+                try {
+                    val mddParser = MdxParser(mddFile)
+                    if (mddParser.wordCount > 0) {
+                        synchronized(this) {
+                            loadedMdds.remove(entry.id)?.close()
+                            loadedMdds[entry.id] = mddParser
+                        }
+                        android.util.Log.i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
+                    } else {
+                        mddParser.close()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("DictMgr", "  Failed to load MDD '${mddFile.name}': ${e.message}")
+                }
+            }
+
             android.util.Log.i("DictMgr", "  LOADED OK: '${entry.name}' → title='${parser.title}' words=${parser.wordCount} encoding='${parser.encoding}' file=${mdxFile.name}")
         } catch (e: Exception) {
             android.util.Log.e("DictMgr", "  FAILED to load ${entry.name}: ${e.javaClass.simpleName}: ${e.message}", e)
@@ -531,11 +551,64 @@ class DictionaryManager(private val context: Context) {
     fun removeDictionary(id: Long) {
         synchronized(this) {
             loadedDicts.remove(id)?.close()
+            loadedMdds.remove(id)?.close()
             dictionaries.removeAll { it.id == id }
         }
         val dictDir = File(context.filesDir, "dictionaries/$id")
         if (dictDir.exists()) dictDir.deleteRecursively()
         saveDictionaries()
+    }
+
+    private fun findCompanionMdd(mdxFile: File): File? {
+        val parentDir = mdxFile.parentFile ?: return null
+        val baseName = mdxFile.nameWithoutExtension
+        val candidates = listOf(
+            File(parentDir, "$baseName.mdd"),
+            File(parentDir, "${mdxFile.name}.mdd")
+        )
+        for (mdd in candidates) {
+            if (mdd.exists() && mdd.length() > 0) return mdd
+        }
+        return null
+    }
+
+    @WorkerThread
+    fun getAudioResource(word: String): ByteArray? {
+        val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
+        val audioPatterns = listOf(
+            "\\$word.mp3",
+            "\\$word.wav",
+            "\\$word.ogg",
+            "\\$word.spx",
+            "\\${word.lowercase()}.mp3",
+            "\\${word.lowercase()}.wav",
+            "\\${word.lowercase()}.ogg",
+            "\\${word.lowercase()}.spx"
+        )
+        for (dict in snapshot) {
+            val mddParser = synchronized(this) { loadedMdds[dict.id] } ?: continue
+            for (pattern in audioPatterns) {
+                val data = mddParser.readResourceBytes(pattern)
+                if (data != null && data.isNotEmpty()) {
+                    android.util.Log.i("DictMgr", "Audio found for '$word' in '${dict.name}': pattern='$pattern' size=${data.size}")
+                    return data
+                }
+            }
+        }
+        for (dict in snapshot) {
+            val mddParser = synchronized(this) { loadedMdds[dict.id] } ?: continue
+            for (suffix in audioPatterns) {
+                val matches = mddParser.findResourceKeys(suffix)
+                for (match in matches) {
+                    val data = mddParser.readResourceBytesByKey(match)
+                    if (data != null && data.isNotEmpty()) {
+                        android.util.Log.i("DictMgr", "Audio found (fuzzy) for '$word' in '${dict.name}': key='$match' size=${data.size}")
+                        return data
+                    }
+                }
+            }
+        }
+        return null
     }
 
     fun diagnoseAllDictionaries(): String {
@@ -631,6 +704,26 @@ class DictionaryManager(private val context: Context) {
     fun getDictionaries(): List<DictEntry> = synchronized(this) { dictionaries.toList() }
 
     fun getParserForDictionary(id: Long): MdxParser? = synchronized(this) { loadedDicts[id] }
+
+    @WorkerThread
+    fun getRandomWords(count: Int = 5): List<Pair<String, String>> {
+        val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
+        val allWords = mutableListOf<Pair<String, String>>()
+        for (dict in snapshot) {
+            val parser = synchronized(this) { loadedDicts[dict.id] } ?: continue
+            val keywords = parser.getAllKeywords()
+            if (keywords.isEmpty()) continue
+            val step = (keywords.size / count).coerceAtLeast(1)
+            val start = (0 until step).random()
+            for (i in 0 until count) {
+                val idx = start + i * step
+                if (idx < keywords.size) {
+                    allWords.add(Pair(keywords[idx], dict.name))
+                }
+            }
+        }
+        return allWords.shuffled().take(count)
+    }
 
     @WorkerThread
     fun searchWord(query: String): List<SearchResult> {

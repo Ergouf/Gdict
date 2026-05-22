@@ -66,6 +66,13 @@ fun SearchScreen(
     val history by viewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle(initialValue = null)
     val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val wordOfTheDay by viewModel.wordOfTheDay.collectAsStateWithLifecycle(initialValue = emptyList())
+
+    LaunchedEffect(Unit) {
+        if (wordOfTheDay.isEmpty()) {
+            viewModel.loadWordOfTheDay()
+        }
+    }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
@@ -185,8 +192,10 @@ fun SearchScreen(
                 }
                 item {
                     WordOfTheDaySection(
+                        words = wordOfTheDay,
                         textColor = textColor,
                         onWordClick = { word ->
+                            searchQuery = word
                             viewModel.searchWord(word)
                         }
                     )
@@ -360,6 +369,7 @@ private fun RecentSearchSection(
 
 @Composable
 private fun WordOfTheDaySection(
+    words: List<Pair<String, String>>,
     textColor: Color,
     onWordClick: (String) -> Unit = {}
 ) {
@@ -375,18 +385,32 @@ private fun WordOfTheDaySection(
             color = textColor,
             modifier = Modifier.padding(bottom = 12.dp)
         )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(listOf(
-                Pair("Amiable", "adj., friendly and pleasant"),
-                Pair("Amitant", "adj., frielly fine")
-            )) { (word, meaning) ->
-                WordOfDayCard(
-                    word = word,
-                    meaning = meaning,
-                    onClick = { onWordClick(word) }
-                )
+        if (words.isEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(listOf(
+                    Pair("Welcome", "Tap to explore"),
+                    Pair("Dictionary", "Add dictionaries to start")
+                )) { (word, meaning) ->
+                    WordOfDayCard(
+                        word = word,
+                        meaning = meaning,
+                        onClick = { onWordClick(word) }
+                    )
+                }
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(words) { (word, dictName) ->
+                    WordOfDayCard(
+                        word = word,
+                        meaning = dictName,
+                        onClick = { onWordClick(word) }
+                    )
+                }
             }
         }
     }

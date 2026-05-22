@@ -1,0 +1,22 @@
+﻿RIPEMD-128 Test Vectors:
+
+Input: ''
+  Expected: CDF26213A55DC47A4D6B1A5E3E8F4E2C
+  Got:      
+  Status:   
+
+Input: 'a'
+  Expected: 86BE7AFBFA6179789D2BC0372DA874CA
+  Got:      
+  Status:   
+
+Input: 'abc'
+  Expected: C14A12199C66E4BA84636B0F881627FC
+  Got:      
+  Status:   
+
+Input: 'message digest'
+  Expected: 9E327B3D6E523062AFC113AD40FE9DAE
+  Got:      
+  Status:   
+

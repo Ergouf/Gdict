@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -107,6 +109,7 @@ private fun GdictAppContent(
 
     Scaffold(
         containerColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (!isDetailPage) {
                 GdictBottomBar(
@@ -211,6 +214,7 @@ fun GdictBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(vertical = 8.dp, horizontal = 16.dp)
                 .height(56.dp),
             horizontalArrangement = Arrangement.SpaceAround,

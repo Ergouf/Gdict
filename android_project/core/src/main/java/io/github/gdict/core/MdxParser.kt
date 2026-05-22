@@ -232,6 +232,58 @@ class MdxParser(private val mdxFile: File) : Closeable {
 
     fun getAllKeywords(): List<String> = keywordIndex.map { it.word }
 
+    fun readResourceBytes(key: String): ByteArray? {
+        if (closed || parseFailed || keywordIndex.isEmpty()) return null
+        val normalizedKey = if (key.startsWith("\\")) key else "\\$key"
+        val idx = findFirstKeywordIndex(normalizedKey)
+            ?: findFirstKeywordIndex(key)
+            ?: return null
+        val entry = keywordIndex[idx]
+        return readRecordBytes(entry.recordOffset, entry.recordSize)
+    }
+
+    fun findResourceKeys(suffix: String): List<String> {
+        if (closed || parseFailed || keywordIndex.isEmpty()) return emptyList()
+        val lowerSuffix = suffix.lowercase()
+        return keywordIndex.filter {
+            it.word.lowercase().endsWith(lowerSuffix)
+        }.map { it.word }
+    }
+
+    fun readResourceBytesByKey(key: String): ByteArray? {
+        if (closed || parseFailed || keywordIndex.isEmpty()) return null
+        val idx = findFirstKeywordIndex(key) ?: return null
+        val entry = keywordIndex[idx]
+        return readRecordBytes(entry.recordOffset, entry.recordSize)
+    }
+
+    private fun readRecordBytes(offset: Long, size: Int): ByteArray? {
+        if (closed || parseFailed || recordBlockInfos.isEmpty()) return null
+        val idx = findRecordBlockIndex(offset) ?: return null
+        val rbInfo = recordBlockInfos[idx]
+        if (rbInfo.compressedSize > Int.MAX_VALUE || rbInfo.decompressedSize > Int.MAX_VALUE) return null
+        synchronized(raf) {
+            try {
+                raf.seek(rbInfo.compressedOffset)
+                val data = ByteArray(rbInfo.compressedSize.toInt())
+                raf.readFully(data)
+                val decompressed = decompressBlock(data, rbInfo.decompressedSize.toInt())
+                val recordStart = (offset - rbInfo.recordStartOffset).toInt()
+                if (recordStart < 0 || recordStart >= decompressed.size) return null
+                val actualSize = if (size > 0) {
+                    size.coerceAtMost(decompressed.size - recordStart)
+                } else {
+                    findNullLength(decompressed, recordStart, bpu)
+                }
+                if (actualSize <= 0) return null
+                return decompressed.copyOfRange(recordStart, recordStart + actualSize)
+            } catch (e: Exception) {
+                Log.e(TAG, "readRecordBytes error at $offset: ${e.message}")
+                return null
+            }
+        }
+    }
+
     val filePath: String get() = mdxFile.absolutePath
     val fileName: String get() = mdxFile.name
     val fileSize: Long get() = mdxFile.length()

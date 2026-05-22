@@ -1,5 +1,11 @@
 package io.github.gdict.ui.screens
 
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
+import android.speech.tts.TextToSpeech
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -35,9 +41,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +59,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Locale
 
 @Composable
 fun WordDetailScreen(
@@ -70,6 +84,27 @@ fun WordDetailScreen(
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var ttsReady by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        var ttsInstance: TextToSpeech? = null
+        ttsInstance = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                ttsInstance?.setLanguage(Locale.US)
+                ttsReady = true
+            }
+        }
+        tts = ttsInstance
+        onDispose {
+            ttsInstance.stop()
+            ttsInstance.shutdown()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -146,7 +181,33 @@ fun WordDetailScreen(
                             .size(48.dp)
                             .clip(CircleShape)
                             .background(GdictColors.TealAccent)
-                            .clickable { /* play audio */ },
+                            .clickable {
+                                if (isPlaying) return@clickable
+                                isPlaying = true
+                                coroutineScope.launch {
+                                    try {
+                                        val audioData = viewModel.getAudioResource(word)
+                                        if (audioData != null) {
+                                            withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                playAudioBytes(context, audioData)
+                                            }
+                                        } else {
+                                            val engine = tts
+                                            if (engine != null && ttsReady) {
+                                                engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
+                                            }
+                                        }
+                                    } catch (_: Exception) {
+                                        val engine = tts
+                                        if (engine != null && ttsReady) {
+                                            engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
+                                        }
+                                    } finally {
+                                        delay(500)
+                                        isPlaying = false
+                                    }
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -489,4 +550,29 @@ private fun extractPartOfSpeech(definition: String): String {
         }
     }
     return ""
+}
+
+private fun playAudioBytes(context: Context, audioData: ByteArray) {
+    val tempFile = File(context.cacheDir, "dict_audio_${System.currentTimeMillis()}.mp3")
+    var mediaPlayer: android.media.MediaPlayer? = null
+    try {
+        FileOutputStream(tempFile).use { it.write(audioData) }
+        mediaPlayer = android.media.MediaPlayer()
+        mediaPlayer.setDataSource(tempFile.absolutePath)
+        mediaPlayer.setOnCompletionListener {
+            it.release()
+            tempFile.delete()
+        }
+        mediaPlayer.setOnErrorListener { mp, _, _ ->
+            mp.release()
+            tempFile.delete()
+            false
+        }
+        mediaPlayer.prepare()
+        mediaPlayer.start()
+    } catch (e: Exception) {
+        mediaPlayer?.release()
+        tempFile.delete()
+        throw e
+    }
 }

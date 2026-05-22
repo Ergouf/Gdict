@@ -18,8 +18,7 @@
 *.idx
 *.dict
 
-# Dictionary related text & style files
-*.txt
+# Dictionary related style files
 *.css
 
 # IDE directories
@@ -36,6 +35,9 @@ android_project/captures/
 android_project/.externalNativeBuild/
 android_project/.cxx/
 
+# Gradle build logs
+gradle_*.txt
+
 # APK/AAB files
 *.apk
 *.aar
@@ -46,3 +48,6 @@ android_project/.cxx/
 # Build output
 /build/
 */build/
+
+# Temporary scripts
+*.ps1

@@ -52,6 +52,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _diagnosticResult = MutableStateFlow<String?>(null)
     val diagnosticResult: StateFlow<String?> = _diagnosticResult.asStateFlow()
 
+    private val _wordOfTheDay = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    val wordOfTheDay: StateFlow<List<Pair<String, String>>> = _wordOfTheDay.asStateFlow()
+
     fun clearError() {
         _errorMessage.value = null
     }
@@ -211,5 +214,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getCssForDictionary(dictionaryName: String): String {
         return repository.getCssForDictionary(dictionaryName)
+    }
+
+    fun loadWordOfTheDay() {
+        viewModelScope.launch {
+            try {
+                val words = repository.getRandomWords(5)
+                _wordOfTheDay.value = words
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    suspend fun getAudioResource(word: String): ByteArray? {
+        return repository.getAudioResource(word)
     }
 }

@@ -1,0 +1,96 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.5/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :core:preBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :core:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :core:generateDebugResValues UP-TO-DATE
+> Task :core:generateDebugResources UP-TO-DATE
+> Task :core:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :core:extractDeepLinksDebug UP-TO-DATE
+> Task :core:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :core:compileDebugLibraryResources UP-TO-DATE
+> Task :core:parseDebugLocalResources UP-TO-DATE
+> Task :core:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors
+> Task :core:javaPreCompileDebug UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :core:mergeDebugShaders UP-TO-DATE
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :core:packageDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:mergeDebugNativeLibs NO-SOURCE
+> Task :core:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :core:stripDebugDebugSymbols NO-SOURCE
+> Task :core:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :core:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :core:prepareDebugArtProfile UP-TO-DATE
+> Task :core:prepareLintJarForPublish UP-TO-DATE
+
+> Task :core:compileDebugKotlin
+w: file:///D:/workspace/Gdict/android_project/core/src/main/java/io/github/gdict/core/DictionaryManager.kt:637:54 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///D:/workspace/Gdict/android_project/core/src/main/java/io/github/gdict/core/DictionaryManager.kt:646:58 Elvis operator (?:) always returns the left operand of non-nullable type String
+
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:processDebugJavaRes UP-TO-DATE
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
+> Task :core:bundleLibRuntimeToDirDebug
+> Task :core:extractDebugAnnotations
+> Task :core:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :core:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :core:mergeDebugJavaResource UP-TO-DATE
+> Task :core:syncDebugLibJars
+> Task :core:bundleDebugAar
+> Task :core:assembleDebug
+> Task :app:mergeLibDexDebug
+
+> Task :app:compileDebugKotlin
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:39:9 Variable 'importing' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:144:47 'MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:203:65 'LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.LibraryBooks
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:470:47 'InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 29s
+62 actionable tasks: 12 executed, 50 up-to-date
