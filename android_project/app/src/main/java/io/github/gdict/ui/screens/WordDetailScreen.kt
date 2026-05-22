@@ -425,20 +425,101 @@ private fun HtmlContent(
     css: String,
     darkMode: Boolean
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val viewModel: AppViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val htmlContent = buildHtmlContent(definition, css, darkMode)
 
     AndroidView(
-        factory = { context ->
-            WebView(context).apply {
+        factory = { ctx ->
+            WebView(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
-                webViewClient = WebViewClient()
-                settings.javaScriptEnabled = false
+                settings.javaScriptEnabled = true
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
-                loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+                settings.domStorageEnabled = true
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): Boolean {
+                        val url = request?.url?.toString() ?: return false
+                        if (url.startsWith("sound://")) {
+                            val audioPath = url.removePrefix("sound://")
+                            coroutineScope.launch {
+                                try {
+                                    val audioData = viewModel.getAudioResourceByPath(audioPath)
+                                    if (audioData != null) {
+                                        withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            playAudioBytes(context, audioData)
+                                        }
+                                    } else {
+                                        val word = audioPath.removeSuffix(".mp3")
+                                            .removeSuffix(".wav")
+                                            .removeSuffix(".ogg")
+                                            .removeSuffix(".spx")
+                                            .substringAfterLast("/")
+                                            .substringAfterLast("\\")
+                                        val fallbackData = viewModel.getAudioResource(word)
+                                        if (fallbackData != null) {
+                                            withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                playAudioBytes(context, fallbackData)
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+                            return true
+                        }
+                        return false
+                    }
+
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): android.webkit.WebResourceResponse? {
+                        val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
+                        if (url.startsWith("file:///android_asset/") || url.startsWith("data:")) {
+                            return super.shouldInterceptRequest(view, request)
+                        }
+                        val path = request.url?.path ?: return super.shouldInterceptRequest(view, request)
+                        val lowerPath = path.lowercase()
+                        if (lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
+                            lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
+                            lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp") ||
+                            lowerPath.endsWith(".css") || lowerPath.endsWith(".js")
+                        ) {
+                            try {
+                                val resourcePath = "\\" + path.trimStart('/')
+                                val data = runCatching {
+                                    kotlinx.coroutines.runBlocking {
+                                        viewModel.getAudioResourceByPath(resourcePath)
+                                    }
+                                }.getOrNull()
+                                if (data != null) {
+                                    val mimeType = when {
+                                        lowerPath.endsWith(".png") -> "image/png"
+                                        lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
+                                        lowerPath.endsWith(".gif") -> "image/gif"
+                                        lowerPath.endsWith(".svg") -> "image/svg+xml"
+                                        lowerPath.endsWith(".webp") -> "image/webp"
+                                        lowerPath.endsWith(".css") -> "text/css"
+                                        lowerPath.endsWith(".js") -> "application/javascript"
+                                        else -> "application/octet-stream"
+                                    }
+                                    return android.webkit.WebResourceResponse(
+                                        mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
+                                    )
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                }
+                loadDataWithBaseURL("https://mdx.local/", htmlContent, "text/html", "UTF-8", null)
             }
         },
         modifier = Modifier.fillMaxWidth()
@@ -450,6 +531,7 @@ private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boole
     val textColor = if (isDarkTheme) "#E1E4DA" else "#424242"
     val headerColor = if (isDarkTheme) "#8BB8E8" else "#2C4A6E"
     val linkColor = "#4ECDC4"
+    val phonColor = if (isDarkTheme) "#A8D8EA" else "#1565C0"
 
     val transformedDef = transformMdxTags(definition)
 
@@ -473,7 +555,7 @@ ${cssBlock}<style>
     color: $textColor;
     background: $bgColor;
     margin: 0;
-    padding: 0;
+    padding: 8px 12px;
     word-wrap: break-word;
   }
   h1, h2, h3 { color: $headerColor; font-weight: 600; margin: 12px 0 8px; }
@@ -483,8 +565,48 @@ ${cssBlock}<style>
   td, th { border: 1px solid #E0E0E0; padding: 8px; }
   hw { font-weight: bold; color: $headerColor; }
   inf { font-style: italic; }
-  .arl { display: block; margin-bottom: 12px; }
+  .arl { display: block; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(128,128,128,0.15); }
   .comment { font-style: italic; color: #9E9E9E; }
+  .phon, .pron, .ipa { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; }
+  .speaker, .sound, .audio-play { cursor: pointer; display: inline-block; padding: 2px 6px; margin: 0 4px;
+    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; font-size: 14px; }
+  .speaker:hover, .sound:hover, .audio-play:hover { background: rgba(78, 205, 196, 0.3); }
+  .soundfile { display: inline; margin: 0 2px; }
+  .soundfile a { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
+    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; font-size: 13px; }
+  .soundfile a:hover { background: rgba(78, 205, 196, 0.3); }
+  .soundfile img { display: none; }
+  a[href^="sound://"] { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
+    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; }
+  a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.3); }
+  .pos, .pos2 { display: inline-block; padding: 2px 8px; margin: 2px 4px; background: rgba(44, 74, 110, 0.1);
+    border-radius: 4px; font-style: italic; color: $headerColor; font-size: 0.9em; }
+  .bre, .ame, .gb, .us { display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
+    font-size: 0.8em; font-weight: 600; }
+  .bre, .gb { background: rgba(33, 150, 243, 0.1); color: #1976D2; }
+  .ame, .us { background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
+  .ussymbol { display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
+    font-size: 0.8em; font-weight: 600; background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
+  .label, .sense { margin: 4px 0; padding: 2px 0; }
+  .definition, .def { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid rgba(78, 205, 196, 0.3); }
+  .example, .ex { color: #666; font-style: italic; margin: 4px 0 4px 16px; }
+  .di-head { display: block; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid $headerColor; }
+  .di-title { font-size: 1.3em; font-weight: 700; }
+  .di-body { display: block; margin: 4px 0; }
+  .sense-block { display: block; margin: 8px 0; padding: 4px 0; }
+  .sense-head { display: block; margin: 6px 0 2px; }
+  .sense-body { display: block; margin: 2px 0; padding-left: 8px; }
+  .sense-info { display: inline; }
+  .prongrp { display: inline; }
+  .inflection { display: block; margin: 4px 0; padding-left: 12px; }
+  .INFLX { display: inline; margin: 0 4px; color: #9E9E9E; }
+  .base { display: inline; }
+  .results { display: inline; }
+  .forms { display: inline; }
+  .inflections { display: inline; }
+  .hw { font-size: 1.1em; color: $headerColor; }
+  .inf { font-style: italic; }
+  .cm { font-weight: 600; }
 </style>
 </head>
 <body>
@@ -496,15 +618,25 @@ ${cssBlock}<style>
 
 private fun transformMdxTags(input: String): String {
     var result = input
-    result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " <span style='color:#9E9E9E'>|</span> ")
+    result = result.replace(Regex("<SEP\\s*>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
     result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
     result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
     result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
+    result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
+    result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
     result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
+    result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+        "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
+    }
     return result
 }
 

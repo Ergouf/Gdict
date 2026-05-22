@@ -611,6 +611,39 @@ class DictionaryManager(private val context: Context) {
         return null
     }
 
+    @WorkerThread
+    fun getAudioResourceByPath(path: String): ByteArray? {
+        val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
+        val normalizedPath = path.replace("/", "\\")
+        val pathWithBackslash = if (normalizedPath.startsWith("\\")) normalizedPath else "\\$normalizedPath"
+        for (dict in snapshot) {
+            val mddParser = synchronized(this) { loadedMdds[dict.id] } ?: continue
+            val data = mddParser.readResourceBytes(pathWithBackslash)
+            if (data != null && data.isNotEmpty()) {
+                android.util.Log.i("DictMgr", "Audio found by path '$path' in '${dict.name}' size=${data.size}")
+                return data
+            }
+            val data2 = mddParser.readResourceBytes(normalizedPath)
+            if (data2 != null && data2.isNotEmpty()) {
+                android.util.Log.i("DictMgr", "Audio found by path '$path' in '${dict.name}' size=${data2.size}")
+                return data2
+            }
+        }
+        for (dict in snapshot) {
+            val mddParser = synchronized(this) { loadedMdds[dict.id] } ?: continue
+            val suffix = pathWithBackslash.lowercase()
+            val matches = mddParser.findResourceKeys(suffix)
+            for (match in matches) {
+                val data = mddParser.readResourceBytesByKey(match)
+                if (data != null && data.isNotEmpty()) {
+                    android.util.Log.i("DictMgr", "Audio found (fuzzy) by path '$path' in '${dict.name}': key='$match' size=${data.size}")
+                    return data
+                }
+            }
+        }
+        return null
+    }
+
     fun diagnoseAllDictionaries(): String {
         val sb = StringBuilder()
         sb.appendLine("=== Gdict Dictionary Diagnostics ===")

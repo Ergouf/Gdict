@@ -70,13 +70,13 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
-            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(GdictColors.NavyBlue)
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             Row(

@@ -210,4 +210,8 @@ class AppRepository(private val context: Context) {
     suspend fun getAudioResource(word: String): ByteArray? = withContext(Dispatchers.IO) {
         dictionaryManager.getAudioResource(word)
     }
+
+    suspend fun getAudioResourceByPath(path: String): ByteArray? = withContext(Dispatchers.IO) {
+        dictionaryManager.getAudioResourceByPath(path)
+    }
 }

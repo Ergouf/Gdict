@@ -64,12 +64,12 @@ fun HistoryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor)
-            .statusBarsPadding()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(GdictColors.NavyBlue)
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Row(

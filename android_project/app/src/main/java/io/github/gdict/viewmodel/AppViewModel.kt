@@ -229,4 +229,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun getAudioResource(word: String): ByteArray? {
         return repository.getAudioResource(word)
     }
+
+    suspend fun getAudioResourceByPath(path: String): ByteArray? {
+        return repository.getAudioResourceByPath(path)
+    }
 }

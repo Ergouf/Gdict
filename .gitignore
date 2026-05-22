@@ -1,11 +1,7 @@
-# Android SDK (build tools, JDK, etc.)
 /android_sdk/
 
-# MDX/MDD dictionary files (large binary data files)
 *.mdx
 *.mdd
-
-# Dictionary related binary data
 *.dsl
 *.dsl.dz
 *.bgl
@@ -17,37 +13,37 @@
 *.ifo
 *.idx
 *.dict
-
-# Dictionary related style files
 *.css
 
-# IDE directories
 /.idea
 *.iml
 .DS_Store
 Thumbs.db
 
-# ========== Android project specific ==========
 android_project/.gradle/
 android_project/build/
 android_project/local.properties
 android_project/captures/
 android_project/.externalNativeBuild/
 android_project/.cxx/
+android_project/app/release.keystore
 
-# Gradle build logs
 gradle_*.txt
 
-# APK/AAB files
 *.apk
 *.aar
 *.ap_
 *.aab
 *.dex
 
-# Build output
 /build/
 */build/
 
-# Temporary scripts
 *.ps1
+
+*_err.txt
+*_out.txt
+*_result.txt
+*_output.txt
+adb_*.txt
+build_*.txt
