@@ -107,51 +107,63 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     private fun extractCssFromMdd(mddFile: File, sb: StringBuilder) {
-        RandomAccessFile(mddFile, "r").use { mddRaf ->
-            if (mddRaf.length() < 12) return
-            val headerBytes = ByteArray(4)
-            mddRaf.readFully(headerBytes)
-            val headerLen = ((headerBytes[0].toInt() and 0xFF shl 24) or
-                    (headerBytes[1].toInt() and 0xFF shl 16) or
-                    (headerBytes[2].toInt() and 0xFF shl 8) or
-                    (headerBytes[3].toInt() and 0xFF))
-            if (headerLen <= 0 || headerLen > 10 * 1024 * 1024) return
-            val readLen = minOf(headerLen.toInt(), mddRaf.length().toInt() - 4)
-            if (readLen <= 0) return
-            val headerData = ByteArray(readLen)
-            mddRaf.readFully(headerData)
-            val headerStr = String(headerData, Charsets.UTF_16LE)
+        val mddParser = try {
+            MdxParser(mddFile)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse MDD for CSS: ${mddFile.name}: ${e.message}")
+            return
+        }
 
-            val cssPattern = Regex("""<style[^>]*>(.*?)</style>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-            for (match in cssPattern.findAll(headerStr)) {
-                sb.append(match.groupValues[1]).append("\n")
-            }
-
-            if (sb.isEmpty()) {
-                val linkPattern = Regex("""href=["']([^"']*\.css)["']""", RegexOption.IGNORE_CASE)
-                for (match in linkPattern.findAll(headerStr)) {
-                    Log.i(TAG, "  MDD references CSS: ${match.groupValues[1]}")
+        try {
+            if (mddParser.wordCount > 0) {
+                val cssKeys = mddParser.findResourceKeys(".css")
+                for (key in cssKeys) {
+                    try {
+                        val cssBytes = mddParser.readResourceBytesByKey(key)
+                        if (cssBytes != null && cssBytes.isNotEmpty()) {
+                            val cssText = String(cssBytes, Charsets.UTF_8)
+                            sb.append(cssText).append("\n")
+                            Log.i(TAG, "  Loaded CSS from MDD: $key (${cssBytes.size} bytes)")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "  Failed to read CSS resource $key: ${e.message}")
+                    }
+                }
+                if (cssKeys.isEmpty()) {
+                    Log.i(TAG, "  No CSS resources found in MDD: ${mddFile.name}")
                 }
             }
-        }
-        if (sb.isNotEmpty()) {
-            Log.i(TAG, "Extracted CSS from MDD: ${mddFile.name} (${sb.length} chars)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to extract CSS from MDD: ${mddFile.name}: ${e.message}")
+        } finally {
+            mddParser.close()
         }
     }
 
     fun transformHtml(raw: String): String {
         var result = raw
-        result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), "<br>")
-        result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b>")
+        result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
+            val content = match.groupValues[1].trim()
+            if (content.isEmpty()) " " else " $content "
+        }
+        result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
+        result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
         result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
-        result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i>")
+        result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
         result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
-        result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span style='color:#666;font-size:0.95em'>")
+        result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
         result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
-        result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
+        result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
         result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
         result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
+        result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
+        result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
+        result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
+        result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
         return result
     }
 
@@ -823,16 +835,19 @@ class MdxParser(private val mdxFile: File) : Closeable {
         private const val TAG = "MdxParser"
 
         private fun decompressZlib(data: ByteArray, expectedSize: Int): ByteArray {
-            try {
-                val inflater = Inflater()
-                inflater.setInput(data)
-                val result = ByteArray(expectedSize)
-                val len = inflater.inflate(result)
-                inflater.end()
-                if (len > 0) return result.copyOf(len)
-            } catch (e: Exception) {
-                Log.w(TAG, "zlib解压失败: ${e.message}")
+            for (nowrap in listOf(true, false)) {
+                try {
+                    val inflater = Inflater(nowrap)
+                    inflater.setInput(data)
+                    val result = ByteArray(expectedSize)
+                    val len = inflater.inflate(result)
+                    inflater.end()
+                    if (len > 0) return result.copyOf(len)
+                } catch (_: Exception) {
+                    continue
+                }
             }
+            Log.w(TAG, "zlib解压失败: raw deflate和标准zlib均不可用")
             return data
         }
 

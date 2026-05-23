@@ -566,7 +566,9 @@ ${cssBlock}<style>
   hw { font-weight: bold; color: $headerColor; }
   inf { font-style: italic; }
   .arl { display: block; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(128,128,128,0.15); }
+  .hit { display: block; margin: 2px 0; padding: 2px 0; }
   .comment { font-style: italic; color: #9E9E9E; }
+  .capvar { color: #9E9E9E; font-style: italic; }
   .phon, .pron, .ipa { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; }
   .speaker, .sound, .audio-play { cursor: pointer; display: inline-block; padding: 2px 6px; margin: 0 4px;
     background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; font-size: 14px; }
@@ -591,13 +593,14 @@ ${cssBlock}<style>
   .definition, .def { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid rgba(78, 205, 196, 0.3); }
   .example, .ex { color: #666; font-style: italic; margin: 4px 0 4px 16px; }
   .di-head { display: block; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid $headerColor; }
-  .di-title { font-size: 1.3em; font-weight: 700; }
+  .di-title { display: block; font-size: 1.3em; font-weight: 700; }
+  .di-info { display: inline; }
   .di-body { display: block; margin: 4px 0; }
   .sense-block { display: block; margin: 8px 0; padding: 4px 0; }
   .sense-head { display: block; margin: 6px 0 2px; }
   .sense-body { display: block; margin: 2px 0; padding-left: 8px; }
   .sense-info { display: inline; }
-  .prongrp { display: inline; }
+  .prongrp { display: block; margin: 2px 0; }
   .inflection { display: block; margin: 4px 0; padding-left: 12px; }
   .INFLX { display: inline; margin: 0 4px; color: #9E9E9E; }
   .base { display: inline; }
@@ -618,22 +621,26 @@ ${cssBlock}<style>
 
 private fun transformMdxTags(input: String): String {
     var result = input
-    result = result.replace(Regex("<SEP\\s*>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
+        val content = match.groupValues[1].trim()
+        if (content.isEmpty()) " " else " $content "
+    }
     result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
     result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
     result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
     result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
     result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
     result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
+    result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
     result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
     result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
     result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
+    result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
+    result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
     result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
         "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
     }
