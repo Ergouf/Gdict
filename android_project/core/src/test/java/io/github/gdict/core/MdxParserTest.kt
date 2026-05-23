@@ -5,6 +5,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.util.Random
 import java.util.regex.Pattern
 
 class MdxParserTest {
@@ -12,6 +13,12 @@ class MdxParserTest {
     private var parser: MdxParser? = null
 
     private val mdxPath = System.getProperty("mdx.file.path")
+        ?: run {
+            val propFile = File("D:\\workspace\\Gdict\\android_project\\test_mdx_path.properties")
+            if (propFile.exists()) {
+                propFile.readLines().firstOrNull { it.startsWith("mdx.file.path=") }?.substringAfter("=")
+            } else null
+        }
         ?: """D:\workspace\Xdictapk\[英-英] 柯林斯第三版 Collins 3rd （非wh_cxh、ldlcau版本）collins 3.mdx"""
 
     @Before
@@ -229,5 +236,78 @@ class MdxParserTest {
             "At most 20% of sampled definitions may be garbled (got $garbledCount/$successCount)",
             garbledCount <= successCount * 0.2
         )
+    }
+
+    @Test
+    fun testExportRandomWords() {
+        val p = parser ?: return
+        if (p.wordCount == 0) return
+
+        val outputDir = File("D:\\workspace\\Gdict\\test_export")
+        outputDir.mkdirs()
+
+        val allKeywords = p.getAllKeywords()
+        val random = Random(42)
+        val sampleWords = allKeywords.shuffled(random).take(10)
+
+        println("=== Exporting ${sampleWords.size} random words to ${outputDir.absolutePath} ===")
+        println("  Dictionary: '${p.title}' (${p.wordCount} words, encoding='${p.encoding}')")
+
+        for ((idx, word) in sampleWords.withIndex()) {
+            println("\n--- [${idx + 1}/10] $word ---")
+            val articles = p.readArticles(word)
+            if (articles.isEmpty()) {
+                println("  SKIP: No articles found")
+                continue
+            }
+
+            val safeName = word.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
+            val baseDir = File(outputDir, safeName)
+            baseDir.mkdirs()
+
+            for ((articleWord, rawHtml) in articles) {
+                if (rawHtml == null || rawHtml.isEmpty()) {
+                    println("  SKIP: '$articleWord' - empty content")
+                    continue
+                }
+
+                val transformedHtml = p.transformHtml(rawHtml)
+
+                File(baseDir, "${safeName}_raw.html").writeText(buildString {
+                    appendLine("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>$word (RAW)</title></head><body>")
+                    appendLine("<h1>$word — Raw HTML from MDX</h1>")
+                    appendLine("<h3>File: ${p.fileName} | Encoding: ${p.encoding} | Size: ${rawHtml.length} chars</h3>")
+                    appendLine("<pre style='white-space:pre-wrap;word-break:break-all;font-size:12px'>")
+                    append(rawHtml.take(8000))
+                    appendLine("</pre></body></html>")
+                })
+
+                File(baseDir, "${safeName}_rendered.html").writeText(buildString {
+                    appendLine("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>$word (Rendered)</title>")
+                    appendLine("<style>")
+                    appendLine("body{font-family:'Times New Roman',serif;max-width:600px;margin:20px auto;padding:15px;background:#fff;color:#333}")
+                    appendLine(".hw{font-size:26px;font-weight:bold;color:#000}.inf{font-style:italic}.inf b{color:#c00}")
+                    appendLine(".pron{color:#06c;font-size:17px;font-family:'Lucida Sans Unicode',Arial,sans-serif}")
+                    appendLine(".ipa{font-family:'Lucida Sans Unicode',Arial,sans-serif}.ex{color:#666}")
+                    appendLine(".tense-section{margin:10px 0;padding:8px;border-left:3px solid #06c;background:#f0f8ff}")
+                    appendLine(".tense-label{font-weight:bold;color:#06c}.label{display:inline-block;padding:2px 6px;border-radius:3px;font-size:12px;margin-right:5px}")
+                    appendLine(".label-uk{background:#ffe0e0;color:#c00}.label-us{background:#e0e0ff;color:#00c}")
+                    appendLine(".sense-block{margin:15px 0;padding:10px;background:#fff;border-radius:4px}")
+                    appendLine("</style></head><body>")
+                    appendLine(transformedHtml)
+                    appendLine("</body></html>")
+                })
+
+                val preview = transformedHtml.replace(Regex("<[^>]+>"), "").take(150)
+                println("  Article: '$articleWord' (${rawHtml.length} chars raw)")
+                println("  Preview: $preview...")
+                println("  Files: ${baseDir.absolutePath}\\${safeName}_*.html")
+            }
+        }
+
+        println("\n=== Done! Exported to: ${outputDir.absolutePath} ===")
+        println("Open any *_rendered.html in browser to check display quality.")
+        assertTrue("Export directory should exist", outputDir.exists())
+        assertTrue("Should have exported some files", outputDir.listFiles()?.isNotEmpty() ?: false)
     }
 }

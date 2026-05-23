@@ -7,7 +7,7 @@
 - **MDX/MDD 词典解析** — 支持 V1.2 和 V2.0 规范，含 LZO/zlib 解压、RipeMD128 加密解密
 - **多词典管理** — 添加、删除、启停词典，重启后持久化，文件夹批量扫描导入
 - **单词搜索** — 二分查找 O(log n) 精确匹配 + 前缀预测搜索
-- **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，支持 CSS 样式
+- **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，支持从 MDD 提取 CSS 样式
 - **MDD 音频播放** — 从 MDD 资源包提取发音音频，回退到 TTS 语音合成
 - **Word of the Day** — 从已加载词典中动态生成每日推荐单词
 - **生词本** — 收藏单词，支持删除和二次确认
@@ -63,7 +63,6 @@ android_project/
 │   │   └── DictionaryManager.kt            # 词典管理
 │   └── src/test/java/io/github/gdict/core/
 │       └── MdxParserTest.kt                # 解析器单元测试
-├── build_and_verify.ps1                    # 自动化测试 + 构建脚本
 ├── build.gradle.kts
 ├── settings.gradle.kts
 └── gradle.properties
@@ -86,8 +85,12 @@ cd android_project
 # Debug 构建
 ./gradlew assembleDebug
 
+# Release 构建
+./gradlew assembleRelease
+
 # APK 输出位置
 # app/build/outputs/apk/debug/app-debug.apk
+# app/build/outputs/apk/release/app-release.apk
 ```
 
 ### 使用 Android Studio
@@ -148,6 +151,13 @@ MDX 文件结构：
 
 - V1.2: 整数字段为 4 字节 Big-Endian，关键词索引不压缩
 - V2.0: 整数字段为 8 字节 Big-Endian（64 位），关键词索引经过压缩
+
+压缩块的前 8 字节为压缩头：
+```
+[0..3] 压缩类型（小端序）：0=不压缩, 1=LZO, 2=zlib
+[4..7] Adler32 校验和（大端序）
+[8..]  实际压缩数据
+```
 
 MDD 文件与 MDX 共享相同的格式规范，但存储的是资源文件（CSS、图片、音频等）。
 

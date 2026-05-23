@@ -89,55 +89,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
             }
         }
 
-        val mddCandidates = listOf(
-            File(parentDir, "$baseName.mdd"),
-            File(parentDir, "${mdxFile.name}.mdd")
-        )
-        for (mddFile in mddCandidates) {
-            if (mddFile.exists() && mddFile.length() > 0 && mddFile.length() < 50 * 1024 * 1024) {
-                try {
-                    extractCssFromMdd(mddFile, sb)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to read MDD: ${mddFile.name}: ${e.message}")
-                }
-            }
-        }
-
         return sb.toString()
-    }
-
-    private fun extractCssFromMdd(mddFile: File, sb: StringBuilder) {
-        val mddParser = try {
-            MdxParser(mddFile)
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse MDD for CSS: ${mddFile.name}: ${e.message}")
-            return
-        }
-
-        try {
-            if (mddParser.wordCount > 0) {
-                val cssKeys = mddParser.findResourceKeys(".css")
-                for (key in cssKeys) {
-                    try {
-                        val cssBytes = mddParser.readResourceBytesByKey(key)
-                        if (cssBytes != null && cssBytes.isNotEmpty()) {
-                            val cssText = String(cssBytes, Charsets.UTF_8)
-                            sb.append(cssText).append("\n")
-                            Log.i(TAG, "  Loaded CSS from MDD: $key (${cssBytes.size} bytes)")
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "  Failed to read CSS resource $key: ${e.message}")
-                    }
-                }
-                if (cssKeys.isEmpty()) {
-                    Log.i(TAG, "  No CSS resources found in MDD: ${mddFile.name}")
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract CSS from MDD: ${mddFile.name}: ${e.message}")
-        } finally {
-            mddParser.close()
-        }
     }
 
     fun transformHtml(raw: String): String {
@@ -785,7 +737,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 }
             }
             2 -> {
-                decompressZlib(compressedData, expectedDecompSize)
+                decompressZlib(compressedData, expectedDecompSize, expectedChecksum)
             }
             else -> {
                 Log.w(TAG, "未知压缩类型=$compType, 返回原始数据")
@@ -820,12 +772,6 @@ class MdxParser(private val mdxFile: File) : Closeable {
                (data[7].toLong() and 0xFF)
     }
 
-    private fun computeAdler32(data: ByteArray): Long {
-        val adler = Adler32()
-        adler.update(data)
-        return adler.value
-    }
-
     private fun extractAttr(xml: String, attrName: String): String? {
         val pattern = "$attrName=\"([^\"]*)\"".toRegex(RegexOption.IGNORE_CASE)
         return pattern.find(xml)?.groupValues?.get(1)
@@ -834,21 +780,36 @@ class MdxParser(private val mdxFile: File) : Closeable {
     companion object {
         private const val TAG = "MdxParser"
 
-        private fun decompressZlib(data: ByteArray, expectedSize: Int): ByteArray {
-            for (nowrap in listOf(true, false)) {
+        private fun computeAdler32(data: ByteArray): Long {
+            val adler = Adler32()
+            adler.update(data)
+            return adler.value
+        }
+
+        private fun decompressZlib(data: ByteArray, expectedSize: Int, expectedChecksum: Long): ByteArray {
+            var bestResult: ByteArray? = null
+
+            for (nowrap in listOf(false, true)) {
                 try {
                     val inflater = Inflater(nowrap)
                     inflater.setInput(data)
                     val result = ByteArray(expectedSize)
                     val len = inflater.inflate(result)
                     inflater.end()
-                    if (len > 0) return result.copyOf(len)
-                } catch (_: Exception) {
-                    continue
-                }
+                    if (len > 0) {
+                        val decompressed = result.copyOf(len)
+                        val cksum = computeAdler32(decompressed)
+                        Log.d(TAG, "  zlib nowrap=$nowrap len=$len adler32=$cksum expected=$expectedChecksum")
+                        if (expectedChecksum > 0 && cksum == expectedChecksum) {
+                            Log.d(TAG, "  Adler32 matched, using nowrap=$nowrap")
+                            return decompressed
+                        }
+                        if (bestResult == null) bestResult = decompressed
+                    }
+                } catch (_: Exception) {}
             }
-            Log.w(TAG, "zlib解压失败: raw deflate和标准zlib均不可用")
-            return data
+
+            return bestResult ?: data
         }
 
         private fun RandomAccessFile.readIntBE(): Int {

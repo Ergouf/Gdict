@@ -30,6 +30,7 @@ class DictionaryManager(private val context: Context) {
     private val dictionaries = mutableListOf<DictEntry>()
     private val loadedDicts = mutableMapOf<Long, MdxParser>()
     private val loadedMdds = mutableMapOf<Long, MdxParser>()
+    private val cssCache = mutableMapOf<Long, String>()
     private val idCounter = AtomicLong(1)
     private val prefs = context.getSharedPreferences("dict_manager", Context.MODE_PRIVATE)
 
@@ -552,6 +553,7 @@ class DictionaryManager(private val context: Context) {
         synchronized(this) {
             loadedDicts.remove(id)?.close()
             loadedMdds.remove(id)?.close()
+            cssCache.remove(id)
             dictionaries.removeAll { it.id == id }
         }
         val dictDir = File(context.filesDir, "dictionaries/$id")
@@ -785,7 +787,7 @@ class DictionaryManager(private val context: Context) {
         return try {
             val results = mutableListOf<SearchResult>()
             android.util.Log.i("DictMgr", "    [SEARCH] dict='${dict.name}' parserHash=${parser.hashCode()} parserTitle='${parser.title}' parserFile='${parser.fileName}' parserWords=${parser.wordCount}")
-            val css = parser.companionCss
+            val css = buildCss(parser, dict.id)
             if (css.isNotEmpty()) {
                 android.util.Log.i("DictMgr", "    [SEARCH] CSS loaded for '${dict.name}': ${css.length} chars")
             }
@@ -814,6 +816,34 @@ class DictionaryManager(private val context: Context) {
             android.util.Log.e("DictMgr", "Search FAILED for ${dict.name}: ${e.message}")
             emptyList()
         }
+    }
+
+    private fun buildCss(parser: MdxParser, dictId: Long): String {
+        cssCache[dictId]?.let { return it }
+        val sb = StringBuilder()
+        sb.append(parser.companionCss)
+        val mddParser = synchronized(this) { loadedMdds[dictId] }
+        if (mddParser != null && mddParser.wordCount > 0) {
+            try {
+                val cssKeys = mddParser.findResourceKeys(".css")
+                for (key in cssKeys) {
+                    try {
+                        val cssBytes = mddParser.readResourceBytesByKey(key)
+                        if (cssBytes != null && cssBytes.isNotEmpty()) {
+                            sb.append(String(cssBytes, Charsets.UTF_8)).append("\n")
+                            android.util.Log.i("DictMgr", "  Loaded CSS from MDD: $key (${cssBytes.size} bytes)")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("DictMgr", "  Failed to read CSS resource $key: ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("DictMgr", "  Failed to extract CSS from MDD: ${e.message}")
+            }
+        }
+        val result = sb.toString()
+        cssCache[dictId] = result
+        return result
     }
 
     fun scanDirectory(uri: Uri): List<DictCandidate> {
