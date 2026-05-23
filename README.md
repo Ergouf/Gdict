@@ -241,9 +241,9 @@ MDD 文件与 MDX 共享相同的格式规范，但存储的是资源文件（CS
 
 | 项目 | 说明 | 链接 |
 |------|------|------|
-| **mdict4j** | MDX/MDD 词典格式的 Java 解析库 | [GitHub: eb4j/mdict4j](https://github.com/eb4j/mdict4j) |
-| **Linux Kernel LZO** | LZO1X 解压缩算法 | `lib/lzo/lzo1x_decompress_safe.c` |
-| **GoldenDict-ng** | 桌面端词典应用，灵感来源 | [GitHub: xiaoyifang/goldendict-ng](https://github.com/xiaoyifang/goldendict-ng) |
+| **Linux Kernel** | LZO1X 解压缩算法，移植自 `lib/lzo/lzo1x_decompress_safe.c` | [GitHub: torvalds/linux](https://github.com/torvalds/linux) |
+| **Woodstox** | XML StAX 解析器，用于解析 MDX Header | [GitHub: FasterXML/woodstox](https://github.com/FasterXML/woodstox) |
+| **Jetpack Compose** | Android 声明式 UI 框架 | [Android Developers](https://developer.android.com/compose) |
 | **Material Design 3** | Google 设计系统 | [Material Design 3](https://m3.material.io/) |
 
 ## 许可证
