@@ -66,6 +66,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
 
+private val TRANSPARENT_PNG = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15.toByte(), 0xC4.toByte(), 0x89.toByte(), 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C.toByte(), 0x62, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x18, 0x8D.toByte(), 0xD4.toByte(), 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE.toByte(), 0x42, 0x60, 0x82.toByte())
+
 @Composable
 fun WordDetailScreen(
     word: String,
@@ -494,12 +496,10 @@ private fun HtmlContent(
                         ) {
                             try {
                                 val resourcePath = "\\" + path.trimStart('/')
-                                val data = runCatching {
-                                    kotlinx.coroutines.runBlocking {
-                                        viewModel.getAudioResourceByPath(resourcePath)
-                                    }
-                                }.getOrNull()
+                                android.util.Log.d("MdxWebView", "Intercepting resource: $resourcePath")
+                                val data = viewModel.getResourceByPathSync(resourcePath)
                                 if (data != null) {
+                                    android.util.Log.d("MdxWebView", "Resource loaded successfully: ${data.size} bytes")
                                     val mimeType = when {
                                         lowerPath.endsWith(".png") -> "image/png"
                                         lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
@@ -513,8 +513,20 @@ private fun HtmlContent(
                                     return android.webkit.WebResourceResponse(
                                         mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
                                     )
+                                } else {
+                                    android.util.Log.w("MdxWebView", "Resource not found, returning transparent placeholder: $resourcePath")
+                                    val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
+                                        lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
+                                        lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
+                                    if (isImage) {
+                                        return android.webkit.WebResourceResponse(
+                                            "image/png", "UTF-8", java.io.ByteArrayInputStream(TRANSPARENT_PNG)
+                                        )
+                                    }
                                 }
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                android.util.Log.e("MdxWebView", "Error loading resource: $path", e)
+                            }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
@@ -533,10 +545,49 @@ private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boole
     val linkColor = "#4ECDC4"
     val phonColor = if (isDarkTheme) "#A8D8EA" else "#1565C0"
 
-    val transformedDef = transformMdxTags(definition)
+    val isCambridgeEpd = definition.contains("cepd18.css")
+    val transformedDef = transformMdxTags(definition).let { def ->
+        if (isCambridgeEpd) {
+            def.replace(Regex("""<img[^>]*src=["'][^"']*uk_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='uk-flag'>UK</span>")
+               .replace(Regex("""<img[^>]*src=["'][^"']*us_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='us-flag'>US</span>")
+               .replace(Regex("</img>", RegexOption.IGNORE_CASE), "")
+        } else def
+    }
 
     val cssBlock = if (css.isNotEmpty()) {
         "<style>\n$css\n</style>\n"
+    } else if (isCambridgeEpd) {
+        """
+<style>
+.arl { display: block; margin: 6px 0; padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.15); }
+.hit { display: block; margin: 4px 0; padding: 2px 0; }
+.hit + .hit { border-top: 1px solid rgba(128,128,128,0.08); padding-top: 6px; }
+.results { display: inline; }
+.base { display: inline; font-size: 1em; }
+.hw { font-weight: bold; font-size: 1.2em; color: $headerColor; display: inline; }
+.inf { color: #1565C0; font-style: italic; }
+.comment { color: #757575; font-style: italic; font-size: 0.9em; }
+.forms { display: block; margin: 2px 0 2px 16px; }
+.inflections { display: inline; }
+.inflections .base { color: #616161; }
+.pron { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
+.ipa { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
+.prongrp { display: block; margin: 3px 0; padding: 2px 0; }
+.ussymbol { display: inline-block; padding: 0 4px; margin: 0 2px; font-size: 0.8em; font-weight: 600; }
+.uk-flag { display: inline-block; padding: 1px 5px; margin: 0 2px; background: #012169; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; letter-spacing: 0.5px; }
+.us-flag { display: inline-block; padding: 1px 5px; margin: 0 2px; background: #B31942; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; letter-spacing: 0.5px; }
+.soundfile { display: inline; margin: 0 2px; }
+.soundfile a { display: inline-block; vertical-align: middle; text-decoration: none; }
+.soundfile img { display: none; }
+a[href^="sound://"] { text-decoration: none; display: inline-block; vertical-align: middle; padding: 2px 8px; margin: 0 2px; background: rgba(78, 205, 196, 0.2); border-radius: 12px; color: #4ECDC4; font-size: 13px; }
+a[href^="sound://"]::before { content: "🔊"; margin-right: 4px; }
+a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.35); }
+.capvar { color: #9E9E9E; font-style: italic; font-size: 0.9em; }
+.inflection { display: block; margin: 2px 0 2px 16px; }
+</style>
+"""
     } else {
         ""
     }
@@ -577,7 +628,6 @@ ${cssBlock}<style>
   .soundfile a { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
     background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; font-size: 13px; }
   .soundfile a:hover { background: rgba(78, 205, 196, 0.3); }
-  .soundfile img { display: none; }
   a[href^="sound://"] { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
     background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; }
   a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.3); }
@@ -625,6 +675,8 @@ private fun transformMdxTags(input: String): String {
         val content = match.groupValues[1].trim()
         if (content.isEmpty()) " " else " $content "
     }
+    result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
+    result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
     result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
     result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
@@ -641,6 +693,40 @@ private fun transformMdxTags(input: String): String {
     result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
     result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
     result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
+    result = result.replace(Regex("<ipa>", RegexOption.IGNORE_CASE), "<span class='ipa'>")
+    result = result.replace(Regex("</ipa>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<prongrp>", RegexOption.IGNORE_CASE), "<span class='prongrp'>")
+    result = result.replace(Regex("</prongrp>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<inflection>", RegexOption.IGNORE_CASE), "<span class='inflection'>")
+    result = result.replace(Regex("</inflection>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<capvar>", RegexOption.IGNORE_CASE), "<span class='capvar'>")
+    result = result.replace(Regex("</capvar>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<sense-block>", RegexOption.IGNORE_CASE), "<span class='sense-block'>")
+    result = result.replace(Regex("</sense-block>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<sense-body>", RegexOption.IGNORE_CASE), "<span class='sense-body'>")
+    result = result.replace(Regex("</sense-body>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<di-head>", RegexOption.IGNORE_CASE), "<span class='di-head'>")
+    result = result.replace(Regex("</di-head>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<di-title>", RegexOption.IGNORE_CASE), "<span class='di-title'>")
+    result = result.replace(Regex("</di-title>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<di-body>", RegexOption.IGNORE_CASE), "<span class='di-body'>")
+    result = result.replace(Regex("</di-body>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<arl>", RegexOption.IGNORE_CASE), "<span class='arl'>")
+    result = result.replace(Regex("</arl>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<base>", RegexOption.IGNORE_CASE), "<span class='base'>")
+    result = result.replace(Regex("</base>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<results>", RegexOption.IGNORE_CASE), "<span class='results'>")
+    result = result.replace(Regex("</results>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<forms>", RegexOption.IGNORE_CASE), "<span class='forms'>")
+    result = result.replace(Regex("</forms>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<inflections>", RegexOption.IGNORE_CASE), "<span class='inflections'>")
+    result = result.replace(Regex("</inflections>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<pron>", RegexOption.IGNORE_CASE), "<span class='pron'>")
+    result = result.replace(Regex("</pron>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<ussymbol>", RegexOption.IGNORE_CASE), "<span class='ussymbol'>")
+    result = result.replace(Regex("</ussymbol>", RegexOption.IGNORE_CASE), "</span>")
+    result = result.replace(Regex("<sense-info>", RegexOption.IGNORE_CASE), "<span class='sense-info'>")
+    result = result.replace(Regex("</sense-info>", RegexOption.IGNORE_CASE), "</span>")
     result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
         "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
     }

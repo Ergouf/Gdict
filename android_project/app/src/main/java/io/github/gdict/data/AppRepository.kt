@@ -97,6 +97,10 @@ class AppRepository(private val context: Context) {
         return dictionaryManager.diagnoseAllDictionaries()
     }
 
+    fun testMddResourcesAndHtml(): String {
+        return dictionaryManager.testMddResourcesAndHtml()
+    }
+
     fun toggleDictionary(dictionary: Dictionary) {
         dictionaryManager.toggleDictionary(dictionary.id, !dictionary.isEnabled)
         _dictionaries.value = _dictionaries.value.map {
@@ -200,7 +204,9 @@ class AppRepository(private val context: Context) {
         val dict = dictionaryManager.getDictionaries().find { it.name == dictionaryName }
         if (dict == null) return ""
         val parser = dictionaryManager.getParserForDictionary(dict.id)
-        return parser?.companionCss ?: ""
+        val fileCss = parser?.companionCss ?: ""
+        val mddCss = dictionaryManager.getCssFromMdd(dict.id)
+        return fileCss + mddCss
     }
 
     suspend fun getRandomWords(count: Int = 5): List<Pair<String, String>> = withContext(Dispatchers.IO) {
@@ -213,5 +219,9 @@ class AppRepository(private val context: Context) {
 
     suspend fun getAudioResourceByPath(path: String): ByteArray? = withContext(Dispatchers.IO) {
         dictionaryManager.getAudioResourceByPath(path)
+    }
+
+    fun getResourceByPathSync(path: String): ByteArray? {
+        return dictionaryManager.getAudioResourceByPath(path)
     }
 }

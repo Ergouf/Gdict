@@ -2,6 +2,8 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.io.Closeable
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.zip.Adler32
 import java.util.zip.Inflater
 import kotlin.random.Random
@@ -128,7 +130,10 @@ class MdxExport(private val mdxFile: File) : Closeable {
         val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
         raf.readFully(keyIndexRaw)
         if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
-            println("WARNING: Encrypted=2 detected but RipeMD128 not available in export script")
+            val checksumBytes = keyIndexRaw.copyOfRange(4, 8)
+            val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
+            val key = RipeMD128.digest(keyInput)
+            fastDecrypt(keyIndexRaw, 8, key)
         }
         val keyIndexData = if (engineVersion >= 2.0) decompressBlock(keyIndexRaw, keyIndexDecompLen.toInt()) else keyIndexRaw
         val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
@@ -208,7 +213,7 @@ class MdxExport(private val mdxFile: File) : Closeable {
         val compressedData = data.copyOfRange(8, data.size)
         val result = when (compType) {
             0 -> { val raw = ByteArray(minOf(expectedDecompSize, compressedData.size)); System.arraycopy(compressedData, 0, raw, 0, raw.size); raw }
-            1 -> { println("WARNING: LZO not supported"); ByteArray(0) }
+            1 -> { try { Lzo1xDecompressor.decompress(compressedData, expectedDecompSize) } catch (e: Exception) { println("LZO decompress failed: ${e.message}"); ByteArray(0) } }
             2 -> decompressZlib(compressedData, expectedDecompSize)
             else -> { val raw = ByteArray(minOf(expectedDecompSize, compressedData.size)); System.arraycopy(compressedData, 0, raw, 0, raw.size); raw }
         }
@@ -244,6 +249,19 @@ class MdxExport(private val mdxFile: File) : Closeable {
 
     private fun computeAdler32(data: ByteArray): Long {
         val adler = Adler32(); adler.update(data); return adler.value
+    }
+
+    private fun fastDecrypt(buf: ByteArray, startOffset: Int, key: ByteArray) {
+        var prev: Int = 0x36
+        var relIdx = 0
+        for (i in startOffset until buf.size) {
+            val original = buf[i].toInt() and 0xFF
+            val swappedNibble = ((original ushr 4) or (original shl 4)) and 0xFF
+            val decrypted = (swappedNibble xor (prev xor (relIdx and 0xFF) xor (key[relIdx % key.size].toInt() and 0xFF))) and 0xFF
+            prev = original
+            buf[i] = decrypted.toByte()
+            relIdx++
+        }
     }
 
     private fun decodeString(bytes: ByteArray): String = try {
@@ -370,6 +388,191 @@ class MdxExport(private val mdxFile: File) : Closeable {
                (b[4].toLong() and 0xFF shl 24) or (b[5].toLong() and 0xFF shl 16) or
                (b[6].toLong() and 0xFF shl 8) or (b[7].toLong() and 0xFF)
     }
+}
+
+object Lzo1xDecompressor {
+    private const val M2_MAX_OFFSET = 0x0800
+    private const val MAX_255_COUNT = (Int.MAX_VALUE / 255) - 2
+    private const val MIN_ZERO_RUN_LENGTH = 4
+
+    fun decompress(input: ByteArray, expectedSize: Int): ByteArray {
+        val out = ByteArray(expectedSize)
+        var ip = 0; var op = 0
+        val ipEnd = input.size; val opEnd = expectedSize
+        var t: Int; var next: Int = 0; var state = 0; var mPos: Int
+        var gotoMatchNext = false
+
+        if (ipEnd <= 2) return java.util.Arrays.copyOf(out, op)
+
+        var bitstreamVersion = 0
+        if (ipEnd >= 5 && (input[ip].toInt() and 0xFF) == 17) {
+            bitstreamVersion = input[ip + 1].toInt() and 0xFF
+            ip += 2
+        }
+
+        if ((input[ip].toInt() and 0xFF) > 17) {
+            t = (input[ip].toInt() and 0xFF) - 17; ip++
+            if (t < 4) { next = t; gotoMatchNext = true }
+            else {
+                if (op + t > opEnd || ip + t > ipEnd) return java.util.Arrays.copyOf(out, op)
+                for (i in 0 until t) out[op++] = input[ip++]
+                state = 4
+            }
+        }
+
+        while (true) {
+            if (gotoMatchNext) {
+                gotoMatchNext = false; state = next; t = next
+                if (t > 0) {
+                    if (ip + t > ipEnd || op + t > opEnd) return java.util.Arrays.copyOf(out, op)
+                    while (t > 0) { out[op++] = input[ip++]; t-- }
+                }
+                if (ip >= ipEnd) break
+                t = input[ip++].toInt() and 0xFF
+            } else {
+                if (ip >= ipEnd) break
+                t = input[ip++].toInt() and 0xFF
+            }
+
+            if (t < 16) {
+                if (state == 0) {
+                    if (t == 0) {
+                        val ipLast = ip
+                        while (ip < ipEnd && input[ip].toInt() and 0xFF == 0) ip++
+                        if (ip >= ipEnd) break
+                        val offset = ip - ipLast
+                        if (offset > MAX_255_COUNT) return java.util.Arrays.copyOf(out, op)
+                        t += (offset shl 8) - offset; t += 15 + (input[ip++].toInt() and 0xFF)
+                    }
+                    t += 3
+                    if (op + t > opEnd || ip + t > ipEnd) return java.util.Arrays.copyOf(out, op)
+                    for (i in 0 until t) out[op++] = input[ip++]
+                    state = 4; continue
+                } else if (state != 4) {
+                    next = t and 3
+                    mPos = op - 1 - (t shr 2) - ((input[ip++].toInt() and 0xFF) shl 2)
+                    if (mPos < 0 || op + 2 > opEnd) return java.util.Arrays.copyOf(out, op)
+                    out[op++] = out[mPos++]; out[op++] = out[mPos]
+                    gotoMatchNext = true; continue
+                } else {
+                    next = t and 3
+                    mPos = op - (1 + M2_MAX_OFFSET) - (t shr 2) - ((input[ip++].toInt() and 0xFF) shl 2)
+                    t = 3
+                }
+            } else if (t >= 64) {
+                next = t and 3
+                mPos = op - 1 - ((t shr 2) and 7) - ((input[ip++].toInt() and 0xFF) shl 3)
+                t = (t shr 5) - 1 + 2
+            } else if (t >= 32) {
+                t = (t and 31) + 2
+                if (t == 2) {
+                    val ipLast = ip
+                    while (ip < ipEnd && input[ip].toInt() and 0xFF == 0) ip++
+                    if (ip >= ipEnd) return java.util.Arrays.copyOf(out, op)
+                    val offset = ip - ipLast
+                    if (offset > MAX_255_COUNT) return java.util.Arrays.copyOf(out, op)
+                    t += (offset shl 8) - offset; t += 31 + (input[ip++].toInt() and 0xFF)
+                    if (ip + 2 > ipEnd) return java.util.Arrays.copyOf(out, op)
+                }
+                next = (input[ip].toInt() and 0xFF) or ((input[ip + 1].toInt() and 0xFF) shl 8)
+                mPos = op - 1 - (next shr 2); next = next and 3; ip += 2
+            } else {
+                if (ip + 2 > ipEnd) return java.util.Arrays.copyOf(out, op)
+                next = (input[ip].toInt() and 0xFF) or ((input[ip + 1].toInt() and 0xFF) shl 8)
+                if ((next and 0xFFFC) == 0xFFFC && (t and 0xF8) == 0x18 && bitstreamVersion != 0) {
+                    if (ip + 3 > ipEnd) return java.util.Arrays.copyOf(out, op)
+                    t = (t and 7) or ((input[ip + 2].toInt() and 0xFF) shl 3); t += MIN_ZERO_RUN_LENGTH
+                    if (op + t > opEnd) return java.util.Arrays.copyOf(out, op)
+                    for (i in 0 until t) out[op++] = 0
+                    next = next and 3; ip += 3; gotoMatchNext = true; continue
+                } else {
+                    mPos = op - ((t and 8) shl 11); t = (t and 7) + 2
+                    if (t == 2) {
+                        val ipLast = ip
+                        while (ip < ipEnd && input[ip].toInt() and 0xFF == 0) ip++
+                        if (ip >= ipEnd) return java.util.Arrays.copyOf(out, op)
+                        val offset = ip - ipLast
+                        if (offset > MAX_255_COUNT) return java.util.Arrays.copyOf(out, op)
+                        t += (offset shl 8) - offset; t += 7 + (input[ip++].toInt() and 0xFF)
+                        if (ip + 2 > ipEnd) return java.util.Arrays.copyOf(out, op)
+                        next = (input[ip].toInt() and 0xFF) or ((input[ip + 1].toInt() and 0xFF) shl 8)
+                    }
+                    ip += 2; mPos -= next shr 2; next = next and 3
+                    if (mPos == op) return java.util.Arrays.copyOf(out, op)
+                    mPos -= 0x4000
+                }
+            }
+
+            if (mPos < 0 || op + t > opEnd) return java.util.Arrays.copyOf(out, op)
+            out[op++] = out[mPos++]; out[op++] = out[mPos++]
+            var count = t - 2
+            while (count > 0) { out[op++] = out[mPos++]; count-- }
+
+            state = next; t = next
+            if (t > 0) {
+                if (ip + t > ipEnd || op + t > opEnd) return java.util.Arrays.copyOf(out, op)
+                while (t > 0) { out[op++] = input[ip++]; t-- }
+            }
+        }
+
+        return java.util.Arrays.copyOf(out, op)
+    }
+}
+
+object RipeMD128 {
+    private const val BLOCK_SIZE = 64
+
+    fun digest(data: ByteArray): ByteArray {
+        var h0 = 0x67452301; var h1 = 0xEFCDAB89.toInt()
+        var h2 = 0x98BADCFE.toInt(); var h3 = 0x10325476
+        val padded = padMessage(data)
+
+        for (offset in padded.indices step BLOCK_SIZE) {
+            val block = padded.copyOfRange(offset, offset + BLOCK_SIZE)
+            val x = ByteBuffer.wrap(block).order(ByteOrder.LITTLE_ENDIAN)
+            var a = h0; var b = h1; var c = h2; var d = h3
+            var ap = h0; var bp = h1; var cp = h2; var dp = h3
+
+            for (j in 0 until 64) {
+                var t = add(a, f(j, b, c, d), x.getInt(RL[j] * 4), K(j)); t = rol(SL[j], t)
+                a = d; d = c; c = b; b = t
+                t = add(ap, f(63 - j, bp, cp, dp), x.getInt(RR[j] * 4), Kp(j)); t = rol(SR[j], t)
+                ap = dp; dp = cp; cp = bp; bp = t
+            }
+
+            val t = add(h1, c, dp); h1 = add(h2, d, ap)
+            h2 = add(h3, a, bp); h3 = add(h0, b, cp); h0 = t
+        }
+
+        return ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
+            .putInt(h0).putInt(h1).putInt(h2).putInt(h3).array()
+    }
+
+    private fun f(j: Int, x: Int, y: Int, z: Int): Int = when {
+        j < 16 -> x xor y xor z
+        j < 32 -> (x and y) or (z and x.inv())
+        j < 48 -> (x or y.inv()) xor z
+        else -> (x and z) or (y and z.inv())
+    }
+    private fun K(j: Int): Int = when { j < 16 -> 0; j < 32 -> 0x5A827999; j < 48 -> 0x6ED9EBA1.toInt(); else -> 0x8F1BBCDC.toInt() }
+    private fun Kp(j: Int): Int = when { j < 16 -> 0x50A28BE6.toInt(); j < 32 -> 0x5C4DD124.toInt(); j < 48 -> 0x6D703EF3.toInt(); else -> 0 }
+    private fun rol(s: Int, x: Int): Int = (x shl s) or (x ushr (32 - s))
+    private fun add(vararg args: Int): Int { var sum = 0; for (arg in args) sum += arg; return sum and 0xFFFFFFFF.toInt() }
+
+    private fun padMessage(data: ByteArray): ByteArray {
+        val bitLen = data.size * 8L
+        val padLen = (BLOCK_SIZE - ((data.size + 9) % BLOCK_SIZE)) % BLOCK_SIZE + 9
+        val result = ByteArray(data.size + padLen)
+        System.arraycopy(data, 0, result, 0, data.size)
+        result[data.size] = 0x80.toByte()
+        ByteBuffer.wrap(result, result.size - 8, 8).order(ByteOrder.LITTLE_ENDIAN).putLong(bitLen)
+        return result
+    }
+
+    private val RL = intArrayOf(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2)
+    private val RR = intArrayOf(5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14)
+    private val SL = intArrayOf(11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12)
+    private val SR = intArrayOf(8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8)
 }
 
 fun main() {

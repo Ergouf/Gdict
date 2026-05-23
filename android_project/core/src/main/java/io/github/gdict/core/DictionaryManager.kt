@@ -523,20 +523,27 @@ class DictionaryManager(private val context: Context) {
             }
 
             val mddFile = findCompanionMdd(mdxFile)
+            android.util.Log.i("DictMgr", "  MDD lookup for '${mdxFile.name}': ${if (mddFile != null) "'${mddFile.name}' (${mddFile.length()} bytes)" else "NOT FOUND"}")
             if (mddFile != null) {
                 try {
+                    android.util.Log.i("DictMgr", "  Loading MDD: '${mddFile.name}' size=${mddFile.length()} bytes...")
                     val mddParser = MdxParser(mddFile)
+                    android.util.Log.i("DictMgr", "  MDD parsed: wordCount=${mddParser.wordCount} title='${mddParser.title}'")
                     if (mddParser.wordCount > 0) {
                         synchronized(this) {
                             loadedMdds.remove(entry.id)?.close()
                             loadedMdds[entry.id] = mddParser
                         }
-                        android.util.Log.i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
+                        android.util.Log.i("DictMgr", "  ✅ MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
                     } else {
+                        android.util.Log.w("DictMgr", "  ⚠️ MDD '${mddFile.name}' has wordCount=0, treating as empty (size=${mddFile.length()})")
                         mddParser.close()
                     }
+                } catch (e: OutOfMemoryError) {
+                    android.util.Log.e("DictMgr", "  ❌ OOM loading MDD '${mddFile.name}' (${mddFile.length()} bytes): ${e.message}")
+                    System.gc()
                 } catch (e: Exception) {
-                    android.util.Log.w("DictMgr", "  Failed to load MDD '${mddFile.name}': ${e.message}")
+                    android.util.Log.e("DictMgr", "  ❌ Failed to load MDD '${mddFile.name}': ${e.javaClass.simpleName}: ${e.message}", e)
                 }
             }
 
@@ -618,8 +625,14 @@ class DictionaryManager(private val context: Context) {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val normalizedPath = path.replace("/", "\\")
         val pathWithBackslash = if (normalizedPath.startsWith("\\")) normalizedPath else "\\$normalizedPath"
+        android.util.Log.d("DictMgr", "getAudioResourceByPath('$path') enabledDicts=${snapshot.size} loadedMdds=${loadedMdds.size}")
         for (dict in snapshot) {
-            val mddParser = synchronized(this) { loadedMdds[dict.id] } ?: continue
+            val mddParser = synchronized(this) { loadedMdds[dict.id] }
+            if (mddParser == null) {
+                android.util.Log.w("DictMgr", "  MDD not loaded for '${dict.name}' (id=${dict.id})")
+                continue
+            }
+            android.util.Log.d("DictMgr", "  Trying '${dict.name}' MDD (words=${mddParser.wordCount})")
             val data = mddParser.readResourceBytes(pathWithBackslash)
             if (data != null && data.isNotEmpty()) {
                 android.util.Log.i("DictMgr", "Audio found by path '$path' in '${dict.name}' size=${data.size}")
@@ -662,6 +675,44 @@ class DictionaryManager(private val context: Context) {
 
                 val mdxFile = File(dict.dictFilePath)
                 sb.appendLine("  fileExists=${mdxFile.exists()} fileSize=${mdxFile.length()}")
+
+                val dictDir = mdxFile.parentFile
+                val dictDirFiles = dictDir?.listFiles()?.sortedBy { it.name }
+                sb.appendLine("  📂 Files in dictDir (${dictDirFiles?.size ?: 0}): ${dictDirFiles?.joinToString { "${it.name}(${it.length()})" }}")
+
+                try {
+                    val uri = android.net.Uri.parse(dict.path)
+                    if (dict.path.startsWith("content://") && android.provider.DocumentsContract.isTreeUri(uri)) {
+                        val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                            uri,
+                            android.provider.DocumentsContract.getTreeDocumentId(uri)
+                        )
+                        val cursor = context.contentResolver.query(
+                            childrenUri,
+                            arrayOf(
+                                android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                                android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                                android.provider.DocumentsContract.Document.COLUMN_SIZE
+                            ),
+                            null,
+                            null,
+                            null
+                        )
+                        val fileList = mutableListOf<String>()
+                        cursor?.use {
+                            while (it.moveToNext()) {
+                                val name = it.getString(1)
+                                val size = it.getLong(2)
+                                if (name != null) {
+                                    fileList.add("$name($size)")
+                                }
+                            }
+                        }
+                        sb.appendLine("  📂 Files in original dir (${fileList.size}): ${fileList.joinToString()}")
+                    }
+                } catch (e: Exception) {
+                    sb.appendLine("  📂 Original dir list failed: ${e.message}")
+                }
 
                 val parser = loadedDicts[dict.id]
                 if (parser != null) {
@@ -723,6 +774,172 @@ class DictionaryManager(private val context: Context) {
         return sb.toString()
     }
 
+    fun testMddResourcesAndHtml(): String {
+        val sb = StringBuilder()
+        sb.appendLine("=== MDD Resource & HTML Render Test ===")
+        sb.appendLine()
+
+        synchronized(this) {
+            for ((id, dict) in dictionaries.withIndex()) {
+                if (!dict.isEnabled) continue
+                sb.appendLine("--- Dict[$id]: ${dict.name} ---")
+
+                val parser = loadedDicts[dict.id]
+                if (parser == null) {
+                    sb.appendLine("  ⚠️ MDX parser not loaded!")
+                    sb.appendLine()
+                    continue
+                }
+
+                val mddParser = loadedMdds[dict.id]
+                if (mddParser == null) {
+                    sb.appendLine("  ℹ️ No MDD file (images may show as transparent)")
+                    val mdxPath = dict.dictFilePath
+                    val mdxFile = File(mdxPath)
+                    val parentDir = mdxFile.parentFile
+                    sb.appendLine("  🔍 MDX path: $mdxPath")
+                    sb.appendLine("  🔍 MDX exists: ${mdxFile.exists()} (${mdxFile.length()} bytes)")
+                    if (parentDir != null && parentDir.exists()) {
+                        sb.appendLine("  📁 Files in dir: ${parentDir.listFiles()?.map { "${it.name} (${it.length()}" }?.joinToString(", ") ?: "empty"}")
+                        val baseName = mdxFile.nameWithoutExtension
+                        val candidates = listOf(
+                            File(parentDir, "$baseName.mdd"),
+                            File(parentDir, "${mdxFile.name}.mdd")
+                        )
+                        for (cand in candidates) {
+                            sb.appendLine("  🔎 MDD candidate '${cand.name}': exists=${cand.exists()}, size=${if (cand.exists()) cand.length() else "N/A"}")
+                            if (cand.exists() && cand.length() > 0) {
+                                try {
+                                    sb.appendLine("  🧪 Attempting to load MDD...")
+                                    val testMdd = MdxParser(cand)
+                                    sb.appendLine("  🧪 MDD parsed: wordCount=${testMdd.wordCount}, title='${testMdd.title}', resourceMode=${testMdd.isResourceMode}")
+                                    sb.appendLine("  🧪 ${testMdd.diagnose().replace("\n", "\n  🧪 ")}")
+                                    if (testMdd.wordCount > 0) {
+                                        val sampleKeys = testMdd.findResourceKeys(".png").take(3)
+                                        sb.appendLine("  🧪 Sample PNG keys: $sampleKeys")
+                                        for (key in sampleKeys) {
+                                            val data = testMdd.readResourceBytesByKey(key)
+                                            sb.appendLine("  🧪   '$key' → ${data?.size ?: 0} bytes")
+                                        }
+                                    } else if (testMdd.isResourceMode) {
+                                        sb.appendLine("  🧪 Stream mode active, testing resource lookup...")
+                                        val testPaths = listOf("\\cepd18.css", "\\95D5C9C1.png")
+                                        for (tp in testPaths) {
+                                            val rd = testMdd.readResourceBytes(tp)
+                                            sb.appendLine("  🧪   '$tp' → ${rd?.size ?: "not found"} bytes")
+                                        }
+                                        val pngKeys = testMdd.findResourceKeys(".css").take(5)
+                                        sb.appendLine("  🧪 CSS keys found: $pngKeys")
+                                        val pngKeys2 = testMdd.findResourceKeys(".png").take(5)
+                                        sb.appendLine("  🧪 PNG keys found: $pngKeys2")
+                                    }
+                                    testMdd.close()
+                                } catch (e: OutOfMemoryError) {
+                                    sb.appendLine("  ❌ OOM loading MDD (${cand.length()} bytes): ${e.message}")
+                                } catch (e: Exception) {
+                                    sb.appendLine("  ❌ Error loading MDD: ${e.javaClass.simpleName}: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    sb.appendLine("  ✅ MDD loaded: ${mddParser.wordCount} resources, resourceMode=${mddParser.isResourceMode}")
+                    val imageKeys = mddParser.findResourceKeys(".png").take(5)
+                    if (imageKeys.isNotEmpty()) {
+                        sb.appendLine("  Sample images: $imageKeys")
+                        for (key in imageKeys.take(3)) {
+                            val data = mddParser.readResourceBytesByKey(key)
+                            sb.appendLine("    '$key' → ${data?.size ?: 0} bytes")
+                        }
+                    } else if (mddParser.isResourceMode) {
+                        sb.appendLine("  🔍 Stream mode: testing resource lookup...")
+                        val testPaths = listOf("\\cepd18.css", "\\95D5C9C1.png", "\\images\\test.png")
+                        for (tp in testPaths) {
+                            val rd = mddParser.readResourceBytes(tp)
+                            sb.appendLine("    '$tp' → ${rd?.size ?: "not found"} bytes")
+                        }
+                    } else {
+                        sb.appendLine("  ⚠️ No .png resources found in MDD")
+                    }
+                }
+            sb.appendLine()
+
+            val cssKeys = mddParser?.findResourceKeys(".css") ?: emptyList()
+            sb.appendLine("  🔍 CSS keys in MDD (endsWith .css): ${cssKeys.size} → $cssKeys")
+
+            if (mddParser != null) {
+                val cssLikeKeys = mddParser.findResourceKeys("css").filter { !it.lowercase().endsWith(".css") }
+                sb.appendLine("  🔍 CSS-like keys (contains 'css'): ${cssLikeKeys.size} → ${cssLikeKeys.take(10)}")
+                val sampleKeys = mddParser.getAllKeywords().take(10)
+                sb.appendLine("  🔍 Sample MDD keywords: $sampleKeys")
+            }
+
+            val cssContent = getCssFromMdd(dict.id)
+            val cssLen = cssContent.length
+            sb.appendLine("  🎨 CSS from MDD: ${if (cssLen > 0) "$cssLen chars" else "EMPTY!"}")
+            if (cssLen > 0 && cssLen <= 500) {
+                sb.appendLine("     Preview: ${cssContent.take(200).replace("\n", "\\n")}")
+            } else if (cssLen > 500) {
+                sb.appendLine("     First 200 chars: ${cssContent.take(200).replace("\n", "\\n")}")
+            }
+
+            val companionCss = parser?.companionCss ?: ""
+            val compLen = companionCss.length
+            sb.appendLine("  📄 companionCss: ${if (compLen > 0) "$compLen chars" else "EMPTY!"}")
+            if (compLen > 0 && compLen <= 500) {
+                sb.appendLine("     Preview: ${companionCss.take(200).replace("\n", "\\n")}")
+            } else if (compLen > 500) {
+                sb.appendLine("     First 200 chars: ${companionCss.take(200).replace("\n", "\\n")}")
+            }
+
+            try {
+                val testWords = listOf("hello", "test", "the", "a", "bye")
+                for (word in testWords) {
+                        val articles = parser.readArticles(word)
+                        if (articles.isNotEmpty()) {
+                            for ((w, def) in articles) {
+                                if (def == null || def.isBlank()) continue
+                                sb.appendLine("  📝 Test word: '$w'")
+                                val hasIpa = def.contains("<ipa>", ignoreCase = true)
+                                val hasImg = Regex("""<img[^>]+src=["']([^"']+)["']""").containsMatchIn(def)
+                                val cssLinks = Regex("""<link[^>]+href=["']([^"']+\.css)["']""").findAll(def).map { it.groupValues[1] }.distinct().toList()
+                                sb.appendLine("     - Has <ipa>: $hasIpa | Has <img>: $hasImg | CSS links: $cssLinks")
+                                val imgSrcs = Regex("""<img[^>]+src=["']([^"']+)["']""").findAll(def).map { it.groupValues[1] }.distinct().toList()
+                                sb.appendLine("     - All img srcs: $imgSrcs")
+                                val soundHrefs = Regex("""href=["']sound://([^"']+)["']""").findAll(def).map { it.groupValues[1] }.distinct().toList()
+                                sb.appendLine("     - All sound:// hrefs: $soundHrefs")
+                                val customTags = Regex("""<([a-zA-Z][a-zA-Z0-9_-]*)[^>]*>""").findAll(def).map { it.groupValues[1].lowercase() }.distinct().sorted().toList()
+                                sb.appendLine("     - All custom tags: $customTags")
+                                sb.appendLine("     - FULL HTML:")
+                                sb.appendLine(def)
+                                break
+                            }
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    sb.appendLine("  ❌ Test search error: ${e.message}")
+                }
+                sb.appendLine()
+            }
+        }
+
+        sb.appendLine("=== transformMdxTags Coverage Check ===")
+        val knownTags = listOf(
+            "<SEP>", "<hw>", "<inf>", "<ex>", "<hit>",
+            "<ipa>", "<prongrp>", "<inflection>", "<capvar>",
+            "<sense-block>", "<sense-body>", "<sense-head>",
+            "<di-head>", "<di-title>", "<di-body>", "<di-info>",
+            "<arl>", "<base>", "<results>", "<forms>", "<inflections>",
+            "<pron>", "<ussymbol>", "<soundfile>"
+        )
+        sb.appendLine("Tags handled by transformMdxTags: ${knownTags.size}")
+        for (tag in knownTags) {
+            sb.appendLine("  ✅ $tag")
+        }
+        return sb.toString()
+    }
+
     fun toggleDictionary(id: Long, enabled: Boolean) {
         val index = dictionaries.indexOfFirst { it.id == id }
         if (index >= 0) {
@@ -739,6 +956,30 @@ class DictionaryManager(private val context: Context) {
     fun getDictionaries(): List<DictEntry> = synchronized(this) { dictionaries.toList() }
 
     fun getParserForDictionary(id: Long): MdxParser? = synchronized(this) { loadedDicts[id] }
+
+    fun getCssFromMdd(dictId: Long): String {
+        val mddParser = synchronized(this) { loadedMdds[dictId] } ?: return ""
+        android.util.Log.i("DictMgr", "getCssFromMdd: dictId=$dictId, mddParser.title='${mddParser.title}' words=${mddParser.wordCount}")
+        val cssKeys = mddParser.findResourceKeys(".css")
+        android.util.Log.i("DictMgr", "getCssFromMdd: found ${cssKeys.size} CSS keys: $cssKeys")
+        if (cssKeys.isEmpty()) return ""
+        val sb = StringBuilder()
+        for (key in cssKeys) {
+            try {
+                val data = mddParser.readResourceBytesByKey(key)
+                if (data != null && data.isNotEmpty()) {
+                    sb.append(String(data, Charsets.UTF_8))
+                    sb.append("\n")
+                    android.util.Log.i("DictMgr", "Loaded CSS from MDD: '$key' (${data.size} bytes)")
+                } else {
+                    android.util.Log.w("DictMgr", "CSS key '$key' returned ${if (data == null) "null" else "empty"}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("DictMgr", "Failed to read CSS '$key' from MDD: ${e.message}")
+            }
+        }
+        return sb.toString()
+    }
 
     @WorkerThread
     fun getRandomWords(count: Int = 5): List<Pair<String, String>> {

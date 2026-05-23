@@ -49,6 +49,11 @@ class MdxParser(private val mdxFile: File) : Closeable {
     private var closed = false
     private var parseFailed = false
 
+    var isResourceMode = false
+        private set
+    private var keywordSectionStart: Long = -1
+    private var keywordSectionEnd: Long = -1
+
     init {
         try {
             parse()
@@ -77,11 +82,13 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val cssCandidates = listOf(
             File(parentDir, "$baseName.css"),
             File(parentDir, "${mdxFile.name}.css")
-        )
+        ) + (parentDir.listFiles()?.filter { it.isFile && it.name.lowercase().endsWith(".css") } ?: emptyList()).distinctBy { it.absolutePath }
+
         for (cssFile in cssCandidates) {
             if (cssFile.exists() && cssFile.length() > 0 && cssFile.length() < 5 * 1024 * 1024) {
                 try {
                     sb.append(cssFile.readText(Charsets.UTF_8))
+                    sb.append("\n")
                     Log.i(TAG, "Loaded CSS from: ${cssFile.name} (${cssFile.length()} bytes)")
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to read CSS: ${cssFile.name}: ${e.message}")
@@ -197,7 +204,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
     fun getAllKeywords(): List<String> = keywordIndex.map { it.word }
 
     fun readResourceBytes(key: String): ByteArray? {
-        if (closed || parseFailed || keywordIndex.isEmpty()) return null
+        if (closed || parseFailed) return null
+        if (!isResourceMode && keywordIndex.isEmpty()) return null
+        if (isResourceMode) return readResourceBytesStream(key)
         val normalizedKey = if (key.startsWith("\\")) key else "\\$key"
         val idx = findFirstKeywordIndex(normalizedKey)
             ?: findFirstKeywordIndex(key)
@@ -207,7 +216,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     fun findResourceKeys(suffix: String): List<String> {
-        if (closed || parseFailed || keywordIndex.isEmpty()) return emptyList()
+        if (closed || parseFailed) return emptyList()
+        if (isResourceMode) return findResourceKeysStream(suffix)
+        if (keywordIndex.isEmpty()) return emptyList()
         val lowerSuffix = suffix.lowercase()
         return keywordIndex.filter {
             it.word.lowercase().endsWith(lowerSuffix)
@@ -215,7 +226,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     fun readResourceBytesByKey(key: String): ByteArray? {
-        if (closed || parseFailed || keywordIndex.isEmpty()) return null
+        if (closed || parseFailed) return null
+        if (isResourceMode) return readResourceBytesStream(key)
+        if (keywordIndex.isEmpty()) return null
         val idx = findFirstKeywordIndex(key) ?: return null
         val entry = keywordIndex[idx]
         return readRecordBytes(entry.recordOffset, entry.recordSize)
@@ -248,6 +261,162 @@ class MdxParser(private val mdxFile: File) : Closeable {
         }
     }
 
+    private fun readResourceBytesStream(key: String): ByteArray? {
+        if (keywordSectionStart < 0 || recordBlockInfos.isEmpty()) return null
+        val targetKey = if (key.startsWith("\\")) key else "\\$key"
+        Log.d(TAG, "Stream resource lookup: '$targetKey'")
+        synchronized(raf) {
+            val savedPosition = raf.filePointer
+            try {
+                raf.seek(keywordSectionStart)
+
+                val numKeyBlocks: Long
+                val keyIndexDecompLen: Long
+                val keyIndexCompLen: Long
+
+                if (engineVersion >= 2.0) {
+                    numKeyBlocks = raf.readLongBE()
+                    raf.readLongBE()
+                    keyIndexDecompLen = raf.readLongBE()
+                    keyIndexCompLen = raf.readLongBE()
+                    raf.readLongBE()
+                    raf.readIntBE()
+                } else {
+                    numKeyBlocks = raf.readIntBE().toLong()
+                    raf.readIntBE()
+                    keyIndexCompLen = raf.readIntBE().toLong()
+                    raf.readIntBE()
+                    keyIndexDecompLen = 0
+                }
+
+                Log.d(TAG, "Stream header: numKeyBlocks=$numKeyBlocks idxComp=$keyIndexCompLen idxDecomp=$keyIndexDecompLen")
+
+                if (numKeyBlocks <= 0 || numKeyBlocks > 10000000 || keyIndexCompLen <= 0) {
+                    Log.w(TAG, "Stream: invalid header values")
+                    return null
+                }
+
+                if (keyIndexCompLen > 100 * 1024 * 1024) {
+                    Log.w(TAG, "Stream: keyIndexCompLen too large ($keyIndexCompLen), cannot stream")
+                    return null
+                }
+
+                val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
+                raf.readFully(keyIndexRaw)
+
+                if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
+                    val checksumBytes = keyIndexRaw.copyOfRange(4, 8)
+                    val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
+                    val key = RipeMD128.digest(keyInput)
+                    fastDecrypt(keyIndexRaw, 8, key)
+                    Log.d(TAG, "Stream: key index decrypted")
+                }
+
+                val keyIndexData = if (engineVersion >= 2.0 && keyIndexDecompLen > 0) {
+                    decompressBlock(keyIndexRaw, keyIndexDecompLen.toInt())
+                } else keyIndexRaw
+
+                val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
+                Log.d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for '$targetKey'")
+
+                for ((blockIdx, meta) in blockMetas.withIndex()) {
+                    if (meta.compSize <= 0 || meta.compSize > 50 * 1024 * 1024) {
+                        Log.w(TAG, "Stream: skip block $blockIdx compSize=${meta.compSize}")
+                        continue
+                    }
+                    val compData = ByteArray(meta.compSize.toInt())
+                    raf.readFully(compData)
+                    val blockData = decompressBlock(compData, meta.decompSize)
+                    val stream = ByteStream(blockData)
+
+                    while (stream.remaining >= numberWidth) {
+                        val recordOffset = if (engineVersion >= 2.0) stream.readLongBE() else stream.readIntBE().toLong()
+                        if (stream.remaining == 0) break
+                        val wordBytes = stream.readNullTerminated(bpu)
+                        val word = String(wordBytes, charset(encoding))
+                        if (word.equals(targetKey, ignoreCase = true) || word.endsWith(targetKey, ignoreCase = true)) {
+                            Log.i(TAG, "Stream found: '$word' at offset=$recordOffset")
+                            return readRecordBytes(recordOffset, 0)
+                        }
+                    }
+                }
+                Log.w(TAG, "Stream lookup not found: '$targetKey'")
+                return null
+            } catch (e: Exception) {
+                Log.e(TAG, "Stream resource error: ${e.message}")
+                return null
+            } finally {
+                raf.seek(savedPosition)
+            }
+        }
+    }
+
+    private fun findResourceKeysStream(suffix: String): List<String> {
+        if (keywordSectionStart < 0) return emptyList()
+        val results = mutableListOf<String>()
+        val lowerSuffix = suffix.lowercase()
+        synchronized(raf) {
+            val savedPosition = raf.filePointer
+            try {
+                raf.seek(keywordSectionStart)
+
+                val numKeyBlocks: Long
+                val keyIndexDecompLen: Long
+                val keyIndexCompLen: Long
+
+                if (engineVersion >= 2.0) {
+                    numKeyBlocks = raf.readLongBE()
+                    raf.readLongBE()
+                    keyIndexDecompLen = raf.readLongBE()
+                    keyIndexCompLen = raf.readLongBE()
+                    raf.readLongBE()
+                    raf.readIntBE()
+                } else {
+                    numKeyBlocks = raf.readIntBE().toLong()
+                    raf.readIntBE()
+                    keyIndexCompLen = raf.readIntBE().toLong()
+                    raf.readIntBE()
+                    keyIndexDecompLen = 0
+                }
+
+                if (numKeyBlocks <= 0 || numKeyBlocks > 10000000 || keyIndexCompLen <= 0 || keyIndexCompLen > 100 * 1024 * 1024) return emptyList()
+
+                val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
+                raf.readFully(keyIndexRaw)
+
+                if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
+                    val checksumBytes = keyIndexRaw.copyOfRange(4, 8)
+                    val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
+                    val key = RipeMD128.digest(keyInput)
+                    fastDecrypt(keyIndexRaw, 8, key)
+                }
+
+                val keyIndexData = if (engineVersion >= 2.0 && keyIndexDecompLen > 0) decompressBlock(keyIndexRaw, keyIndexDecompLen.toInt()) else keyIndexRaw
+
+                val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
+                for (meta in blockMetas) {
+                    if (results.size >= 50 || meta.compSize <= 0 || meta.compSize > 10*1024*1024) continue
+                    val compData = ByteArray(meta.compSize.toInt())
+                    raf.readFully(compData)
+                    val blockData = decompressBlock(compData, meta.decompSize)
+                    val stream = ByteStream(blockData)
+                    while (stream.remaining >= numberWidth && results.size < 50) {
+                        if (engineVersion >= 2.0) stream.readLongBE() else stream.readIntBE()
+                        if (stream.remaining == 0) break
+                        val wordBytes = stream.readNullTerminated(bpu)
+                        val word = String(wordBytes, charset(encoding))
+                        if (word.lowercase().endsWith(lowerSuffix)) results.add(word)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "findResourceKeysStream error: ${e.message}")
+            } finally {
+                raf.seek(savedPosition)
+            }
+        }
+        return results
+    }
+
     val filePath: String get() = mdxFile.absolutePath
     val fileName: String get() = mdxFile.name
     val fileSize: Long get() = mdxFile.length()
@@ -256,11 +425,80 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val sb = StringBuilder()
         sb.appendLine("MdxParser Diagnostics:")
         sb.appendLine("  file='$mdxFile' (${mdxFile.length()} bytes)")
-        sb.appendLine("  title='$title' encoding='$encoding'")
+        sb.appendLine("  title='$title' encoding='$encoding' encrypt=$encrypt")
         sb.appendLine("  engineVersion=$engineVersion bpu=$bpu numberWidth=$numberWidth")
         sb.appendLine("  wordCount=$wordCount caseSensitive=$isKeyCaseSensitive")
         sb.appendLine("  keywordBlocks=${keywordIndex.size} recordBlocks=${recordBlockInfos.size}")
+        sb.appendLine("  isResourceMode=$isResourceMode keywordSectionStart=$keywordSectionStart keywordSectionEnd=$keywordSectionEnd")
         sb.appendLine("  closed=$closed")
+
+        if (keywordSectionStart > 0 && !closed) {
+            try {
+                synchronized(raf) {
+                    raf.seek(keywordSectionStart)
+                    if (engineVersion >= 2.0) {
+                        val nkb = raf.readLongBE()
+                        val te = raf.readLongBE()
+                        val idxDec = raf.readLongBE()
+                        val idxComp = raf.readLongBE()
+                        val kbLen = raf.readLongBE()
+                        val chk = raf.readIntBE()
+                        sb.appendLine("  kwHeader: numKeyBlocks=$nkb totalEntries=$te idxDecomp=$idxDec idxComp=$idxComp keyBlocksLen=$kbLen checksum=$chk")
+                        if (idxComp > 0 && idxComp < 100 * 1024 * 1024) {
+                            val raw = ByteArray(idxComp.toInt())
+                            raf.readFully(raw)
+                            sb.appendLine("  kwIdxRaw first16: ${raw.take(16).joinToString(" ") { "%02X".format(it) }}")
+                            if ((encrypt and 2) != 0 && raw.size > 8) {
+                                val checksumBytes = raw.copyOfRange(4, 8)
+                                val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
+                                val key = RipeMD128.digest(keyInput)
+                                sb.appendLine("  decryptKey: ${key.joinToString(" ") { "%02X".format(it) }}")
+                                fastDecrypt(raw, 8, key)
+                                sb.appendLine("  kwIdxDecrypted first16: ${raw.take(16).joinToString(" ") { "%02X".format(it) }}")
+                                val compType = (raw[0].toInt() and 0xFF) or ((raw[1].toInt() and 0xFF) shl 8) or ((raw[2].toInt() and 0xFF) shl 16) or ((raw[3].toInt() and 0xFF) shl 24)
+                                sb.appendLine("  compType after decrypt: $compType")
+                            }
+                            try {
+                                val decomp = decompressBlock(raw, idxDec.toInt())
+                                sb.appendLine("  kwIdxDecomp: ${decomp.size} bytes (expected $idxDec)")
+                                if (decomp.size > 0) {
+                                    sb.appendLine("  kwIdxDecomp first32: ${decomp.take(32).joinToString(" ") { "%02X".format(it) }}")
+                                    val metas = decodeKeyBlockInfo(decomp, nkb.toInt())
+                                    sb.appendLine("  blockMetas from stream: ${metas.size}")
+                                    if (metas.isNotEmpty()) {
+                                        sb.appendLine("  meta[0]: numEntries=${metas[0].numEntries} compSize=${metas[0].compSize} decompSize=${metas[0].decompSize}")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                sb.appendLine("  kwIdxDecomp FAILED: ${e.javaClass.simpleName}: ${e.message}")
+                            }
+                        }
+                    } else {
+                        val nkb = raf.readIntBE()
+                        val te = raf.readIntBE()
+                        val idxComp = raf.readIntBE()
+                        val kbLen = raf.readIntBE()
+                        sb.appendLine("  kwHeader: numKeyBlocks=$nkb totalEntries=$te idxComp=$idxComp keyBlocksLen=$kbLen")
+                        if (idxComp > 0 && idxComp < 100 * 1024 * 1024) {
+                            val raw = ByteArray(idxComp)
+                            raf.readFully(raw)
+                            sb.appendLine("  kwIdxRaw first16: ${raw.take(16).joinToString(" ") { "%02X".format(it) }}")
+                            try {
+                                val metas = decodeKeyBlockInfo(raw, nkb)
+                                sb.appendLine("  blockMetas from V1 idx: ${metas.size}")
+                                if (metas.isNotEmpty()) {
+                                    sb.appendLine("  meta[0]: numEntries=${metas[0].numEntries} compSize=${metas[0].compSize} decompSize=${metas[0].decompSize}")
+                                }
+                            } catch (e: Exception) {
+                                sb.appendLine("  V1 idx parse FAILED: ${e.javaClass.simpleName}: ${e.message}")
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                sb.appendLine("  kwHeader read error: ${e.javaClass.simpleName}: ${e.message}")
+            }
+        }
 
         if (recordBlockInfos.isNotEmpty()) {
             sb.appendLine("  recordBlockInfo[0]: startOffset=${recordBlockInfos[0].recordStartOffset} " +
@@ -445,10 +683,20 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     private fun parse() {
+        val fileSize = mdxFile.length()
+        Log.i(TAG, "开始解析文件: ${mdxFile.name} (${fileSize} bytes)")
+        if (fileSize < 12) {
+            throw IllegalArgumentException("文件太小: ${mdxFile.name} ($fileSize bytes < 12)")
+        }
         parseHeader()
+        keywordSectionStart = raf.filePointer
         parseKeywordSection()
+        if (wordCount == 0 && mdxFile.length() > 10 * 1024 * 1024) {
+            Log.w(TAG, "大文件MDD关键词区为空，启用资源流式模式")
+            isResourceMode = true
+        }
         parseRecordSection()
-        Log.i(TAG, "解析完成: title='$title' words=$wordCount blocks=${recordBlockInfos.size} encoding='$encoding' version=$engineVersion bpu=$bpu")
+        Log.i(TAG, "解析完成: title='$title' words=$wordCount blocks=${recordBlockInfos.size} encoding='$encoding' version=$engineVersion bpu=$bpu resourceMode=$isResourceMode")
     }
 
     private fun parseHeader() {
@@ -463,7 +711,8 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val headerStr = String(headerBytes, Charsets.UTF_16LE)
 
         title = extractAttr(headerStr, "Title") ?: mdxFile.nameWithoutExtension
-        encoding = extractAttr(headerStr, "Encoding") ?: "UTF-8"
+        val rawEncoding = extractAttr(headerStr, "Encoding")?.ifBlank { null }
+        encoding = rawEncoding ?: if (engineVersion >= 2.0) "UTF-16LE" else "UTF-8"
         isKeyCaseSensitive = extractAttr(headerStr, "KeyCaseSensitive")?.equals("Yes", ignoreCase = true) ?: false
         encrypt = extractAttr(headerStr, "Encrypted")?.let {
             when {
@@ -477,7 +726,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         bpu = if (encoding.uppercase().replace("-", "").startsWith("UTF16")) 2 else 1
         numberWidth = if (engineVersion >= 2.0) 8 else 4
 
-        Log.i(TAG, "Header: title='$title' encoding='$encoding' encrypt=$encrypt caseSensitive=$isKeyCaseSensitive engineVer=$engineVersion headerLen=$headerLen bpu=$bpu numberWidth=$numberWidth")
+        Log.i(TAG, "Header: title='$title' encoding='$encoding' (raw='$rawEncoding') encrypt=$encrypt caseSensitive=$isKeyCaseSensitive engineVer=$engineVersion headerLen=$headerLen bpu=$bpu numberWidth=$numberWidth")
     }
 
     private fun parseKeywordSection() {
@@ -486,6 +735,8 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val keyIndexDecompLen: Long
         val keyIndexCompLen: Long
         val keyBlocksLen: Long
+
+        val headerStart = raf.filePointer
 
         if (engineVersion >= 2.0) {
             numKeyBlocks = raf.readLongBE()
@@ -504,12 +755,33 @@ class MdxParser(private val mdxFile: File) : Closeable {
             Log.i(TAG, "Keyword V1: numKeyBlocks=$numKeyBlocks totalEntries=$totalEntries idxLen=$keyIndexCompLen keyBlocksLen=$keyBlocksLen")
         }
 
+        val sectionEndPos = raf.filePointer + keyIndexCompLen + keyBlocksLen
+        keywordSectionEnd = sectionEndPos
+
         if (numKeyBlocks <= 0 || numKeyBlocks > 10000000) {
-            Log.e(TAG, "无效的numKeyBlocks: $numKeyBlocks")
+            Log.e(TAG, "无效的numKeyBlocks: $numKeyBlocks, seeking to record section")
+            raf.seek(sectionEndPos)
             return
         }
 
-        val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
+        val fileSize = mdxFile.length()
+        val currentPos = raf.filePointer
+        val remainingBytes = fileSize - currentPos
+
+        if (keyIndexCompLen <= 0 || keyIndexCompLen > remainingBytes) {
+            Log.e(TAG, "无效的keyIndexCompLen: $keyIndexCompLen (文件剩余: $remainingBytes bytes), seeking to record section")
+            raf.seek(sectionEndPos)
+            return
+        }
+
+        if (keyIndexDecompLen > 0 && keyIndexDecompLen > 200 * 1024 * 1024) {
+            Log.e(TAG, "keyIndexDecompLen过大: ${keyIndexDecompLen} (>200MB), 启用流式模式, seeking to record section")
+            raf.seek(sectionEndPos)
+            return
+        }
+
+        val safeCompLen = minOf(keyIndexCompLen.toInt(), remainingBytes.toInt())
+        val keyIndexRaw = ByteArray(safeCompLen)
         raf.readFully(keyIndexRaw)
 
         if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
@@ -526,13 +798,47 @@ class MdxParser(private val mdxFile: File) : Closeable {
             keyIndexRaw
         }
 
-        val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
+        var blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
 
-        Log.i(TAG, "Key block info解析完成: ${blockMetas.size} blocks")
+        val maxCompSize = keyBlocksLen + keyIndexCompLen + 1024
+        val needsUtf16Fallback = blockMetas.any { it.compSize <= 0 || it.compSize > maxCompSize || it.decompSize <= 0 || it.decompSize > 500 * 1024 * 1024 }
+        if (needsUtf16Fallback && bpu == 1) {
+            Log.w(TAG, "Key block info解析异常(compSize超出范围)，尝试UTF-16LE编码 (bpu=2)")
+            val origBpu = bpu
+            val origEncoding = encoding
+            bpu = 2
+            encoding = "UTF-16LE"
+            blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
+            val stillBad = blockMetas.any { it.compSize <= 0 || it.compSize > maxCompSize || it.decompSize <= 0 || it.decompSize > 500 * 1024 * 1024 }
+            if (stillBad) {
+                Log.w(TAG, "UTF-16LE回退也失败，恢复原编码")
+                bpu = origBpu
+                encoding = origEncoding
+                blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
+            } else {
+                Log.i(TAG, "UTF-16LE回退成功! blockMetas=${blockMetas.size}, meta[0]: compSize=${blockMetas[0].compSize} decompSize=${blockMetas[0].decompSize}")
+            }
+        }
+
+        Log.i(TAG, "Key block info解析完成: ${blockMetas.size} blocks (encoding=$encoding bpu=$bpu)")
+
+        val maxBlockSize = 50 * 1024 * 1024
+        var totalAllocated = 0L
 
         for ((blockIdx, meta) in blockMetas.withIndex()) {
+            if (meta.compSize <= 0 || meta.compSize > maxBlockSize) {
+                Log.w(TAG, "  Block $blockIdx: 跳过异常块 compSize=${meta.compSize} (max=$maxBlockSize)")
+                continue
+            }
+            if (totalAllocated + meta.compSize > 200 * 1024 * 1024) {
+                Log.w(TAG, "  Block $blockIdx: 总分配超限，跳过 (已分配=${totalAllocated})")
+                break
+            }
+
             val blockCompData = ByteArray(meta.compSize.toInt())
             raf.readFully(blockCompData)
+            totalAllocated += meta.compSize
+
             val blockData = decompressBlock(blockCompData, meta.decompSize)
 
             if (blockData.size != meta.decompSize) {
@@ -571,6 +877,24 @@ class MdxParser(private val mdxFile: File) : Closeable {
         keywordIndex.sortBy { it.word }
 
         for (i in keywordIndex.indices) {
+            if (i < keywordIndex.size - 1) {
+                val nextOffset = keywordIndex[i + 1].recordOffset
+                val currOffset = keywordIndex[i].recordOffset
+                if (nextOffset > currOffset) {
+                    keywordIndex[i] = keywordIndex[i].copy(recordSize = (nextOffset - currOffset).toInt())
+                }
+            }
+        }
+
+        val totalDecompSize = recordBlockInfos.sumOf { it.decompressedSize }
+        if (keywordIndex.isNotEmpty() && keywordIndex.last().recordSize == 0 && totalDecompSize > 0) {
+            val lastOffset = keywordIndex.last().recordOffset
+            keywordIndex[keywordIndex.lastIndex] = keywordIndex.last().copy(
+                recordSize = (totalDecompSize - lastOffset).toInt().coerceAtLeast(0)
+            )
+        }
+
+        for (i in keywordIndex.indices) {
             val lower = keywordIndex[i].word.lowercase()
             lowercaseWordMap.getOrPut(lower) { mutableListOf() }.add(i)
         }
@@ -584,6 +908,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
             Log.d(TAG, "前5个词: ${keywordIndex.take(5).map { it.word }}")
             Log.d(TAG, "后5个词: ${keywordIndex.takeLast(5).map { it.word }}")
         }
+
+        raf.seek(keywordSectionEnd)
+        Log.i(TAG, "parseKeywordSection done, seeked to $keywordSectionEnd")
     }
 
     /**
@@ -650,6 +977,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     private fun parseRecordSection() {
+        val recordSectionStart = raf.filePointer
+        Log.i(TAG, "parseRecordSection starting at offset $recordSectionStart (keywordSectionEnd=$keywordSectionEnd)")
+
         val numRecordBlocks: Long
         val numEntries: Long
         val indexLen: Long
@@ -669,7 +999,16 @@ class MdxParser(private val mdxFile: File) : Closeable {
 
         Log.i(TAG, "Record section: numRecordBlocks=$numRecordBlocks numEntries=$numEntries indexLen=$indexLen blocksLen=$blocksLen")
 
-        if (numRecordBlocks <= 0 || numRecordBlocks > 10000000) return
+        if (numRecordBlocks <= 0 || numRecordBlocks > 10000000) {
+            Log.e(TAG, "Invalid numRecordBlocks=$numRecordBlocks, dumping raw bytes at offset $recordSectionStart")
+            try {
+                raf.seek(recordSectionStart)
+                val dump = ByteArray(minOf(64, (mdxFile.length() - recordSectionStart).toInt()))
+                raf.readFully(dump)
+                Log.e(TAG, "Raw bytes: ${dump.joinToString(" ") { "%02X".format(it) }}")
+            } catch (_: Exception) {}
+            return
+        }
 
         val compSizes = LongArray(numRecordBlocks.toInt())
         val decompSizes = LongArray(numRecordBlocks.toInt())

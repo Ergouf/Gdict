@@ -203,7 +203,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun diagnoseDictionaries() {
         viewModelScope.launch {
             _diagnosticResult.value = withContext(Dispatchers.IO) {
-                repository.diagnoseDictionaries()
+                repository.diagnoseDictionaries() + "\n\n" + repository.testMddResourcesAndHtml()
             }
         }
     }
@@ -232,5 +232,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun getAudioResourceByPath(path: String): ByteArray? {
         return repository.getAudioResourceByPath(path)
+    }
+
+    fun getResourceByPathSync(path: String): ByteArray? {
+        return repository.getResourceByPathSync(path)
     }
 }

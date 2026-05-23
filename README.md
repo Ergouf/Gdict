@@ -7,7 +7,7 @@
 - **MDX/MDD 词典解析** — 支持 V1.2 和 V2.0 规范，含 LZO/zlib 解压、RipeMD128 加密解密
 - **多词典管理** — 添加、删除、启停词典，重启后持久化，文件夹批量扫描导入
 - **单词搜索** — 二分查找 O(log n) 精确匹配 + 前缀预测搜索
-- **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，支持从 MDD 提取 CSS 样式
+- **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，支持从 MDD 提取 CSS/图片/音频资源
 - **MDD 音频播放** — 从 MDD 资源包提取发音音频，回退到 TTS 语音合成
 - **Word of the Day** — 从已加载词典中动态生成每日推荐单词
 - **生词本** — 收藏单词，支持删除和二次确认
@@ -25,47 +25,59 @@
 | 设计系统 | Material Design 3 |
 | 导航 | Navigation Compose |
 | 状态管理 | ViewModel + StateFlow |
-| 数据持久化 | SharedPreferences |
+| 数据持久化 | DataStore Preferences |
 | 音频 | MediaPlayer + TextToSpeech |
 | 构建配置 | Gradle Kotlin DSL |
 
 ## 项目结构
 
 ```
-android_project/
-├── app/                                    # 应用模块
-│   ├── src/main/java/io/github/gdict/
-│   │   ├── MainActivity.kt                 # 入口 Activity
-│   │   ├── GdictApplication.kt             # Application
-│   │   ├── data/
-│   │   │   └── AppRepository.kt            # 数据仓库
-│   │   ├── viewmodel/
-│   │   │   └── AppViewModel.kt             # ViewModel
-│   │   └── ui/
-│   │       ├── GoldenDictNgApp.kt          # 主 UI + 底部导航
-│   │       ├── screens/
-│   │       │   ├── SearchScreen.kt         # 搜索页 + Word of the Day
-│   │       │   ├── WordDetailScreen.kt     # 词条详情页 + 发音
-│   │       │   ├── BookmarksScreen.kt      # 生词本页
-│   │       │   ├── HistoryScreen.kt        # 历史记录页
-│   │       │   ├── DictionariesScreen.kt   # 词典管理页
-│   │       │   └── SettingsScreen.kt       # 设置页
-│   │       └── theme/
-│   │           ├── Color.kt                # GdictColors 色板
-│   │           ├── Theme.kt                # GdictTheme + Edge-to-Edge
-│   │           └── Type.kt                 # GdictTypography
+Gdict/
+├── android_project/                        # Android 应用（主项目）
+│   ├── app/                                # 应用模块
+│   │   ├── src/main/java/io/github/gdict/
+│   │   │   ├── MainActivity.kt             # 入口 Activity
+│   │   │   ├── GdictApplication.kt         # Application
+│   │   │   ├── data/
+│   │   │   │   └── AppRepository.kt        # 数据仓库
+│   │   │   ├── viewmodel/
+│   │   │   │   └── AppViewModel.kt         # ViewModel
+│   │   │   └── ui/
+│   │   │       ├── GoldenDictNgApp.kt      # 主 UI + 底部导航
+│   │   │       ├── screens/
+│   │   │       │   ├── SearchScreen.kt     # 搜索页 + Word of the Day
+│   │   │       │   ├── WordDetailScreen.kt # 词条详情页 + 发音
+│   │   │       │   ├── BookmarksScreen.kt  # 生词本页
+│   │   │       │   ├── HistoryScreen.kt    # 历史记录页
+│   │   │       │   ├── DictionariesScreen.kt # 词典管理页
+│   │   │       │   └── SettingsScreen.kt   # 设置页
+│   │   │       └── theme/
+│   │   │           ├── Color.kt            # GdictColors 色板
+│   │   │           ├── Theme.kt            # GdictTheme + Edge-to-Edge
+│   │   │           └── Type.kt             # GdictTypography
+│   │   ├── build.gradle.kts
+│   │   └── proguard-rules.pro
+│   ├── core/                               # 核心库模块
+│   │   ├── src/main/java/io/github/gdict/core/
+│   │   │   ├── MdxParser.kt                # MDX/MDD 解析器（含流式查找）
+│   │   │   ├── Lzo1xDecompressor.kt        # LZO1X 解压
+│   │   │   ├── RipeMD128.kt                # RipeMD-128 哈希
+│   │   │   └── DictionaryManager.kt        # 词典管理
+│   │   ├── src/test/java/io/github/gdict/core/
+│   │   │   └── MdxParserTest.kt            # 解析器单元测试
+│   │   ├── build.gradle.kts
+│   │   └── proguard-rules.pro
+│   ├── gradle/wrapper/
+│   ├── build.gradle.kts
+│   ├── settings.gradle.kts
+│   ├── gradle.properties
+│   ├── export.build.gradle.kts             # 导出任务构建配置
+│   └── play_store_512.png                  # Play Store 图标
+├── export_project/                         # 独立导出工具项目
 │   └── build.gradle.kts
-├── core/                                   # 核心库模块
-│   ├── src/main/java/io/github/gdict/core/
-│   │   ├── MdxParser.kt                    # MDX/MDD 解析器
-│   │   ├── Lzo1xDecompressor.kt            # LZO1X 解压
-│   │   ├── RipeMD128.kt                    # RipeMD-128 哈希
-│   │   └── DictionaryManager.kt            # 词典管理
-│   └── src/test/java/io/github/gdict/core/
-│       └── MdxParserTest.kt                # 解析器单元测试
-├── build.gradle.kts
-├── settings.gradle.kts
-└── gradle.properties
+├── export_words.kt                         # 独立 MDX 导出脚本（含 LZO/RipeMD128）
+├── .gitignore
+└── README.md
 ```
 
 ## 快速开始
@@ -85,12 +97,32 @@ cd android_project
 # Debug 构建
 ./gradlew assembleDebug
 
-# Release 构建
+# Release 构建（需先配置 local.properties）
 ./gradlew assembleRelease
 
 # APK 输出位置
 # app/build/outputs/apk/debug/app-debug.apk
 # app/build/outputs/apk/release/app-release.apk
+```
+
+### Release 签名配置
+
+在 `android_project/` 下创建 `local.properties` 文件：
+
+```properties
+storeFile=release.keystore
+storePassword=<your_store_password>
+keyAlias=gdict
+keyPassword=<your_key_password>
+```
+
+生成新的 keystore：
+
+```bash
+keytool -genkeypair -v \
+  -keystore release.keystore \
+  -alias gdict \
+  -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 ### 使用 Android Studio
@@ -107,6 +139,9 @@ cd android_project
 
 # 运行 MDX 解析器单元测试
 ./gradlew :core:testDebugUnitTest --rerun-tasks
+
+# 指定 MDX 文件路径运行测试
+./gradlew :core:testDebugUnitTest -Dmdx.file.path=/path/to/dict.mdx
 ```
 
 ## 使用说明
@@ -135,6 +170,19 @@ cd android_project
 - 在详情页点击书签图标收藏单词
 - 在 Favorites 页查看和管理收藏的单词
 - 支持删除收藏，有二次确认对话框
+
+### 导出词条（开发工具）
+
+`export_words.kt` 是独立的 Kotlin 脚本，可脱离 Android 环境运行，用于导出 MDX 词典中的词条到 HTML 文件：
+
+```bash
+# 使用 kotlinc 直接运行
+kotlinc -script export_words.kt -- /path/to/dict.mdx /path/to/output
+
+# 或通过 Gradle 任务运行
+cd android_project
+./gradlew export -PmdxPath=/path/to/dict.mdx -PoutputDir=/path/to/output
+```
 
 ## 核心架构
 
@@ -171,6 +219,23 @@ MDD 文件与 MDX 共享相同的格式规范，但存储的是资源文件（CS
 2. ViewModel 分发到所有启用的词典
 3. 每个 MdxParser 实例独立执行二分查找
 4. 结果汇总后按词典分组展示
+
+### 流式资源查找
+
+对于 MDD 资源文件（CSS、图片、音频等），采用流式查找方式：
+
+1. 直接从文件中读取关键词索引块
+2. 逐块解压并搜索目标资源键
+3. 找到后通过记录偏移量读取资源数据
+4. 查找完成后自动恢复文件指针位置，不影响后续操作
+
+### WebView 资源拦截
+
+详情页通过 `WebViewClient.shouldInterceptRequest` 拦截资源请求：
+
+1. WebView 加载词典 HTML 内容时请求 CSS/图片/音频等资源
+2. 拦截请求后从 MDD 文件同步读取对应资源
+3. 返回包含资源数据的 `WebResourceResponse`
 
 ## 致谢
 
