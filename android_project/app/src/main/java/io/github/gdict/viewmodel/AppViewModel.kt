@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
+import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
 import io.github.gdict.data.AppRepository
 import io.github.gdict.data.BookmarkItem
@@ -105,7 +106,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _scanPopup.value = enabled
     }
 
-    fun scanDirectory(uri: Uri): List<DictionaryManager.DictCandidate> {
+    fun scanDirectory(uri: Uri): List<DictFileImporter.DictCandidate> {
         return try {
             repository.scanDirectory(uri)
         } catch (e: Exception) {
@@ -125,7 +126,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun batchImport(candidates: List<DictionaryManager.DictCandidate>, onComplete: () -> Unit) {
+    fun batchImport(candidates: List<DictFileImporter.DictCandidate>, onComplete: () -> Unit) {
         viewModelScope.launch {
             _importing.value = true
             var successCount = 0

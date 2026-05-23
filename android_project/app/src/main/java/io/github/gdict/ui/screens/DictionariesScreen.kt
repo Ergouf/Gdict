@@ -36,6 +36,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
 import io.github.gdict.data.Dictionary
 import io.github.gdict.ui.theme.GdictColors
@@ -51,7 +52,7 @@ fun DictionariesScreen(
     var visible by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
-    var scannedCandidates by remember { mutableStateOf<List<DictionaryManager.DictCandidate>>(emptyList()) }
+    var scannedCandidates by remember { mutableStateOf<List<DictFileImporter.DictCandidate>>(emptyList()) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 

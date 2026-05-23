@@ -2,6 +2,7 @@ package io.github.gdict.data
 
 import android.content.Context
 import android.net.Uri
+import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,7 +75,7 @@ class AppRepository(private val context: Context) {
         }
     }
 
-    fun scanDirectory(uri: Uri): List<DictionaryManager.DictCandidate> {
+    fun scanDirectory(uri: Uri): List<DictFileImporter.DictCandidate> {
         return dictionaryManager.scanDirectory(uri)
     }
 
