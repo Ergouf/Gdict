@@ -35,13 +35,13 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
 
 ```
 Gdict/
-├── android_project/                        # Android 应用（主项目）
-│   ├── app/                                # 应用模块
+├── android_project/                        # Android app (main project)
+│   ├── app/                                # App module
 │   │   ├── src/main/java/io/github/gdict/
-│   │   │   ├── MainActivity.kt             # 入口 Activity
+│   │   │   ├── MainActivity.kt             # Entry Activity
 │   │   │   ├── GdictApplication.kt         # Application
 │   │   │   ├── data/
-│   │   │   │   └── AppRepository.kt        # 数据仓库
+│   │   │   │   └── AppRepository.kt        # Data repository
 │   │   │   ├── viewmodel/
 │   │   │   │   ├── SettingsViewModel.kt     # Global settings (dark mode, etc.)
 │   │   │   │   ├── SearchViewModel.kt       # Search + history + WotD
@@ -49,46 +49,48 @@ Gdict/
 │   │   │   │   ├── FlashcardViewModel.kt    # FSRS flashcard session
 │   │   │   │   └── DictionaryViewModel.kt   # Dict import/management
 │   │   │   └── ui/
-│   │   │       ├── GdictApp.kt            # 主 UI + 底部导航
+│   │   │       ├── GdictApp.kt            # Main UI + bottom nav
 │   │   │       ├── screens/
-│   │   │       │   ├── SearchScreen.kt     # 搜索页 + Word of the Day
-│   │   │       │   ├── WordDetailScreen.kt # 词条详情页 + 发音
-│   │   │       │   ├── BookmarksScreen.kt  # 生词本页
-│   │   │       │   ├── FlashcardScreen.kt  # 间隔重复复习页 (FSRS)
-│   │   │       │   ├── HistoryScreen.kt    # 历史记录页
-│   │   │       │   ├── DictionariesScreen.kt # 词典管理页
-│   │   │       │   └── SettingsScreen.kt   # 设置页
+│   │   │       │   ├── SearchScreen.kt     # Search + Word of the Day
+│   │   │       │   ├── WordDetailScreen.kt # Detail + pronunciation
+│   │   │       │   ├── BookmarksScreen.kt  # Bookmarks
+│   │   │       │   ├── FlashcardScreen.kt  # Spaced repetition (FSRS)
+│   │   │       │   ├── HistoryScreen.kt    # Search history
+│   │   │       │   ├── DictionariesScreen.kt # Dictionary management
+│   │   │       │   └── SettingsScreen.kt   # Settings
 │   │   │       └── theme/
-│   │   │           ├── Color.kt            # GdictColors 色板
+│   │   │           ├── Color.kt            # GdictColors palette
 │   │   │           ├── Theme.kt            # GdictTheme + Edge-to-Edge
 │   │   │           └── Type.kt             # GdictTypography
 │   │   ├── build.gradle.kts
 │   │   └── proguard-rules.pro
-│   ├── core/                               # 核心库模块
+│   ├── core/                               # Core library module
 │   │   ├── src/main/java/io/github/gdict/core/
-│   │   │   ├── MdxParser.kt                # MDX/MDD 解析器（含流式查找）
-│   │   │   ├── Lzo1xDecompressor.kt        # LZO1X 解压
-│   │   │   ├── RipeMD128.kt                # RipeMD-128 哈希
-│   │   │   ├── DictionaryManager.kt        # 词典管理（协调器）
-│   │   │   ├── DictPersistence.kt          # 词典持久化
-│   │   │   ├── DictFileImporter.kt         # 词典文件导入
-│   │   │   ├── DictSearchEngine.kt         # 词典搜索引擎
-│   │   │   └── FsrsAlgorithm.kt            # FSRS 间隔重复算法
+│   │   │   ├── MdxParser.kt                # MDX/MDD parser (streaming lookup)
+│   │   │   ├── Lzo1xDecompressor.kt        # LZO1X decompressor
+│   │   │   ├── RipeMD128.kt                # RipeMD-128 hash
+│   │   │   ├── DictionaryManager.kt        # Dictionary manager (coordinator)
+│   │   │   ├── DictPersistence.kt          # Dictionary persistence
+│   │   │   ├── DictFileImporter.kt         # Dictionary file importer
+│   │   │   ├── DictSearchEngine.kt         # Dictionary search engine
+│   │   │   └── FsrsAlgorithm.kt            # FSRS spaced repetition algorithm
 │   │   ├── src/test/java/io/github/gdict/core/
-│   │   │   └── MdxParserTest.kt            # 解析器单元测试
+│   │   │   └── MdxParserTest.kt            # Parser unit tests
 │   │   ├── build.gradle.kts
 │   │   └── proguard-rules.pro
 │   ├── gradle/wrapper/
 │   ├── build.gradle.kts
 │   ├── settings.gradle.kts
 │   ├── gradle.properties
-│   ├── export.build.gradle.kts             # 导出任务构建配置
-│   └── play_store_512.png                  # Play Store 图标
-├── export_project/                         # 独立导出工具项目
+│   ├── export.build.gradle.kts             # Export task build config
+│   └── play_store_512.png                  # Play Store icon
+├── export_project/                         # Standalone export tool
 │   └── build.gradle.kts
-├── export_words.kt                         # 独立 MDX 导出脚本（含 LZO/RipeMD128）
+├── export_words.kt                         # Standalone MDX export script
+├── BUILD.md                                # Local build setup guide
 ├── .gitignore
-└── README.md
+├── README.md                               # English README
+└── README.zh-CN.md                         # Chinese README
 ```
 
 ## Quick Start
@@ -128,7 +130,7 @@ keyAlias=gdict
 keyPassword=<your_key_password>
 ```
 
-Note: See [LOCAL_BUILD.md](./LOCAL_BUILD.md) for detailed local build setup instructions.
+Note: See [BUILD.md](./BUILD.md) for detailed local build setup instructions.
 
 Generate a keystore:
 
@@ -210,9 +212,9 @@ cd android_project
 MDX file structure:
 ```
 ┌──────────────────────────────────────────────┐
-│ 1. Header Section   - 词典元信息（XML 格式）  │
-│ 2. Keyword Section  - 关键词索引 + 关键词块    │
-│ 3. Record Section   - 释义记录索引 + 记录数据块 │
+│ 1. Header Section   - Dict metadata (XML)     │
+│ 2. Keyword Section  - Keyword index + blocks  │
+│ 3. Record Section   - Record index + data     │
 └──────────────────────────────────────────────┘
 ```
 
