@@ -58,6 +58,61 @@ import io.github.gdict.data.ReviewStats
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.AppViewModel
 
+private fun stripHtml(html: String): String {
+    return html
+        .replace(Regex("<br\\s*/?>"), "\n")
+        .replace(Regex("<p\\s*/?>|</p>"), "\n")
+        .replace(Regex("<li\\s*>"), "• ")
+        .replace(Regex("</li>"), "\n")
+        .replace(Regex("<img[^>]*src=\"([^\"]+)\"[^>]*>"), "[image]")
+        .replace(Regex("<a[^>]*href=\"[^\"]*\"[^>]*>(.*?)</a>"), "$1")
+        .replace(Regex("<font[^>]*>|</font>"), "")
+        .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"), "")
+        .replace(Regex("<i\\s*>|<em\\s*>|</i>|</em>"), "")
+        .replace(Regex("<u\\s*>|</u>"), "")
+        .replace(Regex("<div[^>]*>|</div>"), "\n")
+        .replace(Regex("<span[^>]*>|</span>"), "")
+        .replace(Regex("&nbsp;"), " ")
+        .replace(Regex("&amp;"), "&")
+        .replace(Regex("&lt;"), "<")
+        .replace(Regex("&gt;"), ">")
+        .replace(Regex("&quot;"), "\"")
+        .replace(Regex("&#39;"), "'")
+        .replace(Regex("<[^>]+>"), "")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
+}
+
+private fun simplifyDefinition(raw: String): String {
+    val text = stripHtml(raw)
+    if (text.isBlank()) return "(No definition)"
+    val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
+    if (lines.isEmpty()) return "(No definition)"
+
+    val result = StringBuilder()
+    var lineCount = 0
+    val maxLines = 5
+    val maxCharsPerLine = 80
+
+    for (line in lines) {
+        if (lineCount >= maxLines) break
+        val shortened = if (line.length > maxCharsPerLine) {
+            line.take(maxCharsPerLine) + "..."
+        } else {
+            line
+        }
+        if (result.isNotEmpty()) result.append('\n')
+        result.append(shortened)
+        lineCount++
+    }
+
+    if (lines.size > maxLines) {
+        result.append("\n...")
+    }
+
+    return result.toString()
+}
+
 @Composable
 fun FlashcardScreen(
     viewModel: AppViewModel
@@ -372,13 +427,13 @@ private fun FlashcardReviewView(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = item.definition.ifBlank { "(No definition)" },
+                                text = simplifyDefinition(item.definition),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
-                                maxLines = 10,
+                                maxLines = 8,
                                 overflow = TextOverflow.Ellipsis,
-                                lineHeight = 24.sp
+                                lineHeight = 22.sp
                             )
                         }
                     }

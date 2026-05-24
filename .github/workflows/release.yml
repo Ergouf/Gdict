@@ -35,7 +35,7 @@ jobs:
 
       - name: Create keystore
         run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android_project/release.keystore
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android_project/app/release.keystore
 
       - name: Build Release APK
         working-directory: android_project
