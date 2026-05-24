@@ -59,7 +59,11 @@ import io.github.gdict.ui.screens.SettingsScreen
 import io.github.gdict.ui.screens.WordDetailScreen
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.ui.theme.GdictTheme
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.BookmarkViewModel
+import io.github.gdict.viewmodel.DictionaryViewModel
+import io.github.gdict.viewmodel.FlashcardViewModel
+import io.github.gdict.viewmodel.SearchViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 
 sealed class Screen(
     val route: String,
@@ -75,28 +79,42 @@ sealed class Screen(
 
 @Composable
 fun GdictApp(
-    viewModel: AppViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    searchViewModel: SearchViewModel = viewModel(),
+    bookmarkViewModel: BookmarkViewModel = viewModel(),
+    flashcardViewModel: FlashcardViewModel = viewModel(),
+    dictionaryViewModel: DictionaryViewModel = viewModel()
 ) {
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
 
     GdictTheme(darkTheme = darkMode) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
         ) {
-            GdictAppContent(viewModel = viewModel)
+            GdictAppContent(
+                settingsViewModel = settingsViewModel,
+                searchViewModel = searchViewModel,
+                bookmarkViewModel = bookmarkViewModel,
+                flashcardViewModel = flashcardViewModel,
+                dictionaryViewModel = dictionaryViewModel
+            )
         }
     }
 }
 
 @Composable
 private fun GdictAppContent(
-    viewModel: AppViewModel
+    settingsViewModel: SettingsViewModel,
+    searchViewModel: SearchViewModel,
+    bookmarkViewModel: BookmarkViewModel,
+    flashcardViewModel: FlashcardViewModel,
+    dictionaryViewModel: DictionaryViewModel
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
 
     val screens = listOf(
         Screen.Search,
@@ -136,7 +154,8 @@ private fun GdictAppContent(
         ) {
             composable(Screen.Search.route) {
                 SearchScreen(
-                    viewModel = viewModel,
+                    searchViewModel = searchViewModel,
+                    settingsViewModel = settingsViewModel,
                     onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
@@ -146,7 +165,8 @@ private fun GdictAppContent(
             }
             composable(Screen.Bookmarks.route) {
                 BookmarksScreen(
-                    viewModel = viewModel,
+                    bookmarkViewModel = bookmarkViewModel,
+                    settingsViewModel = settingsViewModel,
                     onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
@@ -158,16 +178,20 @@ private fun GdictAppContent(
                 )
             }
             composable(Screen.Learning.route) {
-                FlashcardScreen(viewModel = viewModel)
+                FlashcardScreen(
+                    flashcardViewModel = flashcardViewModel,
+                    settingsViewModel = settingsViewModel,
+                    bookmarkViewModel = bookmarkViewModel
+                )
             }
             composable(Screen.Profile.route) {
                 SettingsScreen(
-                    viewModel = viewModel,
+                    settingsViewModel = settingsViewModel,
                     onNavigateToDictionaries = { navController.navigate("dictionaries") }
                 )
             }
             composable("dictionaries") {
-                DictionariesScreen(viewModel = viewModel)
+                DictionariesScreen(dictionaryViewModel = dictionaryViewModel)
             }
             composable(
                 route = "word_detail/{word}/{definition}/{dictionaryName}",
@@ -180,17 +204,18 @@ private fun GdictAppContent(
                 val word = backStackEntry.arguments?.getString("word") ?: ""
                 val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
                 val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
-                val isBookmarked = viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList()).value.any { it.word == word && it.dictionaryName == dictionaryName }
-                val css = viewModel.getCssForDictionary(dictionaryName)
+                val isBookmarked by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
+                val css = searchViewModel.getCssForDictionary(dictionaryName)
 
                 WordDetailScreen(
                     word = word,
                     definition = definition,
                     dictionaryName = dictionaryName,
                     css = css,
-                    isBookmarked = isBookmarked,
+                    isBookmarked = isBookmarked.any { it.word == word && it.dictionaryName == dictionaryName },
                     onBack = { navController.popBackStack() },
-                    onToggleBookmark = { viewModel.toggleBookmark(word, definition, dictionaryName) }
+                    onToggleBookmark = { bookmarkViewModel.toggleBookmark(word, definition, dictionaryName) },
+                    settingsViewModel = settingsViewModel
                 )
             }
         }

@@ -56,22 +56,23 @@ import io.github.gdict.core.SchedulingCard
 import io.github.gdict.data.BookmarkItem
 import io.github.gdict.data.ReviewStats
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.BookmarkViewModel
+import io.github.gdict.viewmodel.FlashcardViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 
 private fun stripHtml(html: String): String {
     return html
-        .replace(Regex("<br\\s*/?>"), "\n")
-        .replace(Regex("<p\\s*/?>|</p>"), "\n")
-        .replace(Regex("<li\\s*>"), "• ")
-        .replace(Regex("</li>"), "\n")
-        .replace(Regex("<img[^>]*src=\"([^\"]+)\"[^>]*>"), "[image]")
+        .replace(Regex("<img[^>]*>"), "")
+        .replace(Regex("<br\\s*/?>"), " ")
+        .replace(Regex("<p\\s*/?>|</p>|<div[^>]*>|</div>"), " ")
+        .replace(Regex("<li\\s*>"), "")
+        .replace(Regex("</li>"), "; ")
         .replace(Regex("<a[^>]*href=\"[^\"]*\"[^>]*>(.*?)</a>"), "$1")
-        .replace(Regex("<font[^>]*>|</font>"), "")
-        .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"), "")
-        .replace(Regex("<i\\s*>|<em\\s*>|</i>|</em>"), "")
-        .replace(Regex("<u\\s*>|</u>"), "")
-        .replace(Regex("<div[^>]*>|</div>"), "\n")
-        .replace(Regex("<span[^>]*>|</span>"), "")
+        .replace(Regex("<font[^>]*>|</font>"))
+        .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"))
+        .replace(Regex("<i\\s*>|<em\\s*>|</i>|</em>"))
+        .replace(Regex("<u\\s*>|</u>"))
+        .replace(Regex("<span[^>]*>|</span>"))
         .replace(Regex("&nbsp;"), " ")
         .replace(Regex("&amp;"), "&")
         .replace(Regex("&lt;"), "<")
@@ -79,35 +80,43 @@ private fun stripHtml(html: String): String {
         .replace(Regex("&quot;"), "\"")
         .replace(Regex("&#39;"), "'")
         .replace(Regex("<[^>]+>"), "")
-        .replace(Regex("\n{3,}"), "\n\n")
+        .replace(Regex("\\s{2,}"), " ")
         .trim()
 }
 
 private fun simplifyDefinition(raw: String): String {
     val text = stripHtml(raw)
     if (text.isBlank()) return "(No definition)"
+
+    val posPattern = Regex(
+        "^\\s*(n\\.?|v\\.?|vt\\.?|vi\\.?|adj\\.?|adv\\.?|prep\\.?" +
+        "|conj\\.?|pron\\.?|art\\.?|int\\.?|num\\.?|aux\\.?" +
+        "|abbr\\.?|phr\\.?|pl\\.?|sing\\.?|def\\.?|indef\\.?" +
+        "|[A-Z]{1,4}\\.)\\s*$",
+        RegexOption.IGNORE_CASE
+    )
+    val examplePattern = Regex("^(e\\.?g\\.?|i\\.?e\\.?)[:\\.]", RegexOption.IGNORE_CASE)
+
     val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
-    if (lines.isEmpty()) return "(No definition)"
-
-    val result = StringBuilder()
-    var lineCount = 0
-    val maxLines = 5
-    val maxCharsPerLine = 80
-
-    for (line in lines) {
-        if (lineCount >= maxLines) break
-        val shortened = if (line.length > maxCharsPerLine) {
-            line.take(maxCharsPerLine) + "..."
-        } else {
-            line
-        }
-        if (result.isNotEmpty()) result.append('\n')
-        result.append(shortened)
-        lineCount++
+    val filtered = lines.filter { line ->
+        !posPattern.matches(line) &&
+        !examplePattern.matches(line) &&
+        line.length > 1
     }
 
-    if (lines.size > maxLines) {
-        result.append("\n...")
+    if (filtered.isEmpty()) return "(No definition)"
+
+    val result = StringBuilder()
+    var charCount = 0
+    val maxChars = 200
+
+    for (line in filtered) {
+        if (charCount >= maxChars) break
+        val remaining = maxChars - charCount
+        val chunk = if (line.length > remaining) line.take(remaining - 1).trimEnd() + "…" else line
+        if (result.isNotEmpty()) result.append(' ')
+        result.append(chunk)
+        charCount += chunk.length + 1
     }
 
     return result.toString()
@@ -115,22 +124,24 @@ private fun simplifyDefinition(raw: String): String {
 
 @Composable
 fun FlashcardScreen(
-    viewModel: AppViewModel
+    flashcardViewModel: FlashcardViewModel,
+    settingsViewModel: SettingsViewModel,
+    bookmarkViewModel: BookmarkViewModel
 ) {
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
-    val reviewStats by viewModel.reviewStats.collectAsStateWithLifecycle()
-    val dueBookmarks by viewModel.dueBookmarks.collectAsStateWithLifecycle()
-    val currentCardIndex by viewModel.currentCardIndex.collectAsStateWithLifecycle()
-    val currentScheduling by viewModel.currentScheduling.collectAsStateWithLifecycle()
-    val sessionReviewed by viewModel.sessionReviewed.collectAsStateWithLifecycle()
-    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val reviewStats by flashcardViewModel.reviewStats.collectAsStateWithLifecycle()
+    val dueBookmarks by flashcardViewModel.dueBookmarks.collectAsStateWithLifecycle()
+    val currentCardIndex by flashcardViewModel.currentCardIndex.collectAsStateWithLifecycle()
+    val currentScheduling by flashcardViewModel.currentScheduling.collectAsStateWithLifecycle()
+    val sessionReviewed by flashcardViewModel.sessionReviewed.collectAsStateWithLifecycle()
+    val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
 
     LaunchedEffect(bookmarks) {
-        viewModel.refreshReviewStats()
+        flashcardViewModel.refreshReviewStats()
     }
 
     val isSessionActive = dueBookmarks.isNotEmpty()
@@ -161,7 +172,7 @@ fun FlashcardScreen(
                 cardColor = cardColor,
                 textColor = textColor,
                 darkMode = darkMode,
-                onStart = { viewModel.startReviewSession() }
+                onStart = { flashcardViewModel.startReviewSession() }
             )
             isSessionComplete -> FlashcardCompleteView(
                 reviewed = sessionReviewed,
@@ -169,7 +180,7 @@ fun FlashcardScreen(
                 cardColor = cardColor,
                 textColor = textColor,
                 darkMode = darkMode,
-                onRestart = { viewModel.startReviewSession() }
+                onRestart = { flashcardViewModel.startReviewSession() }
             )
             else -> FlashcardReviewView(
                 item = dueBookmarks[currentCardIndex],
@@ -179,8 +190,8 @@ fun FlashcardScreen(
                 cardColor = cardColor,
                 textColor = textColor,
                 darkMode = darkMode,
-                onRate = { viewModel.rateCurrentCard(it) },
-                onSkip = { viewModel.skipCurrentCard() }
+                onRate = { flashcardViewModel.rateCurrentCard(it) },
+                onSkip = { flashcardViewModel.skipCurrentCard() }
             )
         }
     }
@@ -428,12 +439,12 @@ private fun FlashcardReviewView(
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = simplifyDefinition(item.definition),
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
-                                maxLines = 8,
+                                maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
-                                lineHeight = 22.sp
+                                lineHeight = 24.sp
                             )
                         }
                     }

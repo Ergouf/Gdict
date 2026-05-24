@@ -53,33 +53,35 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.HistoryItem
 import io.github.gdict.data.SearchResultItem
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.SearchViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SearchScreen(
-    viewModel: AppViewModel = viewModel(),
+    searchViewModel: SearchViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(),
     onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> }
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
-    val history by viewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
-    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle(initialValue = null)
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
-    val wordOfTheDay by viewModel.wordOfTheDay.collectAsStateWithLifecycle(initialValue = emptyList())
+    val searchResults by searchViewModel.searchResults.collectAsStateWithLifecycle(initialValue = emptyList())
+    val history by searchViewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
+    val errorMessage by searchViewModel.errorMessage.collectAsStateWithLifecycle(initialValue = null)
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val wordOfTheDay by searchViewModel.wordOfTheDay.collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(Unit) {
         if (wordOfTheDay.isEmpty()) {
-            viewModel.loadWordOfTheDay()
+            searchViewModel.loadWordOfTheDay()
         }
     }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
             delay(300)
-            viewModel.searchWord(searchQuery.trim())
+            searchViewModel.searchWord(searchQuery.trim())
         } else {
-            viewModel.clearSearchResults()
+            searchViewModel.clearSearchResults()
         }
     }
 
@@ -113,7 +115,7 @@ fun SearchScreen(
                     onQueryChange = { searchQuery = it },
                     onSearch = {
                         if (searchQuery.isNotEmpty()) {
-                            viewModel.searchWord(searchQuery)
+                            searchViewModel.searchWord(searchQuery)
                         }
                     }
                 )
@@ -140,7 +142,7 @@ fun SearchScreen(
                         color = GdictColors.CoralAccent,
                         modifier = Modifier.weight(1f)
                     )
-                    androidx.compose.material3.TextButton(onClick = { viewModel.clearError() }) {
+                    androidx.compose.material3.TextButton(onClick = { searchViewModel.clearError() }) {
                         Text("Dismiss", color = GdictColors.MediumGray)
                     }
                 }
@@ -170,7 +172,7 @@ fun SearchScreen(
                 textColor = textColor,
                 onSuggestionClick = { suggestion ->
                     searchQuery = suggestion
-                    viewModel.searchWord(suggestion)
+                    searchViewModel.searchWord(suggestion)
                 }
             )
         } else {
@@ -185,7 +187,7 @@ fun SearchScreen(
                             textColor = textColor,
                             onWordClick = { word ->
                                 searchQuery = word
-                                viewModel.searchWord(word)
+                                searchViewModel.searchWord(word)
                             }
                         )
                     }
@@ -196,7 +198,7 @@ fun SearchScreen(
                         textColor = textColor,
                         onWordClick = { word ->
                             searchQuery = word
-                            viewModel.searchWord(word)
+                            searchViewModel.searchWord(word)
                         }
                     )
                 }

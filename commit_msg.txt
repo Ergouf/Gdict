@@ -1,0 +1,5 @@
+fix: 优化 Flashcard 背面显示 + 修复 CI 签名路径
+
+- 添加 stripHtml 剥离 HTML 标签为纯文本
+- 添加 simplifyDefinition 限制行数和字数，突出重点
+- 修复 GitHub Actions keystore 创建路径 (android_project -> android_project/app)

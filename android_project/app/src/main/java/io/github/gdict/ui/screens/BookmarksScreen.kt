@@ -47,16 +47,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.BookmarkItem
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.BookmarkViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 
 @Composable
 fun BookmarksScreen(
-    viewModel: AppViewModel = viewModel(),
+    bookmarkViewModel: BookmarkViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(),
     onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> },
     onFlashcardClick: () -> Unit = {}
 ) {
-    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
@@ -151,7 +153,7 @@ fun BookmarksScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.removeBookmark(item)
+                        bookmarkViewModel.removeBookmark(item)
                         bookmarkToDelete = null
                     }
                 ) {

@@ -58,7 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,12 +77,12 @@ fun WordDetailScreen(
     isBookmarked: Boolean,
     onBack: () -> Unit,
     onToggleBookmark: () -> Unit,
-    viewModel: AppViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Origin", "Examples", "Synonyms")
 
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
@@ -188,7 +188,7 @@ fun WordDetailScreen(
                                 isPlaying = true
                                 coroutineScope.launch {
                                     try {
-                                        val audioData = viewModel.getAudioResource(word)
+                                        val audioData = settingsViewModel.getAudioResource(word)
                                         if (audioData != null) {
                                             withContext(kotlinx.coroutines.Dispatchers.IO) {
                                                 playAudioBytes(context, audioData)
@@ -262,7 +262,8 @@ fun WordDetailScreen(
                 css = css,
                 cardColor = cardColor,
                 textColor = textColor,
-                darkMode = darkMode
+                darkMode = darkMode,
+                settingsViewModel = settingsViewModel
             )
         }
     }
@@ -392,7 +393,8 @@ private fun DefinitionCard(
     css: String,
     cardColor: Color,
     textColor: Color,
-    darkMode: Boolean
+    darkMode: Boolean,
+    settingsViewModel: SettingsViewModel
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -415,7 +417,8 @@ private fun DefinitionCard(
             HtmlContent(
                 definition = definition,
                 css = css,
-                darkMode = darkMode
+                darkMode = darkMode,
+                settingsViewModel = settingsViewModel
             )
         }
     }
@@ -425,11 +428,11 @@ private fun DefinitionCard(
 private fun HtmlContent(
     definition: String,
     css: String,
-    darkMode: Boolean
+    darkMode: Boolean,
+    settingsViewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val viewModel: AppViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val htmlContent = buildHtmlContent(definition, css, darkMode)
 
     AndroidView(
@@ -453,7 +456,7 @@ private fun HtmlContent(
                             val audioPath = url.removePrefix("sound://")
                             coroutineScope.launch {
                                 try {
-                                    val audioData = viewModel.getAudioResourceByPath(audioPath)
+                                    val audioData = settingsViewModel.getAudioResourceByPath(audioPath)
                                     if (audioData != null) {
                                         withContext(kotlinx.coroutines.Dispatchers.IO) {
                                             playAudioBytes(context, audioData)
@@ -465,7 +468,7 @@ private fun HtmlContent(
                                             .removeSuffix(".spx")
                                             .substringAfterLast("/")
                                             .substringAfterLast("\\")
-                                        val fallbackData = viewModel.getAudioResource(word)
+                                        val fallbackData = settingsViewModel.getAudioResource(word)
                                         if (fallbackData != null) {
                                             withContext(kotlinx.coroutines.Dispatchers.IO) {
                                                 playAudioBytes(context, fallbackData)
@@ -497,7 +500,7 @@ private fun HtmlContent(
                             try {
                                 val resourcePath = "\\" + path.trimStart('/')
                                 android.util.Log.d("MdxWebView", "Intercepting resource: $resourcePath")
-                                val data = viewModel.getResourceByPathSync(resourcePath)
+                                val data = settingsViewModel.getResourceByPathSync(resourcePath)
                                 if (data != null) {
                                     android.util.Log.d("MdxWebView", "Resource loaded successfully: ${data.size} bytes")
                                     val mimeType = when {

@@ -46,15 +46,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.data.HistoryItem
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.SearchViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 
 @Composable
 fun HistoryScreen(
-    viewModel: AppViewModel = viewModel(),
+    searchViewModel: SearchViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(),
     onWordClick: (String) -> Unit = {}
 ) {
-    val history by viewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val history by searchViewModel.history.collectAsStateWithLifecycle(initialValue = emptyList())
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
@@ -109,7 +111,7 @@ fun HistoryScreen(
                         cardColor = cardColor,
                         textColor = textColor,
                         onClick = { onWordClick(item.word) },
-                        onDelete = { viewModel.removeFromHistory(item) }
+                        onDelete = { searchViewModel.removeFromHistory(item) }
                     )
                 }
             }
@@ -164,7 +166,7 @@ fun HistoryScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.clearHistory()
+                        searchViewModel.clearHistory()
                         showClearDialog = false
                     }
                 ) {

@@ -53,15 +53,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    viewModel: AppViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel(),
     onNavigateToDictionaries: () -> Unit = {}
 ) {
-    val darkMode by viewModel.darkMode.collectAsStateWithLifecycle()
-    val scanPopup by viewModel.scanPopup.collectAsStateWithLifecycle()
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle()
+    val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
@@ -135,7 +135,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.DarkMode,
                     checked = darkMode,
                     textColor = textColor,
-                    onCheckedChange = { viewModel.setDarkMode(it) }
+                    onCheckedChange = { settingsViewModel.setDarkMode(it) }
                 )
             }
 
@@ -148,7 +148,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.QrCodeScanner,
                     checked = scanPopup,
                     textColor = textColor,
-                    onCheckedChange = { viewModel.setScanPopup(it) }
+                    onCheckedChange = { settingsViewModel.setScanPopup(it) }
                 )
             }
 
@@ -178,7 +178,7 @@ fun SettingsScreen(
                         text = { Text("Are you sure you want to clear all history and bookmarks?") },
                         confirmButton = {
                             TextButton(onClick = {
-                                viewModel.clearAllData()
+                                settingsViewModel.clearAllData()
                                 showClearDialog = false
                             }) {
                                 Text("Clear", color = GdictColors.CoralAccent)

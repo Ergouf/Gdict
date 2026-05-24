@@ -40,15 +40,15 @@ import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
 import io.github.gdict.data.Dictionary
 import io.github.gdict.ui.theme.GdictColors
-import io.github.gdict.viewmodel.AppViewModel
+import io.github.gdict.viewmodel.DictionaryViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun DictionariesScreen(
-    viewModel: AppViewModel = viewModel()
+    dictionaryViewModel: DictionaryViewModel = viewModel()
 ) {
-    val dictionaries by viewModel.dictionaries.collectAsStateWithLifecycle(initialValue = emptyList())
-    val importing by viewModel.importing.collectAsStateWithLifecycle(initialValue = false)
+    val dictionaries by dictionaryViewModel.dictionaries.collectAsStateWithLifecycle(initialValue = emptyList())
+    val importing by dictionaryViewModel.importing.collectAsStateWithLifecycle(initialValue = false)
     var visible by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
@@ -56,7 +56,7 @@ fun DictionariesScreen(
     var showDiagnostics by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    val vmDiagnosticResult by viewModel.diagnosticResult.collectAsStateWithLifecycle()
+    val vmDiagnosticResult by dictionaryViewModel.diagnosticResult.collectAsStateWithLifecycle()
     LaunchedEffect(vmDiagnosticResult) {
         if (vmDiagnosticResult != null) {
             showDiagnostics = true
@@ -126,7 +126,7 @@ fun DictionariesScreen(
                                     text = { Text("Diagnostics") },
                                     onClick = {
                                         showMenu = false
-                                        viewModel.diagnoseDictionaries()
+                                        dictionaryViewModel.diagnoseDictionaries()
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.BugReport, contentDescription = null)
@@ -222,8 +222,8 @@ fun DictionariesScreen(
                         ) {
                             DictionaryItemCard(
                                 dictionary = dictionary,
-                                onToggle = { viewModel.toggleDictionary(dictionary) },
-                                onRemove = { viewModel.removeDictionary(dictionary) }
+                                onToggle = { dictionaryViewModel.toggleDictionary(dictionary) },
+                            onRemove = { dictionaryViewModel.removeDictionary(dictionary) }
                             )
                         }
                     }
@@ -279,7 +279,7 @@ fun DictionariesScreen(
         AddDictionaryDialog(
             onDismiss = { showAddDialog = false },
             onAdd = { name, path ->
-                viewModel.addDictionary(name, path)
+                dictionaryViewModel.addDictionary(name, path)
                 showAddDialog = false
             },
             onBatchSelect = { candidates ->
@@ -287,7 +287,7 @@ fun DictionariesScreen(
                 showAddDialog = false
                 showBatchDialog = true
             },
-            scanDirectory = { uri -> viewModel.scanDirectory(uri) }
+            scanDirectory = { uri -> dictionaryViewModel.scanDirectory(uri) }
         )
     }
 
@@ -299,7 +299,7 @@ fun DictionariesScreen(
                 scannedCandidates = emptyList()
             },
             onImport = { selected ->
-                viewModel.batchImport(selected) {
+                dictionaryViewModel.batchImport(selected) {
                     showBatchDialog = false
                     scannedCandidates = emptyList()
                 }
@@ -314,7 +314,7 @@ fun DictionariesScreen(
         Dialog(
             onDismissRequest = {
                 showDiagnostics = false
-                viewModel.clearDiagnosticResult()
+                dictionaryViewModel.clearDiagnosticResult()
             },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
@@ -388,7 +388,7 @@ fun DictionariesScreen(
                     ) {
                         TextButton(onClick = {
                             showDiagnostics = false
-                            viewModel.clearDiagnosticResult()
+                            dictionaryViewModel.clearDiagnosticResult()
                         }) {
                             Text("关闭")
                         }
