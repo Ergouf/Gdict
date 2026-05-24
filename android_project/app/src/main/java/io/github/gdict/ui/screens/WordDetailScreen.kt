@@ -47,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -434,11 +435,9 @@ private fun HtmlContent(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val webViewRef = remember { java.util.concurrent.atomic.AtomicReference<WebView?>(null) }
-
-    val htmlContent = remember(definition, css) {
-        buildHtmlContent(definition, css)
-    }
+    val currentDarkMode by rememberUpdatedState(darkMode)
+    val currentDef by rememberUpdatedState(definition)
+    val currentCss by rememberUpdatedState(css)
 
     AndroidView(
         factory = { ctx ->
@@ -451,17 +450,16 @@ private fun HtmlContent(
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.domStorageEnabled = true
-
+                setBackgroundColor(0x00000000)
+                isVerticalScrollBarEnabled = false
+                isHorizontalScrollBarEnabled = false
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    settings.isAlgorithmicDarkeningAllowed = darkMode
+                    settings.isAlgorithmicDarkeningAllowed = true
                 }
-
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
-                        webViewRef.set(view)
-                        if (darkMode) {
-                            view?.evaluateJavascript("applyDarkMode(true);", null)
-                        }
+                        super.onPageFinished(view, url)
+                        view?.evaluateJavascript("setTheme($currentDarkMode);fixInlineStyles();", null)
                     }
 
                     override fun shouldOverrideUrlLoading(
@@ -516,8 +514,10 @@ private fun HtmlContent(
                         ) {
                             try {
                                 val resourcePath = "\\" + path.trimStart('/')
+                                android.util.Log.d("MdxWebView", "Intercepting resource: $resourcePath")
                                 val data = settingsViewModel.getResourceByPathSync(resourcePath)
                                 if (data != null) {
+                                    android.util.Log.d("MdxWebView", "Resource loaded successfully: ${data.size} bytes")
                                     val mimeType = when {
                                         lowerPath.endsWith(".png") -> "image/png"
                                         lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
@@ -532,6 +532,7 @@ private fun HtmlContent(
                                         mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
                                     )
                                 } else {
+                                    android.util.Log.w("MdxWebView", "Resource not found, returning transparent placeholder: $resourcePath")
                                     val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
                                         lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
                                         lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
@@ -548,40 +549,17 @@ private fun HtmlContent(
                         return super.shouldInterceptRequest(view, request)
                     }
                 }
-                loadDataWithBaseURL("https://mdx.local/", htmlContent, "text/html", "UTF-8", null)
             }
         },
         update = { webView ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                webView.settings.isAlgorithmicDarkeningAllowed = darkMode
-            }
-            if (darkMode) {
-                webView.evaluateJavascript("applyDarkMode(true);", null)
-            } else {
-                webView.evaluateJavascript("applyDarkMode(false);", null)
-            }
+            val htmlContent = buildHtmlContent(currentDef, currentCss)
+            webView.loadDataWithBaseURL("https://mdx.local/", htmlContent, "text/html", "UTF-8", null)
         },
         modifier = Modifier.fillMaxWidth()
     )
 }
 
 private fun buildHtmlContent(definition: String, css: String): String {
-    val lightBg = "#FFFFFF"
-    val lightText = "#424242"
-    val lightHeader = "#2C4A6E"
-    val lightBorder = "#E0E0E0"
-    val lightHint = "#9E9E9E"
-    val lightPhon = "#1565C0"
-    val lightLink = "#1976D2"
-
-    val darkBg = "#1A1C17"
-    val darkText = "#E1E4DA"
-    val darkHeader = "#8BB8E8"
-    val darkBorder = "#3A3E35"
-    val darkHint = "#7A7D74"
-    val darkPhon = "#A8D8EA"
-    val darkLink = "#4ECDC4"
-
     val isCambridgeEpd = definition.contains("cepd18.css")
     val transformedDef = transformMdxTags(definition).let { def ->
         if (isCambridgeEpd) {
@@ -598,36 +576,117 @@ private fun buildHtmlContent(definition: String, css: String): String {
     } else if (isCambridgeEpd) {
         """
 <style>
-.arl { display: block; margin: 6px 0; padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.15); }
-.hit { display: block; margin: 4px 0; padding: 2px 0; }
-.hit + .hit { border-top: 1px solid rgba(128,128,128,0.08); padding-top: 6px; }
-.results { display: inline; }
-.base { display: inline; font-size: 1em; }
-.hw { font-weight: bold; font-size: 1.2em; color: var(--mdx-header); display: inline; }
-.inf { color: var(--mdx-phon); font-style: italic; }
-.comment { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
-.forms { display: block; margin: 2px 0 2px 16px; }
-.inflections { display: inline; }
-.inflections .base { color: var(--mdx-hint); }
-.pron { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
-.ipa { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
-.prongrp { display: block; margin: 3px 0; padding: 2px 0; }
-.ussymbol { display: inline-block; padding: 0 4px; margin: 0 2px; font-size: 0.8em; font-weight: 600; }
-.uk-flag { display: inline-block; padding: 1px 5px; margin: 0 2px; background: #012169; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; letter-spacing: 0.5px; }
-.us-flag { display: inline-block; padding: 1px 5px; margin: 0 2px; background: #B31942; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; letter-spacing: 0.5px; }
-.soundfile { display: inline; margin: 0 2px; }
-.soundfile a { display: inline-block; vertical-align: middle; text-decoration: none; }
-.soundfile img { display: none; }
-a[href^="sound://"] { text-decoration: none; display: inline-block; vertical-align: middle; padding: 2px 8px; margin: 0 2px; background: rgba(78, 205, 196, 0.2); border-radius: 12px; color: var(--mdx-link); font-size: 13px; }
-a[href^="sound://"]::before { content: "🔊"; margin-right: 4px; }
-a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.35); }
-.capvar { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
-.inflection { display: block; margin: 2px 0 2px 16px; }
+.cpepd .arl { display:block;margin:6px 0;padding:8px 10px;border-bottom:1px solid var(--border); }
+.cpepd .hit { display:block;margin:4px 0;padding:2px 0; }
+.cpepd .hit+.hit { border-top:1px solid var(--border-light);padding-top:6px; }
+.cpepd .results { display:inline; }
+.cpepd .base { display:inline;font-size:1em; }
+.cpepd .hw { font-weight:bold;font-size:1.2em;color:var(--header);display:inline; }
+.cpepd .inf { color:var(--phon);font-style:italic; }
+.cpepd .comment { color:var(--subtle);font-style:italic;font-size:.9em; }
+.cpepd .forms { display:block;margin:2px 0 2px 16px; }
+.cpepd .inflections { display:inline; }
+.cpepd .inflections .base { color:var(--subtle); }
+.cpepd .pron,.cpepd .ipa { color:var(--phon);font-family:'Lucida Sans Unicode','Arial Unicode MS',sans-serif;display:inline; }
+.cpepd .prongrp { display:block;margin:3px 0;padding:2px 0; }
+.cpepd .ussymbol { display:inline-block;padding:0 4px;margin:0 2px;font-size:.8em;font-weight:600; }
+.cpepd .uk-flag { display:inline-block;padding:1px 5px;margin:0 2px;background:var(--flag-uk);color:#fff;border-radius:3px;font-size:10px;font-weight:bold;vertical-align:middle;letter-spacing:.5px; }
+.cpepd .us-flag { display:inline-block;padding:1px 5px;margin:0 2px;background:var(--flag-us);color:#fff;border-radius:3px;font-size:10px;font-weight:bold;vertical-align:middle;letter-spacing:.5px; }
+.cpepd .soundfile { display:inline;margin:0 2px; }
+.cpepd .soundfile a { display:inline-block;vertical-align:middle;text-decoration:none; }
+.cpepd .soundfile img { display:none; }
+.cpepd a[href^="sound://"] { text-decoration:none;display:inline-block;vertical-align:middle;padding:2px 8px;margin:0 2px;background:var(--speaker-hover);border-radius:12px;color:var(--link);font-size:13px; }
+.cpepd a[href^="sound://"]::before { content:"\01F50A";margin-right:4px; }
+.cpepd a[href^="sound://"]:hover { background:var(--speaker-hover);filter:brightness(1.2); }
+.cpepd .capvar { color:var(--subtle);font-style:italic;font-size:.9em; }
+.cpepd .inflection { display:block;margin:2px 0 2px 16px; }
 </style>
 """
     } else {
         ""
     }
+
+    val varCss = """
+:root {
+  --bg:#FFFFFF;--text:#424242;--header:#2C4A6E;--link:#4ECDC4;--phon:#1565C0;
+  --border:rgba(128,128,128,0.15);--border-light:rgba(128,128,128,0.08);
+  --accent-bg:rgba(44,74,110,0.1);--speaker-bg:rgba(78,205,196,0.15);
+  --speaker-hover:rgba(78,205,196,0.3);--def-border:rgba(78,205,196,0.3);
+  --example:#666;--subtle:#9E9E9E;
+  --flag-uk:#012169;--flag-us:#B31942;
+  --tag-bg:rgba(244,67,54,0.1);--tag-color:#D32F2F;
+  --pos-bg:rgba(44,74,110,0.1);--table-border:#E0E0E0;
+  --uk-badge-bg:rgba(33,150,243,0.1);--uk-badge-color:#1976D2;
+  --di-head-border:var(--header);
+}
+body.dark {
+  --bg:#1A1C17;--text:#E1E4DA;--header:#8BB8E8;--link:#4ECDC4;--phon:#A8D8EA;
+  --border:rgba(255,255,255,0.1);--border-light:rgba(255,255,255,0.06);
+  --accent-bg:rgba(139,184,232,0.12);--speaker-bg:rgba(78,205,196,0.2);
+  --speaker-hover:rgba(78,205,196,0.35);--def-border:rgba(78,205,196,0.4);
+  --example:#A0A0A0;--subtle:#888;
+  --flag-uk:#1A3A8A;--flag-us:#8B1A2B;
+  --tag-bg:rgba(244,67,54,0.15);--tag-color:#EF9A9A;
+  --pos-bg:rgba(139,184,232,0.12);--table-border:rgba(255,255,255,0.12);
+  --uk-badge-bg:rgba(100,181,246,0.12);--uk-badge-color:#64B5F6;
+  --di-head-border:var(--header);
+}
+
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.7;color:var(--text);background:var(--bg);margin:0;padding:8px 12px;word-wrap:break-word;}
+h1,h2,h3{color:var(--header);font-weight:600;margin:12px 0 8px;}
+a{color:var(--link);text-decoration:none;}
+img{max-width:100%;height:auto;}
+table{border-collapse:collapse;width:100%;}
+td,th{border:1px solid var(--table-border);padding:8px;}
+hw{font-weight:bold;color:var(--header);}
+inf{font-style:italic;}
+.arl{display:block;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.hit{display:block;margin:2px 0;padding:2px 0;}
+.comment{font-style:italic;color:var(--subtle);}
+.capvar{color:var(--subtle);font-style:italic;}
+.phon,.pron,.ipa{color:var(--phon);font-family:'Lucida Sans Unicode','Arial Unicode MS',sans-serif;}
+.speaker,.sound,.audio-play{cursor:pointer;display:inline-block;padding:2px 6px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);font-size:14px;}
+.speaker:hover,.sound:hover,.audio-play:hover{background:var(--speaker-hover);}
+.soundfile{display:inline;margin:0 2px;}
+.soundfile a{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;font-size:13px;}
+.soundfile a:hover{background:var(--speaker-hover);}
+a[href^="sound://"]{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;}
+a[href^="sound://"]:hover{background:var(--speaker-hover);}
+.pos,.pos2{display:inline-block;padding:2px 8px;margin:2px 4px;background:var(--pos-bg);border-radius:4px;font-style:italic;color:var(--header);font-size:.9em;}
+.bre,.ame,.gb,.us{display:inline-block;padding:1px 6px;margin:0 4px;border-radius:4px;font-size:.8em;font-weight:600;}
+.bre,.gb{background:var(--uk-badge-bg);color:var(--uk-badge-color);}
+.ame,.us{background:var(--tag-bg);color:var(--tag-color);}
+.ussymbol{display:inline-block;padding:1px 6px;margin:0 4px;border-radius:4px;font-size:.8em;font-weight:600;background:var(--tag-bg);color:var(--tag-color);}
+.label,.sense{margin:4px 0;padding:2px 0;}
+.definition,.def{margin:4px 0 8px;padding-left:12px;border-left:3px solid var(--def-border);}
+.example,.ex{color:var(--example);font-style:italic;margin:4px 0 4px 16px;}
+.di-head{display:block;margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--di-head-border);}
+.di-title{display:block;font-size:1.3em;font-weight:700;}
+.di-info{display:inline;}
+.di-body{display:block;margin:4px 0;}
+.sense-block{display:block;margin:8px 0;padding:4px 0;}
+.sense-head{display:block;margin:6px 0 2px;}
+.sense-body{display:block;margin:2px 0;padding-left:8px;}
+.sense-info{display:inline;}
+.prongrp{display:block;margin:2px 0;}
+.inflection{display:block;margin:4px 0;padding-left:12px;}
+.INFLX{display:inline;margin:0 4px;color:var(--subtle);}
+.base{display:inline;}
+.results{display:inline;}
+.forms{display:inline;}
+.inflections{display:inline;}
+.hw{font-size:1.1em;color:var(--header);}
+.inf{font-style:italic;}
+.cm{font-weight:600;}
+"""
+
+    val jsBlock = """
+<script>
+function setTheme(d){if(d){document.body.classList.add('dark')}else{document.body.classList.remove('dark')}}
+function fixInlineStyles(){if(!document.body.classList.contains('dark'))return;var els=document.querySelectorAll('[style]');for(var i=0;i<els.length;i++){var s=els[i].style;var bg=s.backgroundColor||'';if(bg){var lb=bg.toLowerCase();if(lb.indexOf('#fff')>=0||lb.indexOf('#ffffff')>=0||lb.indexOf('white')>=0||lb.indexOf('rgb(255,')>=0){s.backgroundColor=''}}var bi=s.backgroundImage||'';if(bi&&bi.indexOf('url(')>=0&&bi.indexOf('data:')<0){s.backgroundImage='none'}var co=s.color||'';if(co){var lc=co.toLowerCase();if(lc.indexOf('#000')>=0||lc.indexOf('#000000')>=0||lc.indexOf('black')>=0||lc.indexOf('rgb(0,')>=0){s.color=''}}var b=s.background||'';if(b&&b.indexOf('#fff')>=0){s.background=''}}}
+document.addEventListener('DOMContentLoaded',fixInlineStyles)
+</script>
+"""
 
     return """
 <!DOCTYPE html>
@@ -635,129 +694,14 @@ a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.35); }
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-${dictCssBlock}<style>
-:root {
-  --mdx-bg: $lightBg;
-  --mdx-text: $lightText;
-  --mdx-header: $lightHeader;
-  --mdx-border: $lightBorder;
-  --mdx-hint: $lightHint;
-  --mdx-phon: $lightPhon;
-  --mdx-link: $lightLink;
-}
-.dark {
-  --mdx-bg: $darkBg;
-  --mdx-text: $darkText;
-  --mdx-header: $darkHeader;
-  --mdx-border: $darkBorder;
-  --mdx-hint: $darkHint;
-  --mdx-phon: $darkPhon;
-  --mdx-link: $darkLink;
-}
-
-body {
-  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 15px; line-height: 1.7;
-  color: var(--mdx-text); background: var(--mdx-bg);
-  margin: 0; padding: 8px 12px; word-wrap: break-word;
-}
-h1, h2, h3, h4, h5, h6 { color: var(--mdx-header); font-weight: 600; margin: 12px 0 8px; }
-hw, .hw { font-weight: bold; color: var(--mdx-header); font-size: 1.1em; display: inline; }
-a { color: var(--mdx-link); text-decoration: none; }
-img { max-width: 100%; height: auto; }
-table { border-collapse: collapse; width: 100%; }
-td, th { border: 1px solid var(--mdx-border); padding: 8px; }
-
-.dark p, .dark div, .dark span, .dark li { color: var(--mdx-text); }
-.dark table, .dark td, .dark th { border-color: var(--mdx-border); }
-.dark a { color: var(--mdx-link); }
-
-.comment { color: var(--mdx-hint); font-style: italic; }
-.capvar { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
-.INFLX { display: inline; margin: 0 4px; color: var(--mdx-hint); }
-.phon, .pron, .ipa, inf { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; }
-.example, .ex { color: #666; font-style: italic; margin: 4px 0 4px 16px; }
-.dark .example, .dark .ex { color: var(--mdx-hint); }
-
-.arl { display: block; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(128,128,128,0.15); }
-.hit { display: block; margin: 2px 0; padding: 2px 0; }
-.base { display: inline; }
-.results { display: inline; }
-.forms { display: inline; }
-.inflections { display: inline; }
-.inf { font-style: italic; }
-.cm { font-weight: 600; }
-
-.speaker, .sound, .audio-play {
-  cursor: pointer; display: inline-block; padding: 2px 6px; margin: 0 4px;
-  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); font-size: 14px;
-}
-.speaker:hover, .sound:hover, .audio-play:hover { background: rgba(78, 205, 196, 0.3); }
-.soundfile { display: inline; margin: 0 2px; }
-.soundfile a {
-  cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
-  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); text-decoration: none; font-size: 13px;
-}
-.soundfile img { display: none; }
-.soundfile a:hover { background: rgba(78, 205, 196, 0.3); }
-a[href^="sound://"] {
-  cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
-  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); text-decoration: none;
-}
-a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.3); }
-
-.pos, .pos2 {
-  display: inline-block; padding: 2px 8px; margin: 2px 4px;
-  background: rgba(44, 74, 110, 0.1); border-radius: 4px;
-  font-style: italic; color: var(--mdx-header); font-size: 0.9em;
-}
-.bre, .gb, .ame, .us, .ussymbol {
-  display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
-  font-size: 0.8em; font-weight: 600;
-}
-.bre, .gb { background: rgba(33, 150, 243, 0.1); color: #1976D2; }
-.ame, .us, .ussymbol { background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
-
-.label, .sense { margin: 4px 0; padding: 2px 0; }
-.definition, .def { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid rgba(78, 205, 196, 0.3); }
-.di-head { display: block; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--mdx-header); }
-.di-title { display: block; font-size: 1.3em; font-weight: 700; }
-.di-info { display: inline; }
-.di-body { display: block; margin: 4px 0; }
-.sense-block { display: block; margin: 8px 0; padding: 4px 0; }
-.sense-head { display: block; margin: 6px 0 2px; }
-.sense-body { display: block; margin: 2px 0; padding-left: 8px; }
-.sense-info { display: inline; }
-.prongrp { display: block; margin: 2px 0; }
-.inflection { display: block; margin: 4px 0; padding-left: 12px; }
+<style>
+$varCss
 </style>
-<script>
-function applyDarkMode(isDark) {
-  if (isDark) {
-    document.body.classList.add('dark');
-  } else {
-    document.body.classList.remove('dark');
-  }
-
-  document.querySelectorAll('[style]').forEach(function(el) {
-    var style = el.getAttribute('style') || '';
-    var bgIdx = style.indexOf('background');
-    if (bgIdx !== -1 && style.indexOf('url(', bgIdx) !== -1) return;
-    if (bgIdx === -1) {
-      if (style.indexOf('color:') !== -1) {
-        var m = style.match(/color:\s*#0{1,2}0{1,2}0{1,2}\b/);
-        if (m) el.style.color = isDark ? 'var(--mdx-text)' : '';
-      }
-    }
-    if (bgIdx !== -1 && style.indexOf('url(') === -1) {
-      el.style.backgroundColor = isDark ? 'var(--mdx-bg)' : '';
-    }
-  });
-}
-</script>
+$dictCssBlock
 </head>
 <body>
-  $transformedDef
+$transformedDef
+$jsBlock
 </body>
 </html>
     """.trimIndent()

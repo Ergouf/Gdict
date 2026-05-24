@@ -41,14 +41,19 @@ import io.github.gdict.core.DictionaryManager
 import io.github.gdict.data.Dictionary
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.DictionaryViewModel
+import io.github.gdict.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun DictionariesScreen(
-    dictionaryViewModel: DictionaryViewModel = viewModel()
+    dictionaryViewModel: DictionaryViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val dictionaries by dictionaryViewModel.dictionaries.collectAsStateWithLifecycle(initialValue = emptyList())
     val importing by dictionaryViewModel.importing.collectAsStateWithLifecycle(initialValue = false)
+    val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val dialogBg = if (darkMode) GdictColors.DarkSurface else Color.White
+    val cardBg = if (darkMode) GdictColors.DarkSurface else Color.White
     var visible by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
@@ -222,6 +227,7 @@ fun DictionariesScreen(
                         ) {
                             DictionaryItemCard(
                                 dictionary = dictionary,
+                                darkMode = darkMode,
                                 onToggle = { dictionaryViewModel.toggleDictionary(dictionary) },
                             onRemove = { dictionaryViewModel.removeDictionary(dictionary) }
                             )
@@ -277,6 +283,7 @@ fun DictionariesScreen(
 
     if (showAddDialog) {
         AddDictionaryDialog(
+            darkMode = darkMode,
             onDismiss = { showAddDialog = false },
             onAdd = { name, path ->
                 dictionaryViewModel.addDictionary(name, path)
@@ -294,6 +301,7 @@ fun DictionariesScreen(
     if (showBatchDialog && scannedCandidates.isNotEmpty()) {
         BatchImportDialog(
             candidates = scannedCandidates,
+            darkMode = darkMode,
             onDismiss = {
                 showBatchDialog = false
                 scannedCandidates = emptyList()
@@ -402,10 +410,14 @@ fun DictionariesScreen(
 @Composable
 fun DictionaryItemCard(
     dictionary: Dictionary,
+    darkMode: Boolean = false,
     onToggle: () -> Unit,
     onRemove: () -> Unit
 ) {
     var scale by remember { mutableStateOf(1f) }
+    val cardBg = if (darkMode) GdictColors.DarkSurface else Color.White
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
+    val surfaceBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     LaunchedEffect(Unit) {
         scale = 0.95f
         delay(50)
@@ -418,7 +430,7 @@ fun DictionaryItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = cardBg
         )
     ) {
         Row(
@@ -459,7 +471,7 @@ fun DictionaryItemCard(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = GdictColors.DarkGray
+                        color = textColor
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -503,6 +515,7 @@ fun DictionaryItemCard(
 
 @Composable
 fun AddDictionaryDialog(
+    darkMode: Boolean = false,
     onDismiss: () -> Unit,
     onAdd: (String, String) -> Unit,
     onBatchSelect: (List<DictFileImporter.DictCandidate>) -> Unit,
@@ -511,6 +524,9 @@ fun AddDictionaryDialog(
     var name by remember { mutableStateOf("") }
     var path by remember { mutableStateOf("") }
     var scanError by remember { mutableStateOf<String?>(null) }
+    val dialogBg = if (darkMode) GdictColors.DarkSurface else Color.White
+    val titleColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
+    val fieldBg = if (darkMode) GdictColors.DarkSurface else Color.White
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -560,12 +576,12 @@ fun AddDictionaryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = dialogBg,
         title = {
             Text(
                 "Add Dictionary",
                 fontWeight = FontWeight.Bold,
-                color = GdictColors.DarkGray
+                color = titleColor
             )
         },
         text = {
@@ -582,8 +598,8 @@ fun AddDictionaryDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = GdictColors.NavyBlue,
                         unfocusedBorderColor = GdictColors.LightGray,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = fieldBg,
+                        unfocusedContainerColor = fieldBg,
                         cursorColor = GdictColors.NavyBlue
                     )
                 )
@@ -598,8 +614,8 @@ fun AddDictionaryDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = GdictColors.NavyBlue,
                         unfocusedBorderColor = GdictColors.LightGray,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = fieldBg,
+                        unfocusedContainerColor = fieldBg,
                         cursorColor = GdictColors.NavyBlue
                     ),
                     trailingIcon = {
@@ -672,19 +688,22 @@ fun AddDictionaryDialog(
 @Composable
 fun BatchImportDialog(
     candidates: List<DictFileImporter.DictCandidate>,
+    darkMode: Boolean = false,
     onDismiss: () -> Unit,
     onImport: (List<DictFileImporter.DictCandidate>) -> Unit
 ) {
     var selected by remember { mutableStateOf(candidates.toSet()) }
+    val dialogBg = if (darkMode) GdictColors.DarkSurface else Color.White
+    val titleColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = dialogBg,
         title = {
             Text(
                 "Select dictionaries to import",
                 fontWeight = FontWeight.Bold,
-                color = GdictColors.DarkGray
+                color = titleColor
             )
         },
         text = {

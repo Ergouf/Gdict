@@ -1,5 +1,28 @@
-fix: 优化 Flashcard 背面显示 + 修复 CI 签名路径
+feat: WebView 暗色模式 CSS变量体系 + DictionariesScreen暗色同步
 
-- 添加 stripHtml 剥离 HTML 标签为纯文本
-- 添加 simplifyDefinition 限制行数和字数，突出重点
-- 修复 GitHub Actions keystore 创建路径 (android_project -> android_project/app)
+Step1-3: 重写 buildHtmlContent 使用 CSS 变量体系
+- :root/body.dark 定义所有色值变量, 替代硬编码 Kotlin 插值
+- 字典CSS规则也迁移到 var(--xxx) 引用
+- 暗色模式在 body.dark 下覆盖所有变量值
+
+Step4: JS 注入兜底内联样式清除 + background-image白名单
+- setTheme(dark) 控制 body.dark class
+- fixInlineStyles() 清除白色背景/黑色文字等暗色不适配的内联style
+- 非 data: 协议的外部 background-image 在暗色下隐藏
+
+Step5: WebView原生暗色模式 algorithmicDarkening (API 33+)
+- isAlgorithmicDarkeningAllowed = true
+- setBackgroundColor(0x00000000) 透明背景
+
+Step6: 动态切换不闪烁 (toggle class 而非 rebuild HTML)
+- HTML 不再依赖 isDarkTheme 参数插值, 改用 JS setTheme() 实时切换
+- buildHtmlContent(definition, css) 不再需要 isDarkTheme 参数
+
+Step7: DictionariesScreen 全部硬编码 Color.White 迁移暗色模式
+- DictionariesScreen/AddDictionaryDialog/BatchImportDialog/DictionaryItemCard
+- AlertDialog OutlinedTextField Switch 等全面支持 GdictColors.DarkSurface
+
+Issue1修复: key() 改 AndroidView update 回调
+- 避免 definition/css 变化时 WebView 被销毁重建
+
+Issue2验证: shouldOverrideUrlLoading 已正确返回 true

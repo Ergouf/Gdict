@@ -191,7 +191,7 @@ private fun GdictAppContent(
                 )
             }
             composable("dictionaries") {
-                DictionariesScreen(dictionaryViewModel = dictionaryViewModel)
+                DictionariesScreen(dictionaryViewModel = dictionaryViewModel, settingsViewModel = settingsViewModel)
             }
             composable(
                 route = "word_detail/{word}/{definition}/{dictionaryName}",
