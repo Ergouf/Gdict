@@ -68,11 +68,11 @@ private fun stripHtml(html: String): String {
         .replace(Regex("<li\\s*>"), "")
         .replace(Regex("</li>"), "; ")
         .replace(Regex("<a[^>]*href=\"[^\"]*\"[^>]*>(.*?)</a>"), "$1")
-        .replace(Regex("<font[^>]*>|</font>"))
-        .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"))
-        .replace(Regex("<i\\s*>|<em\\s*>|</i>|</em>"))
-        .replace(Regex("<u\\s*>|</u>"))
-        .replace(Regex("<span[^>]*>|</span>"))
+        .replace(Regex("<font[^>]*>|</font>"), "")
+        .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"), "")
+        .replace(Regex("<i\\s*>|<em\\s*>|</i>|</em>"), "")
+        .replace(Regex("<u\\s*>|</u>"), "")
+        .replace(Regex("<span[^>]*>|</span>"), "")
         .replace(Regex("&nbsp;"), " ")
         .replace(Regex("&amp;"), "&")
         .replace(Regex("&lt;"), "<")
@@ -520,7 +520,6 @@ private fun RatingButton(
 ) {
     val daysText = scheduling?.scheduledDays?.let { days ->
         when {
-            days == 0 -> "<1d"
             days == 1 -> "1d"
             days < 30 -> "${days}d"
             else -> "${days / 30}mo"

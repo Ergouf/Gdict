@@ -41,9 +41,18 @@ gradle_*.txt
 
 *.ps1
 
+# Build logs & temp files
 *_err.txt
 *_out.txt
 *_result.txt
 *_output.txt
+*_build*.txt
 adb_*.txt
 build_*.txt
+_git_*.txt
+
+# Android Studio generated files
+*.iml
+.idea/
+local.properties
+*.keystore

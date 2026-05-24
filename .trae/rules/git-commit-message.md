@@ -1,6 +1,6 @@
 ---
-alwaysApply: false
+alwaysApply: true
 description: 
 scene: git_message
 ---
-使用中文
+

@@ -1,35 +1,37 @@
 # Gdict
 
-一款遵循 Material Design 3 设计规范的现代 Android 词典应用，支持 MDX/MDD 词典格式。
+[中文版 (Chinese)](./README.zh-CN.md)
 
-## 功能特性
+A modern Android dictionary app following Material Design 3, supporting MDX/MDD dictionary formats.
 
-- **MDX/MDD 词典解析** — 支持 V1.2 和 V2.0 规范，含 LZO/zlib 解压、RipeMD128 加密解密
-- **多词典管理** — 添加、删除、启停词典，重启后持久化，文件夹批量扫描导入
-- **单词搜索** — 二分查找 O(log n) 精确匹配 + 前缀预测搜索
-- **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，支持从 MDD 提取 CSS/图片/音频资源
-- **MDD 音频播放** — 从 MDD 资源包提取发音音频，回退到 TTS 语音合成
-- **Word of the Day** — 从已加载词典中动态生成每日推荐单词
-- **生词本** — 收藏单词，支持删除和二次确认
-- **搜索历史** — 自动记录搜索历史
-- **深色模式** — 支持系统深色模式和应用内切换
-- **全面屏适配** — Edge-to-Edge 沉浸式状态栏和导航栏
-- **MD3 底部导航栏** — Search / Favorites / Learning / Profile 四页导航
+## Features
 
-## 技术栈
+- **MDX/MDD Parsing** — Supports V1.2 & V2.0 specs, LZO/zlib decompression, RipeMD128 encryption
+- **Multi-Dictionary** — Add, remove, enable/disable dictionaries, persistent across restarts, batch folder import
+- **Word Search** — Binary search O(log n) exact match + prefix predictive search
+- **HTML Rendering** — WebView renders original dictionary HTML, MDD CSS/img/audio resource extraction
+- **MDD Audio Playback** — Extract pronunciation audio from MDD, fallback to TTS
+- **Word of the Day** — Dynamic daily word generation from loaded dictionaries
+- **Bookmarks** — Save words, delete with confirmation dialog
+- **Search History** — Auto-recorded search history
+- **Dark Mode** — System dark mode + in-app toggle
+- **Edge-to-Edge** — Immersive status bar and navigation bar
+- **MD3 Bottom Nav** — Search / Favorites / Learning / Profile
 
-| 类别 | 技术 |
+## Tech Stack
+
+| Category | Technology |
 |------|------|
-| 语言 | Kotlin |
-| UI 框架 | Jetpack Compose |
-| 设计系统 | Material Design 3 |
-| 导航 | Navigation Compose |
-| 状态管理 | ViewModel + StateFlow |
-| 数据持久化 | DataStore Preferences |
-| 音频 | MediaPlayer + TextToSpeech |
-| 构建配置 | Gradle Kotlin DSL |
+| Language | Kotlin |
+| UI Framework | Jetpack Compose |
+| Design System | Material Design 3 |
+| Navigation | Navigation Compose |
+| State Management | ViewModel + StateFlow |
+| Data Persistence | SharedPreferences (JSON) |
+| Audio | MediaPlayer + TextToSpeech |
+| Build | Gradle Kotlin DSL |
 
-## 项目结构
+## Project Structure
 
 ```
 Gdict/
@@ -41,7 +43,11 @@ Gdict/
 │   │   │   ├── data/
 │   │   │   │   └── AppRepository.kt        # 数据仓库
 │   │   │   ├── viewmodel/
-│   │   │   │   └── AppViewModel.kt         # ViewModel
+│   │   │   │   ├── SettingsViewModel.kt     # Global settings (dark mode, etc.)
+│   │   │   │   ├── SearchViewModel.kt       # Search + history + WotD
+│   │   │   │   ├── BookmarkViewModel.kt     # Bookmark management
+│   │   │   │   ├── FlashcardViewModel.kt    # FSRS flashcard session
+│   │   │   │   └── DictionaryViewModel.kt   # Dict import/management
 │   │   │   └── ui/
 │   │   │       ├── GdictApp.kt            # 主 UI + 底部导航
 │   │   │       ├── screens/
@@ -85,43 +91,46 @@ Gdict/
 └── README.md
 ```
 
-## 快速开始
+## Quick Start
 
-### 环境要求
+### Prerequisites
 
-- Android Studio Hedgehog (2023.1.1) 或更高版本
+- Android Studio Hedgehog (2023.1.1) or later
 - JDK 17+
 - Android SDK API 34
-- Gradle 8.5（项目自带 wrapper）
+- Gradle 8.5 (included via wrapper)
 
-### 构建
+### Build
 
 ```bash
 cd android_project
 
-# Debug 构建
+# Debug build
 ./gradlew assembleDebug
 
-# Release 构建（需先配置 local.properties）
+# Release build (requires local.properties configuration)
 ./gradlew assembleRelease
 
-# APK 输出位置
+# APK output
 # app/build/outputs/apk/debug/app-debug.apk
 # app/build/outputs/apk/release/app-release.apk
 ```
 
-### Release 签名配置
+### Release Signing
 
-在 `android_project/` 下创建 `local.properties` 文件：
+Create `local.properties` under `android_project/`:
 
 ```properties
+sdk.dir=D\\:\\path\\to\\android_sdk
 storeFile=release.keystore
 storePassword=<your_store_password>
 keyAlias=gdict
 keyPassword=<your_key_password>
 ```
 
-生成新的 keystore：
+Note: See [LOCAL_BUILD.md](./LOCAL_BUILD.md) for detailed local build setup instructions.
+
+Generate a keystore:
 
 ```bash
 keytool -genkeypair -v \
@@ -130,70 +139,75 @@ keytool -genkeypair -v \
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-### 使用 Android Studio
+### Open in Android Studio
 
-1. 打开 `android_project` 目录
-2. 等待 Gradle 同步
-3. 连接设备或启动模拟器
-4. 点击 Run
+1. Open the `android_project` directory
+2. Wait for Gradle sync
+3. Connect a device or start an emulator
+4. Click Run
 
-### 运行测试
+### Run Tests
 
 ```bash
 cd android_project
 
-# 运行 MDX 解析器单元测试
+# Run MDX parser unit tests
 ./gradlew :core:testDebugUnitTest --rerun-tasks
 
-# 指定 MDX 文件路径运行测试
+# Run tests with MDX file path
 ./gradlew :core:testDebugUnitTest -Dmdx.file.path=/path/to/dict.mdx
 ```
 
-## 使用说明
+## Usage
 
-### 导入词典
+### Import Dictionaries
 
-1. 在设置页点击「Dictionary Management」
-2. 点击 + 按钮选择词典文件
-3. 支持 `.mdx` 文件，自动查找同目录下的 `.mdd` 资源包和 `.css` 样式文件
-4. 支持选择文件夹批量导入目录下所有词典
+1. Navigate to Settings → Dictionary Management
+2. Tap + to select dictionary files
+3. Supports `.mdx` files; auto-discovers `.mdd` resources and `.css` styles in the same directory
+4. Supports folder-based batch import
 
-### 搜索单词
+### Search
 
-- 在搜索页输入单词，实时显示搜索建议
-- 点击搜索结果进入详情页
-- 详情页展示词典原始 HTML 释义内容
+- Type a word in the search bar for real-time suggestions
+- Tap a result to view the full definition
+- Detail page renders the dictionary's original HTML content
 
-### 发音
+### Pronunciation
 
-- 详情页点击发音按钮播放单词发音
-- 优先从 MDD 资源包提取音频文件播放
-- 若无 MDD 音频，回退到系统 TTS 语音合成
+- Tap the speaker button on the detail page
+- Prefers MDD audio extraction when available
+- Falls back to system TTS
 
-### 生词本
+### Bookmarks
 
-- 在详情页点击书签图标收藏单词
-- 在 Favorites 页查看和管理收藏的单词
-- 支持删除收藏，有二次确认对话框
+- Tap the bookmark icon on the detail page to save words
+- Manage bookmarks under the Favorites tab
+- Delete bookmarks with confirmation dialog
 
-### 导出词条（开发工具）
+### Flashcard Review (FSRS)
 
-`export_words.kt` 是独立的 Kotlin 脚本，可脱离 Android 环境运行，用于导出 MDX 词典中的词条到 HTML 文件：
+- Uses the FSRS (Free Spaced Repetition Scheduler) algorithm
+- Start a review session from the Learning tab or Bookmarks page
+- Rate cards as Again / Hard / Good / Easy
+
+### Export Entries (Dev Tool)
+
+`export_words.kt` is a standalone Kotlin script for exporting MDX entries to HTML files:
 
 ```bash
-# 使用 kotlinc 直接运行
 kotlinc -script export_words.kt -- /path/to/dict.mdx /path/to/output
 
-# 或通过 Gradle 任务运行
+# Or via Gradle
 cd android_project
 ./gradlew export -PmdxPath=/path/to/dict.mdx -PoutputDir=/path/to/output
 ```
 
-## 核心架构
+## Core Architecture
 
-### MDX/MDD 文件格式
+### MDX/MDD File Format
 
-MDX 文件结构：
+MDX file structure:
 ```
 ┌──────────────────────────────────────────────┐
 │ 1. Header Section   - 词典元信息（XML 格式）  │
@@ -202,55 +216,55 @@ MDX 文件结构：
 └──────────────────────────────────────────────┘
 ```
 
-- V1.2: 整数字段为 4 字节 Big-Endian，关键词索引不压缩
-- V2.0: 整数字段为 8 字节 Big-Endian（64 位），关键词索引经过压缩
+- V1.2: Integer fields are 4-byte Big-Endian, keyword index is uncompressed
+- V2.0: Integer fields are 8-byte Big-Endian (64-bit), keyword index is compressed
 
-压缩块的前 8 字节为压缩头：
+Compression block header (8 bytes):
 ```
-[0..3] 压缩类型（小端序）：0=不压缩, 1=LZO, 2=zlib
-[4..7] Adler32 校验和（大端序）
-[8..]  实际压缩数据
+[0..3] Compression type (little-endian): 0=none, 1=LZO, 2=zlib
+[4..7] Adler32 checksum (big-endian)
+[8..]  Actual compressed data
 ```
 
-MDD 文件与 MDX 共享相同的格式规范，但存储的是资源文件（CSS、图片、音频等）。
+MDD files share the same format spec but store resource files (CSS, images, audio, etc.).
 
-### 词典数据隔离
+### Dictionary Data Isolation
 
-每个词典导入后复制到独立目录 `filesDir/dictionaries/$id/`，通过唯一 ID 和路径区分，确保多词典数据互不干扰。
+Each imported dictionary is copied to a dedicated directory `filesDir/dictionaries/$id/`, identified by a unique ID and path, ensuring no cross-contamination between dictionaries.
 
-### 搜索流程
+### Search Flow
 
-1. 用户输入查询词
-2. ViewModel 分发到所有启用的词典
-3. 每个 MdxParser 实例独立执行二分查找
-4. 结果汇总后按词典分组展示
+1. User enters a query
+2. ViewModel dispatches to all enabled dictionaries
+3. Each MdxParser instance performs an independent binary search
+4. Results are aggregated and displayed grouped by dictionary
 
-### 流式资源查找
+### Streaming Resource Lookup
 
-对于 MDD 资源文件（CSS、图片、音频等），采用流式查找方式：
+For MDD resource files (CSS, images, audio, etc.), a streaming lookup approach is used:
 
-1. 直接从文件中读取关键词索引块
-2. 逐块解压并搜索目标资源键
-3. 找到后通过记录偏移量读取资源数据
-4. 查找完成后自动恢复文件指针位置，不影响后续操作
+1. Read keyword index blocks directly from file
+2. Decompress and search for target resource keys block by block
+3. Upon match, read resource data via record offset
+4. File pointer is restored after lookup to not interfere with subsequent operations
 
-### WebView 资源拦截
+### WebView Resource Interception
 
-详情页通过 `WebViewClient.shouldInterceptRequest` 拦截资源请求：
+The detail page intercepts resource requests via `WebViewClient.shouldInterceptRequest`:
 
-1. WebView 加载词典 HTML 内容时请求 CSS/图片/音频等资源
-2. 拦截请求后从 MDD 文件同步读取对应资源
-3. 返回包含资源数据的 `WebResourceResponse`
+1. WebView loads dictionary HTML content and requests CSS/images/audio
+2. Intercepted requests are served by synchronously reading from the MDD file
+3. Returns a `WebResourceResponse` containing the resource data
 
-## 致谢
+## Acknowledgments
 
-| 项目 | 说明 | 链接 |
+| Project | Description | Link |
 |------|------|------|
-| **Linux Kernel** | LZO1X 解压缩算法，移植自 `lib/lzo/lzo1x_decompress_safe.c` | [GitHub: torvalds/linux](https://github.com/torvalds/linux) |
-| **Woodstox** | XML StAX 解析器，用于解析 MDX Header | [GitHub: FasterXML/woodstox](https://github.com/FasterXML/woodstox) |
-| **Jetpack Compose** | Android 声明式 UI 框架 | [Android Developers](https://developer.android.com/compose) |
-| **Material Design 3** | Google 设计系统 | [Material Design 3](https://m3.material.io/) |
+| **Linux Kernel** | LZO1X decompression algorithm, ported from `lib/lzo/lzo1x_decompress_safe.c` | [GitHub: torvalds/linux](https://github.com/torvalds/linux) |
+| **Woodstox** | XML StAX parser for MDX Header parsing | [GitHub: FasterXML/woodstox](https://github.com/FasterXML/woodstox) |
+| **Jetpack Compose** | Android declarative UI framework | [Android Developers](https://developer.android.com/compose) |
+| **Material Design 3** | Google design system | [Material Design 3](https://m3.material.io/) |
 
-## 许可证
+## License
 
 GPL-3.0

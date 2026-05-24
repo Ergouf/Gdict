@@ -109,7 +109,7 @@ object FsrsAlgorithm {
     }
 
     private fun meanReversion(init: Double, current: Double): Double {
-        val w = parameters[8]
+        val w = 0.4
         return w * init + (1 - w) * current
     }
 
