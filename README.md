@@ -43,11 +43,12 @@ Gdict/
 │   │   │   ├── viewmodel/
 │   │   │   │   └── AppViewModel.kt         # ViewModel
 │   │   │   └── ui/
-│   │   │       ├── GoldenDictNgApp.kt      # 主 UI + 底部导航
+│   │   │       ├── GdictApp.kt            # 主 UI + 底部导航
 │   │   │       ├── screens/
 │   │   │       │   ├── SearchScreen.kt     # 搜索页 + Word of the Day
 │   │   │       │   ├── WordDetailScreen.kt # 词条详情页 + 发音
 │   │   │       │   ├── BookmarksScreen.kt  # 生词本页
+│   │   │       │   ├── FlashcardScreen.kt  # 间隔重复复习页 (FSRS)
 │   │   │       │   ├── HistoryScreen.kt    # 历史记录页
 │   │   │       │   ├── DictionariesScreen.kt # 词典管理页
 │   │   │       │   └── SettingsScreen.kt   # 设置页
@@ -62,7 +63,11 @@ Gdict/
 │   │   │   ├── MdxParser.kt                # MDX/MDD 解析器（含流式查找）
 │   │   │   ├── Lzo1xDecompressor.kt        # LZO1X 解压
 │   │   │   ├── RipeMD128.kt                # RipeMD-128 哈希
-│   │   │   └── DictionaryManager.kt        # 词典管理
+│   │   │   ├── DictionaryManager.kt        # 词典管理（协调器）
+│   │   │   ├── DictPersistence.kt          # 词典持久化
+│   │   │   ├── DictFileImporter.kt         # 词典文件导入
+│   │   │   ├── DictSearchEngine.kt         # 词典搜索引擎
+│   │   │   └── FsrsAlgorithm.kt            # FSRS 间隔重复算法
 │   │   ├── src/test/java/io/github/gdict/core/
 │   │   │   └── MdxParserTest.kt            # 解析器单元测试
 │   │   ├── build.gradle.kts

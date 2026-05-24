@@ -12,6 +12,9 @@ import io.github.gdict.data.BookmarkItem
 import io.github.gdict.data.Dictionary
 import io.github.gdict.data.HistoryItem
 import io.github.gdict.data.SearchResultItem
+import io.github.gdict.core.Rating
+import io.github.gdict.core.SchedulingCard
+import io.github.gdict.data.ReviewStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -56,6 +59,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _wordOfTheDay = MutableStateFlow<List<Pair<String, String>>>(emptyList())
     val wordOfTheDay: StateFlow<List<Pair<String, String>>> = _wordOfTheDay.asStateFlow()
 
+    private val _reviewStats = MutableStateFlow(ReviewStats(0, 0, 0, 0))
+    val reviewStats: StateFlow<ReviewStats> = _reviewStats.asStateFlow()
+
+    private val _dueBookmarks = MutableStateFlow<List<BookmarkItem>>(emptyList())
+    val dueBookmarks: StateFlow<List<BookmarkItem>> = _dueBookmarks.asStateFlow()
+
+    private val _currentCardIndex = MutableStateFlow(0)
+    val currentCardIndex: StateFlow<Int> = _currentCardIndex.asStateFlow()
+
+    private val _currentScheduling = MutableStateFlow<Map<Rating, SchedulingCard>>(emptyMap())
+    val currentScheduling: StateFlow<Map<Rating, SchedulingCard>> = _currentScheduling.asStateFlow()
+
+    private val _sessionReviewed = MutableStateFlow(0)
+    val sessionReviewed: StateFlow<Int> = _sessionReviewed.asStateFlow()
+
     fun clearError() {
         _errorMessage.value = null
     }
@@ -87,7 +105,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleBookmark(word: String, definition: String, dictionaryName: String = "") {
         try {
-            val existing = repository.bookmarks.value.find { it.word == word }
+            val existing = repository.bookmarks.value.find { it.word == word && it.dictionaryName == dictionaryName }
             if (existing != null) {
                 repository.removeBookmark(existing)
             } else {
@@ -238,4 +256,66 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun getResourceByPathSync(path: String): ByteArray? {
         return repository.getResourceByPathSync(path)
     }
+
+    fun startReviewSession() {
+        val due = repository.getDueBookmarks()
+        val new = repository.getNewBookmarks()
+        val combined = (due + new).distinctBy { it.id }
+        _dueBookmarks.value = combined
+        _currentCardIndex.value = 0
+        _sessionReviewed.value = 0
+        if (combined.isNotEmpty()) {
+            _currentScheduling.value = repository.getSchedulingForBookmark(combined[0])
+        }
+        refreshReviewStats()
+    }
+
+    fun rateCurrentCard(rating: Rating) {
+        val items = _dueBookmarks.value
+        val index = _currentCardIndex.value
+        if (index >= items.size) return
+
+        val item = items[index]
+        val scheduling = _currentScheduling.value[rating] ?: return
+
+        repository.applyReview(item, scheduling)
+        _sessionReviewed.value = _sessionReviewed.value + 1
+
+        val nextIndex = index + 1
+        if (nextIndex < items.size) {
+            _currentCardIndex.value = nextIndex
+            _currentScheduling.value = repository.getSchedulingForBookmark(items[nextIndex])
+        } else {
+            _currentCardIndex.value = items.size
+            _currentScheduling.value = emptyMap()
+        }
+        refreshReviewStats()
+    }
+
+    fun skipCurrentCard() {
+        val items = _dueBookmarks.value
+        val index = _currentCardIndex.value
+        val nextIndex = index + 1
+        if (nextIndex < items.size) {
+            _currentCardIndex.value = nextIndex
+            _currentScheduling.value = repository.getSchedulingForBookmark(items[nextIndex])
+        } else {
+            _currentCardIndex.value = items.size
+            _currentScheduling.value = emptyMap()
+        }
+    }
+
+    fun refreshReviewStats() {
+        _reviewStats.value = repository.getReviewStats()
+    }
+
+    val isSessionComplete: Boolean
+        get() = _currentCardIndex.value >= _dueBookmarks.value.size && _dueBookmarks.value.isNotEmpty()
+
+    val currentReviewItem: BookmarkItem?
+        get() {
+            val items = _dueBookmarks.value
+            val index = _currentCardIndex.value
+            return if (index < items.size) items[index] else null
+        }
 }

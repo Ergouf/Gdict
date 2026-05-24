@@ -53,7 +53,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.gdict.ui.screens.BookmarksScreen
 import io.github.gdict.ui.screens.DictionariesScreen
-import io.github.gdict.ui.screens.HistoryScreen
+import io.github.gdict.ui.screens.FlashcardScreen
 import io.github.gdict.ui.screens.SearchScreen
 import io.github.gdict.ui.screens.SettingsScreen
 import io.github.gdict.ui.screens.WordDetailScreen
@@ -151,16 +151,14 @@ private fun GdictAppContent(
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
                         navController.navigate("word_detail/$word/$encodedDef/$encodedDict")
+                    },
+                    onFlashcardClick = {
+                        navController.navigate(Screen.Learning.route)
                     }
                 )
             }
             composable(Screen.Learning.route) {
-                HistoryScreen(
-                    viewModel = viewModel,
-                    onWordClick = { word ->
-                        viewModel.searchWord(word)
-                    }
-                )
+                FlashcardScreen(viewModel = viewModel)
             }
             composable(Screen.Profile.route) {
                 SettingsScreen(
@@ -182,7 +180,7 @@ private fun GdictAppContent(
                 val word = backStackEntry.arguments?.getString("word") ?: ""
                 val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
                 val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
-                val isBookmarked = viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList()).value.any { it.word == word }
+                val isBookmarked = viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList()).value.any { it.word == word && it.dictionaryName == dictionaryName }
                 val css = viewModel.getCssForDictionary(dictionaryName)
 
                 WordDetailScreen(

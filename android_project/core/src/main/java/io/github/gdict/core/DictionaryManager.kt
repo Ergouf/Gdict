@@ -184,7 +184,9 @@ class DictionaryManager(private val context: Context) {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val dictsSnapshot = synchronized(this) { loadedDicts.toMap() }
         val mddsSnapshot = synchronized(this) { loadedMdds.toMap() }
-        return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot)
+        return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot).map {
+            SearchResult(it.word, it.definition, it.dictionaryName, it.css)
+        }
     }
 
     @WorkerThread

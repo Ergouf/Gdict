@@ -52,7 +52,8 @@ import io.github.gdict.viewmodel.AppViewModel
 @Composable
 fun BookmarksScreen(
     viewModel: AppViewModel = viewModel(),
-    onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> }
+    onWordClick: (word: String, definition: String, dictionaryName: String, css: String) -> Unit = { _, _, _, _ -> },
+    onFlashcardClick: () -> Unit = {}
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
     val darkMode by viewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
@@ -88,7 +89,7 @@ fun BookmarksScreen(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(bookmarks, key = { it.word }) { item ->
+                items(bookmarks, key = { it.id }) { item ->
                     BookmarkItemCard(
                         item = item,
                         cardColor = cardColor,
@@ -100,7 +101,7 @@ fun BookmarksScreen(
 
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    FlashcardPromoCard()
+                    FlashcardPromoCard(onClick = onFlashcardClick)
                 }
             }
         } else {
@@ -236,9 +237,11 @@ private fun BookmarkItemCard(
 }
 
 @Composable
-private fun FlashcardPromoCard() {
+private fun FlashcardPromoCard(onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = GdictColors.NavyBlue

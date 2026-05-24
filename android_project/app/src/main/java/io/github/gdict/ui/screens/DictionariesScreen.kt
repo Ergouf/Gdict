@@ -505,8 +505,8 @@ fun DictionaryItemCard(
 fun AddDictionaryDialog(
     onDismiss: () -> Unit,
     onAdd: (String, String) -> Unit,
-    onBatchSelect: (List<DictionaryManager.DictCandidate>) -> Unit,
-    scanDirectory: (Uri) -> List<DictionaryManager.DictCandidate>
+    onBatchSelect: (List<DictFileImporter.DictCandidate>) -> Unit,
+    scanDirectory: (Uri) -> List<DictFileImporter.DictCandidate>
 ) {
     var name by remember { mutableStateOf("") }
     var path by remember { mutableStateOf("") }
@@ -671,9 +671,9 @@ fun AddDictionaryDialog(
 
 @Composable
 fun BatchImportDialog(
-    candidates: List<DictionaryManager.DictCandidate>,
+    candidates: List<DictFileImporter.DictCandidate>,
     onDismiss: () -> Unit,
-    onImport: (List<DictionaryManager.DictCandidate>) -> Unit
+    onImport: (List<DictFileImporter.DictCandidate>) -> Unit
 ) {
     var selected by remember { mutableStateOf(candidates.toSet()) }
 
