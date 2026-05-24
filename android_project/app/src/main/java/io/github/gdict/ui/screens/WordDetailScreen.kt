@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -433,7 +434,11 @@ private fun HtmlContent(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val htmlContent = buildHtmlContent(definition, css, darkMode)
+    val webViewRef = remember { java.util.concurrent.atomic.AtomicReference<WebView?>(null) }
+
+    val htmlContent = remember(definition, css) {
+        buildHtmlContent(definition, css)
+    }
 
     AndroidView(
         factory = { ctx ->
@@ -446,7 +451,19 @@ private fun HtmlContent(
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.domStorageEnabled = true
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    settings.isAlgorithmicDarkeningAllowed = darkMode
+                }
+
                 webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        webViewRef.set(view)
+                        if (darkMode) {
+                            view?.evaluateJavascript("applyDarkMode(true);", null)
+                        }
+                    }
+
                     override fun shouldOverrideUrlLoading(
                         view: WebView?,
                         request: android.webkit.WebResourceRequest?
@@ -499,10 +516,8 @@ private fun HtmlContent(
                         ) {
                             try {
                                 val resourcePath = "\\" + path.trimStart('/')
-                                android.util.Log.d("MdxWebView", "Intercepting resource: $resourcePath")
                                 val data = settingsViewModel.getResourceByPathSync(resourcePath)
                                 if (data != null) {
-                                    android.util.Log.d("MdxWebView", "Resource loaded successfully: ${data.size} bytes")
                                     val mimeType = when {
                                         lowerPath.endsWith(".png") -> "image/png"
                                         lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
@@ -517,7 +532,6 @@ private fun HtmlContent(
                                         mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
                                     )
                                 } else {
-                                    android.util.Log.w("MdxWebView", "Resource not found, returning transparent placeholder: $resourcePath")
                                     val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
                                         lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
                                         lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
@@ -537,16 +551,36 @@ private fun HtmlContent(
                 loadDataWithBaseURL("https://mdx.local/", htmlContent, "text/html", "UTF-8", null)
             }
         },
+        update = { webView ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                webView.settings.isAlgorithmicDarkeningAllowed = darkMode
+            }
+            if (darkMode) {
+                webView.evaluateJavascript("applyDarkMode(true);", null)
+            } else {
+                webView.evaluateJavascript("applyDarkMode(false);", null)
+            }
+        },
         modifier = Modifier.fillMaxWidth()
     )
 }
 
-private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boolean): String {
-    val bgColor = if (isDarkTheme) "#1A1C17" else "#FFFFFF"
-    val textColor = if (isDarkTheme) "#E1E4DA" else "#424242"
-    val headerColor = if (isDarkTheme) "#8BB8E8" else "#2C4A6E"
-    val linkColor = "#4ECDC4"
-    val phonColor = if (isDarkTheme) "#A8D8EA" else "#1565C0"
+private fun buildHtmlContent(definition: String, css: String): String {
+    val lightBg = "#FFFFFF"
+    val lightText = "#424242"
+    val lightHeader = "#2C4A6E"
+    val lightBorder = "#E0E0E0"
+    val lightHint = "#9E9E9E"
+    val lightPhon = "#1565C0"
+    val lightLink = "#1976D2"
+
+    val darkBg = "#1A1C17"
+    val darkText = "#E1E4DA"
+    val darkHeader = "#8BB8E8"
+    val darkBorder = "#3A3E35"
+    val darkHint = "#7A7D74"
+    val darkPhon = "#A8D8EA"
+    val darkLink = "#4ECDC4"
 
     val isCambridgeEpd = definition.contains("cepd18.css")
     val transformedDef = transformMdxTags(definition).let { def ->
@@ -559,7 +593,7 @@ private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boole
         } else def
     }
 
-    val cssBlock = if (css.isNotEmpty()) {
+    val dictCssBlock = if (css.isNotEmpty()) {
         "<style>\n$css\n</style>\n"
     } else if (isCambridgeEpd) {
         """
@@ -569,14 +603,14 @@ private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boole
 .hit + .hit { border-top: 1px solid rgba(128,128,128,0.08); padding-top: 6px; }
 .results { display: inline; }
 .base { display: inline; font-size: 1em; }
-.hw { font-weight: bold; font-size: 1.2em; color: $headerColor; display: inline; }
-.inf { color: #1565C0; font-style: italic; }
-.comment { color: #757575; font-style: italic; font-size: 0.9em; }
+.hw { font-weight: bold; font-size: 1.2em; color: var(--mdx-header); display: inline; }
+.inf { color: var(--mdx-phon); font-style: italic; }
+.comment { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
 .forms { display: block; margin: 2px 0 2px 16px; }
 .inflections { display: inline; }
-.inflections .base { color: #616161; }
-.pron { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
-.ipa { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
+.inflections .base { color: var(--mdx-hint); }
+.pron { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
+.ipa { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; display: inline; }
 .prongrp { display: block; margin: 3px 0; padding: 2px 0; }
 .ussymbol { display: inline-block; padding: 0 4px; margin: 0 2px; font-size: 0.8em; font-weight: 600; }
 .uk-flag { display: inline-block; padding: 1px 5px; margin: 0 2px; background: #012169; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: middle; letter-spacing: 0.5px; }
@@ -584,10 +618,10 @@ private fun buildHtmlContent(definition: String, css: String, isDarkTheme: Boole
 .soundfile { display: inline; margin: 0 2px; }
 .soundfile a { display: inline-block; vertical-align: middle; text-decoration: none; }
 .soundfile img { display: none; }
-a[href^="sound://"] { text-decoration: none; display: inline-block; vertical-align: middle; padding: 2px 8px; margin: 0 2px; background: rgba(78, 205, 196, 0.2); border-radius: 12px; color: #4ECDC4; font-size: 13px; }
+a[href^="sound://"] { text-decoration: none; display: inline-block; vertical-align: middle; padding: 2px 8px; margin: 0 2px; background: rgba(78, 205, 196, 0.2); border-radius: 12px; color: var(--mdx-link); font-size: 13px; }
 a[href^="sound://"]::before { content: "🔊"; margin-right: 4px; }
 a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.35); }
-.capvar { color: #9E9E9E; font-style: italic; font-size: 0.9em; }
+.capvar { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
 .inflection { display: block; margin: 2px 0 2px 16px; }
 </style>
 """
@@ -601,69 +635,126 @@ a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.35); }
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-${cssBlock}<style>
-  body {
-    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    font-size: 15px;
-    line-height: 1.7;
-    color: $textColor;
-    background: $bgColor;
-    margin: 0;
-    padding: 8px 12px;
-    word-wrap: break-word;
-  }
-  h1, h2, h3 { color: $headerColor; font-weight: 600; margin: 12px 0 8px; }
-  a { color: $linkColor; text-decoration: none; }
-  img { max-width: 100%; height: auto; }
-  table { border-collapse: collapse; width: 100%; }
-  td, th { border: 1px solid #E0E0E0; padding: 8px; }
-  hw { font-weight: bold; color: $headerColor; }
-  inf { font-style: italic; }
-  .arl { display: block; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(128,128,128,0.15); }
-  .hit { display: block; margin: 2px 0; padding: 2px 0; }
-  .comment { font-style: italic; color: #9E9E9E; }
-  .capvar { color: #9E9E9E; font-style: italic; }
-  .phon, .pron, .ipa { color: $phonColor; font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; }
-  .speaker, .sound, .audio-play { cursor: pointer; display: inline-block; padding: 2px 6px; margin: 0 4px;
-    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; font-size: 14px; }
-  .speaker:hover, .sound:hover, .audio-play:hover { background: rgba(78, 205, 196, 0.3); }
-  .soundfile { display: inline; margin: 0 2px; }
-  .soundfile a { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
-    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; font-size: 13px; }
-  .soundfile a:hover { background: rgba(78, 205, 196, 0.3); }
-  a[href^="sound://"] { cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
-    background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: $linkColor; text-decoration: none; }
-  a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.3); }
-  .pos, .pos2 { display: inline-block; padding: 2px 8px; margin: 2px 4px; background: rgba(44, 74, 110, 0.1);
-    border-radius: 4px; font-style: italic; color: $headerColor; font-size: 0.9em; }
-  .bre, .ame, .gb, .us { display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
-    font-size: 0.8em; font-weight: 600; }
-  .bre, .gb { background: rgba(33, 150, 243, 0.1); color: #1976D2; }
-  .ame, .us { background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
-  .ussymbol { display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
-    font-size: 0.8em; font-weight: 600; background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
-  .label, .sense { margin: 4px 0; padding: 2px 0; }
-  .definition, .def { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid rgba(78, 205, 196, 0.3); }
-  .example, .ex { color: #666; font-style: italic; margin: 4px 0 4px 16px; }
-  .di-head { display: block; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid $headerColor; }
-  .di-title { display: block; font-size: 1.3em; font-weight: 700; }
-  .di-info { display: inline; }
-  .di-body { display: block; margin: 4px 0; }
-  .sense-block { display: block; margin: 8px 0; padding: 4px 0; }
-  .sense-head { display: block; margin: 6px 0 2px; }
-  .sense-body { display: block; margin: 2px 0; padding-left: 8px; }
-  .sense-info { display: inline; }
-  .prongrp { display: block; margin: 2px 0; }
-  .inflection { display: block; margin: 4px 0; padding-left: 12px; }
-  .INFLX { display: inline; margin: 0 4px; color: #9E9E9E; }
-  .base { display: inline; }
-  .results { display: inline; }
-  .forms { display: inline; }
-  .inflections { display: inline; }
-  .hw { font-size: 1.1em; color: $headerColor; }
-  .inf { font-style: italic; }
-  .cm { font-weight: 600; }
+${dictCssBlock}<style>
+:root {
+  --mdx-bg: $lightBg;
+  --mdx-text: $lightText;
+  --mdx-header: $lightHeader;
+  --mdx-border: $lightBorder;
+  --mdx-hint: $lightHint;
+  --mdx-phon: $lightPhon;
+  --mdx-link: $lightLink;
+}
+.dark {
+  --mdx-bg: $darkBg;
+  --mdx-text: $darkText;
+  --mdx-header: $darkHeader;
+  --mdx-border: $darkBorder;
+  --mdx-hint: $darkHint;
+  --mdx-phon: $darkPhon;
+  --mdx-link: $darkLink;
+}
+
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px; line-height: 1.7;
+  color: var(--mdx-text); background: var(--mdx-bg);
+  margin: 0; padding: 8px 12px; word-wrap: break-word;
+}
+h1, h2, h3, h4, h5, h6 { color: var(--mdx-header); font-weight: 600; margin: 12px 0 8px; }
+hw, .hw { font-weight: bold; color: var(--mdx-header); font-size: 1.1em; display: inline; }
+a { color: var(--mdx-link); text-decoration: none; }
+img { max-width: 100%; height: auto; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid var(--mdx-border); padding: 8px; }
+
+.dark p, .dark div, .dark span, .dark li { color: var(--mdx-text); }
+.dark table, .dark td, .dark th { border-color: var(--mdx-border); }
+.dark a { color: var(--mdx-link); }
+
+.comment { color: var(--mdx-hint); font-style: italic; }
+.capvar { color: var(--mdx-hint); font-style: italic; font-size: 0.9em; }
+.INFLX { display: inline; margin: 0 4px; color: var(--mdx-hint); }
+.phon, .pron, .ipa, inf { color: var(--mdx-phon); font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif; }
+.example, .ex { color: #666; font-style: italic; margin: 4px 0 4px 16px; }
+.dark .example, .dark .ex { color: var(--mdx-hint); }
+
+.arl { display: block; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(128,128,128,0.15); }
+.hit { display: block; margin: 2px 0; padding: 2px 0; }
+.base { display: inline; }
+.results { display: inline; }
+.forms { display: inline; }
+.inflections { display: inline; }
+.inf { font-style: italic; }
+.cm { font-weight: 600; }
+
+.speaker, .sound, .audio-play {
+  cursor: pointer; display: inline-block; padding: 2px 6px; margin: 0 4px;
+  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); font-size: 14px;
+}
+.speaker:hover, .sound:hover, .audio-play:hover { background: rgba(78, 205, 196, 0.3); }
+.soundfile { display: inline; margin: 0 2px; }
+.soundfile a {
+  cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
+  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); text-decoration: none; font-size: 13px;
+}
+.soundfile img { display: none; }
+.soundfile a:hover { background: rgba(78, 205, 196, 0.3); }
+a[href^="sound://"] {
+  cursor: pointer; display: inline-block; padding: 2px 8px; margin: 0 4px;
+  background: rgba(78, 205, 196, 0.15); border-radius: 12px; color: var(--mdx-link); text-decoration: none;
+}
+a[href^="sound://"]:hover { background: rgba(78, 205, 196, 0.3); }
+
+.pos, .pos2 {
+  display: inline-block; padding: 2px 8px; margin: 2px 4px;
+  background: rgba(44, 74, 110, 0.1); border-radius: 4px;
+  font-style: italic; color: var(--mdx-header); font-size: 0.9em;
+}
+.bre, .gb, .ame, .us, .ussymbol {
+  display: inline-block; padding: 1px 6px; margin: 0 4px; border-radius: 4px;
+  font-size: 0.8em; font-weight: 600;
+}
+.bre, .gb { background: rgba(33, 150, 243, 0.1); color: #1976D2; }
+.ame, .us, .ussymbol { background: rgba(244, 67, 54, 0.1); color: #D32F2F; }
+
+.label, .sense { margin: 4px 0; padding: 2px 0; }
+.definition, .def { margin: 4px 0 8px; padding-left: 12px; border-left: 3px solid rgba(78, 205, 196, 0.3); }
+.di-head { display: block; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--mdx-header); }
+.di-title { display: block; font-size: 1.3em; font-weight: 700; }
+.di-info { display: inline; }
+.di-body { display: block; margin: 4px 0; }
+.sense-block { display: block; margin: 8px 0; padding: 4px 0; }
+.sense-head { display: block; margin: 6px 0 2px; }
+.sense-body { display: block; margin: 2px 0; padding-left: 8px; }
+.sense-info { display: inline; }
+.prongrp { display: block; margin: 2px 0; }
+.inflection { display: block; margin: 4px 0; padding-left: 12px; }
 </style>
+<script>
+function applyDarkMode(isDark) {
+  if (isDark) {
+    document.body.classList.add('dark');
+  } else {
+    document.body.classList.remove('dark');
+  }
+
+  document.querySelectorAll('[style]').forEach(function(el) {
+    var style = el.getAttribute('style') || '';
+    var bgIdx = style.indexOf('background');
+    if (bgIdx !== -1 && style.indexOf('url(', bgIdx) !== -1) return;
+    if (bgIdx === -1) {
+      if (style.indexOf('color:') !== -1) {
+        var m = style.match(/color:\s*#0{1,2}0{1,2}0{1,2}\b/);
+        if (m) el.style.color = isDark ? 'var(--mdx-text)' : '';
+      }
+    }
+    if (bgIdx !== -1 && style.indexOf('url(') === -1) {
+      el.style.backgroundColor = isDark ? 'var(--mdx-bg)' : '';
+    }
+  });
+}
+</script>
 </head>
 <body>
   $transformedDef
