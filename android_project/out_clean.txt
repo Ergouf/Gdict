@@ -1,0 +1,8 @@
+
+> Configure project :app
+WARNING: The option setting 'android.jetifier.ignorelist=common,layoutlib' is experimental.
+
+> Task :clean UP-TO-DATE
+> Task :app:clean
+> Task :core:clean FAILED
+3 actionable tasks: 2 executed, 1 up-to-date

@@ -1,0 +1,21 @@
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':core:clean'.
+> java.io.IOException: Unable to delete directory 'D:\workspace\Gdict\android_project\core\build'
+    Failed to delete some children. This might happen because a process has files open or has its working directory set in the target directory.
+    - D:\workspace\Gdict\android_project\core\build\.transforms\906d2e6b2868706996747d77b1c03d8b\transformed\out\jars\classes.jar
+    - D:\workspace\Gdict\android_project\core\build\.transforms\906d2e6b2868706996747d77b1c03d8b\transformed\out\jars
+    - D:\workspace\Gdict\android_project\core\build\.transforms\906d2e6b2868706996747d77b1c03d8b\transformed\out
+    - D:\workspace\Gdict\android_project\core\build\.transforms\906d2e6b2868706996747d77b1c03d8b\transformed
+    - D:\workspace\Gdict\android_project\core\build\.transforms\906d2e6b2868706996747d77b1c03d8b
+    - D:\workspace\Gdict\android_project\core\build\.transforms
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 5s

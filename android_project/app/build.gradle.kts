@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream
 import java.util.Properties
 
 plugins {
@@ -12,13 +13,31 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
+fun runGitCommand(command: List<String>): String? = try {
+    val out = ByteArrayOutputStream()
+    project.exec {
+        commandLine(command)
+        workingDir = rootProject.projectDir
+        standardOutput = out
+        isIgnoreExitValue = true
+    }
+    val result = out.toString("UTF-8").trim()
+    result.ifEmpty { null }
+} catch (e: Exception) {
+    null
+}
+
+val gitVersionCode = runGitCommand(listOf("git", "rev-list", "--count", "HEAD"))?.toIntOrNull() ?: 1
+val gitVersionName = (runGitCommand(listOf("git", "describe", "--tags", "--always"))
+    ?.removePrefix("v") ?: "1.0.0")
+
 android {
     namespace = "io.github.gdict"
     compileSdk = 34
 
     signingConfigs {
         create("release") {
-            storeFile = file(keystoreProperties.getProperty("storeFile") ?: "release.keystore")
+            storeFile = file(keystoreProperties.getProperty("storeFile") ?: rootProject.file("release.keystore").path)
             storePassword = keystoreProperties.getProperty("storePassword") ?: System.getenv("STORE_PASSWORD") ?: ""
             keyAlias = keystoreProperties.getProperty("keyAlias") ?: "gdict"
             keyPassword = keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD") ?: ""
@@ -29,8 +48,8 @@ android {
         applicationId = "io.github.gdict"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = gitVersionCode
+        versionName = gitVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
