@@ -28,7 +28,7 @@ android_project/.externalNativeBuild/
 android_project/.cxx/
 android_project/app/release.keystore
 
-gradle_*.txt
+android_project/app/src/test/snapshots/
 
 *.apk
 *.aar

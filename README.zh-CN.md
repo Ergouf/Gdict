@@ -7,6 +7,7 @@
 ## 目录
 
 - [功能特性](#功能特性)
+- [应用截图](#应用截图)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
 - [快速开始](#快速开始)
@@ -50,6 +51,40 @@
 - **深色模式** — 应用内一键切换深色/浅色主题
 - **Edge-to-Edge 全面屏适配** — 沉浸式状态栏和导航栏
 - **Material Design 3** — Search / Favorites / Learning / Profile 四页底部导航
+
+## 应用截图
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><b>搜索首页</b></td>
+      <td align="center"><b>单词详情</b></td>
+      <td align="center"><b>生词本</b></td>
+      <td align="center"><b>闪卡复习</b></td>
+    </tr>
+    <tr>
+      <td><img src="screenshots/search.png" width="200" alt="搜索页"></td>
+      <td><img src="screenshots/detail.png" width="200" alt="详情页"></td>
+      <td><img src="screenshots/bookmarks.png" width="200" alt="生词本"></td>
+      <td><img src="screenshots/flashcard.png" width="200" alt="闪卡复习"></td>
+    </tr>
+  </table>
+
+  <table>
+    <tr>
+      <td align="center"><b>词典管理</b></td>
+      <td align="center"><b>设置页</b></td>
+      <td align="center"><b>深色模式</b></td>
+    </tr>
+    <tr>
+      <td><img src="screenshots/dictionaries.png" width="200" alt="词典管理"></td>
+      <td><img src="screenshots/settings.png" width="200" alt="设置"></td>
+      <td><img src="screenshots/dark_mode.png" width="200" alt="深色模式"></td>
+    </tr>
+  </table>
+</div>
+
+> *请将应用截图放置在 `screenshots/` 目录下，替换占位路径为从设备或模拟器截取的实际截图。*
 
 ## 技术栈
 
