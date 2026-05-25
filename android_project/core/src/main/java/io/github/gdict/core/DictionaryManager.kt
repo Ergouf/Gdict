@@ -32,6 +32,15 @@ class DictionaryManager(private val context: Context) {
     private val loadedDicts = java.util.concurrent.ConcurrentHashMap<Long, MdxParser>()
     private val loadedMdds = java.util.concurrent.ConcurrentHashMap<Long, MdxParser>()
     private val cssCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private val resourceCache = java.util.concurrent.ConcurrentHashMap<String, OptionalByteArray>()
+    private val cssKeysCache = java.util.concurrent.ConcurrentHashMap<Long, List<String>>()
+
+    class OptionalByteArray(val value: ByteArray?) {
+        companion object {
+            private val NULL = OptionalByteArray(null)
+            fun wrap(value: ByteArray?): OptionalByteArray = if (value == null) NULL else OptionalByteArray(value)
+        }
+    }
 
     init {
         val persisted = persistence.loadPersistedDictionaries()
@@ -146,6 +155,7 @@ class DictionaryManager(private val context: Context) {
         loadedDicts.remove(id)?.close()
         loadedMdds.remove(id)?.close()
         cssCache.remove(id)
+        cssKeysCache.remove(id)
         synchronized(this) {
             dictionaries.removeAll { it.id == id }
         }
@@ -173,7 +183,7 @@ class DictionaryManager(private val context: Context) {
 
     fun getCssFromMdd(dictId: Long): String {
         val mddParser = loadedMdds[dictId] ?: return ""
-        return searchEngine.getCssFromMdd(dictId, mapOf(dictId to mddParser))
+        return searchEngine.getCssFromMdd(dictId, mapOf(dictId to mddParser), cssKeysCache)
     }
 
     @WorkerThread
@@ -181,23 +191,29 @@ class DictionaryManager(private val context: Context) {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val dictsSnapshot = loadedDicts.toMap()
         val mddsSnapshot = loadedMdds.toMap()
-        return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot).map {
+        return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot, cssKeysCache).map {
             SearchResult(it.word, it.definition, it.dictionaryName, it.css)
         }
     }
 
     @WorkerThread
     fun getAudioResource(word: String): ByteArray? {
+        resourceCache[word]?.let { return it.value }
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val mddsSnapshot = loadedMdds.toMap()
-        return searchEngine.getAudioResource(word, snapshot, mddsSnapshot)
+        val result = searchEngine.getAudioResource(word, snapshot, mddsSnapshot)
+        resourceCache[word] = OptionalByteArray.wrap(result)
+        return result
     }
 
     @WorkerThread
     fun getAudioResourceByPath(path: String): ByteArray? {
+        resourceCache[path]?.let { return it.value }
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val mddsSnapshot = loadedMdds.toMap()
-        return searchEngine.getAudioResourceByPath(path, snapshot, mddsSnapshot)
+        val result = searchEngine.getAudioResourceByPath(path, snapshot, mddsSnapshot)
+        resourceCache[path] = OptionalByteArray.wrap(result)
+        return result
     }
 
     @WorkerThread

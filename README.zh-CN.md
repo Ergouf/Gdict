@@ -413,6 +413,12 @@ Gdict 实现了 [FSRS (Free Spaced Repetition Scheduler)](https://github.com/ope
 3. 返回包含资源数据的 `WebResourceResponse`
 4. HTML 中的 `sound://` 自定义协议引用也会被拦截并处理为音频播放
 
+**资源缓存**：`DictionaryManager` 维护 `resourceCache` 和 `cssKeysCache`，避免重复遍历 MDD 关键词索引。资源查找结果按路径缓存，CSS 关键词列表按词典 ID 缓存。
+
+**路径匹配**：拦截器对每个资源请求尝试多种路径格式（反斜杠、双反斜杠、仅文件名、正斜杠），提高 MDD 资源命中率。支持拦截的文件类型包括 CSS、JS、图片、字体（ttf/woff/woff2）和音频（mp3/wav/ogg/spx）。
+
+**发音图标**：Cambridge EPD 等词典的发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶ 字符（U+25B6），替代不可靠的 emoji。发音相关图片（speaker/play/sound/volume 等）统一替换为 `.speaker-icon` 元素。
+
 ## 常见问题 (FAQ)
 
 ### Q: 支持哪些词典格式？
@@ -442,6 +448,13 @@ FSRS（Free Spaced Repetition Scheduler）是下一代间隔重复算法，相�
 目前该功能还在开发中。你可以通过 `export_words.kt` 脚本导出 MDX 中的全部词条。
 
 ## 更新日志
+
+### v1.1.02 (2026-05-25)
+
+- **修复**: Collins COBUILD 等大型词典加载慢、需多次点击的问题 — 新增资源缓存（`resourceCache`）和 CSS Keys 缓存（`cssKeysCache`），避免重复遍历 MDD 关键词索引
+- **修复**: Cambridge EPD 18th 词典发音喇叭图标不显示 — 将不可靠的 emoji（🔊）替换为 Unicode ▶ 字符，新增 `.speaker-icon` CSS 样式，增强发音相关图片的替换规则
+- **优化**: WebView 资源拦截增强 — 扩展拦截文件类型（字体、音频），增加多路径格式匹配（反斜杠/正斜杠/仅文件名），提高 MDD 资源命中率
+- **优化**: 卸载词典时不再清空所有词典的资源缓存，避免影响其他正在使用的词典
 
 ### v1.1.01 (2026-05-24)
 

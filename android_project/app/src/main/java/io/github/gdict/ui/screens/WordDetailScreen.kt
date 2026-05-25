@@ -521,37 +521,62 @@ private fun HtmlContent(
                         if (lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
                             lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
                             lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp") ||
-                            lowerPath.endsWith(".css") || lowerPath.endsWith(".js")
+                            lowerPath.endsWith(".css") || lowerPath.endsWith(".js") ||
+                            lowerPath.endsWith(".ttf") || lowerPath.endsWith(".woff") ||
+                            lowerPath.endsWith(".woff2") || lowerPath.endsWith(".mp3") ||
+                            lowerPath.endsWith(".wav") || lowerPath.endsWith(".ogg") ||
+                            lowerPath.endsWith(".spx")
                         ) {
                             try {
-                                val resourcePath = "\\" + path.trimStart('/')
-                                android.util.Log.d("MdxWebView", "Intercepting resource: $resourcePath")
-                                val data = settingsViewModel.getResourceByPathSync(resourcePath)
-                                if (data != null) {
-                                    android.util.Log.d("MdxWebView", "Resource loaded successfully: ${data.size} bytes")
-                                    val mimeType = when {
-                                        lowerPath.endsWith(".png") -> "image/png"
-                                        lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
-                                        lowerPath.endsWith(".gif") -> "image/gif"
-                                        lowerPath.endsWith(".svg") -> "image/svg+xml"
-                                        lowerPath.endsWith(".webp") -> "image/webp"
-                                        lowerPath.endsWith(".css") -> "text/css"
-                                        lowerPath.endsWith(".js") -> "application/javascript"
-                                        else -> "application/octet-stream"
+                                val mimeType = when {
+                                    lowerPath.endsWith(".png") -> "image/png"
+                                    lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
+                                    lowerPath.endsWith(".gif") -> "image/gif"
+                                    lowerPath.endsWith(".svg") -> "image/svg+xml"
+                                    lowerPath.endsWith(".webp") -> "image/webp"
+                                    lowerPath.endsWith(".css") -> "text/css"
+                                    lowerPath.endsWith(".js") -> "application/javascript"
+                                    lowerPath.endsWith(".ttf") -> "font/ttf"
+                                    lowerPath.endsWith(".woff") -> "font/woff"
+                                    lowerPath.endsWith(".woff2") -> "font/woff2"
+                                    lowerPath.endsWith(".mp3") -> "audio/mpeg"
+                                    lowerPath.endsWith(".wav") -> "audio/wav"
+                                    lowerPath.endsWith(".ogg") -> "audio/ogg"
+                                    lowerPath.endsWith(".spx") -> "audio/speex"
+                                    else -> "application/octet-stream"
+                                }
+
+                                val normalizedPath = path.replace("/", "\\")
+                                val trimmedPath = normalizedPath.trimStart('\\')
+                                val candidates = buildList {
+                                    add("\\$trimmedPath")
+                                    add("\\\\$trimmedPath")
+                                    val fileName = path.substringAfterLast("/")
+                                    if (fileName.isNotEmpty()) {
+                                        add("\\$fileName")
                                     }
-                                    return android.webkit.WebResourceResponse(
-                                        mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
-                                    )
-                                } else {
-                                    android.util.Log.w("MdxWebView", "Resource not found, returning transparent placeholder: $resourcePath")
-                                    val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
-                                        lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
-                                        lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
-                                    if (isImage) {
+                                    val pathWithForwardSlash = "/" + path.trimStart('/')
+                                    add(pathWithForwardSlash)
+                                }
+
+                                for (candidate in candidates) {
+                                    val data = settingsViewModel.getResourceByPathSync(candidate)
+                                    if (data != null) {
+                                        android.util.Log.d("MdxWebView", "Resource loaded via '$candidate': ${data.size} bytes")
                                         return android.webkit.WebResourceResponse(
-                                            "image/png", "UTF-8", java.io.ByteArrayInputStream(TRANSPARENT_PNG)
+                                            mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
                                         )
                                     }
+                                }
+
+                                android.util.Log.w("MdxWebView", "Resource not found: $path (tried: $candidates)")
+                                val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
+                                    lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
+                                    lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
+                                if (isImage) {
+                                    return android.webkit.WebResourceResponse(
+                                        "image/png", "UTF-8", java.io.ByteArrayInputStream(TRANSPARENT_PNG)
+                                    )
                                 }
                             } catch (e: Exception) {
                                 android.util.Log.e("MdxWebView", "Error loading resource: $path", e)
@@ -578,6 +603,14 @@ private fun buildHtmlContent(definition: String, css: String): String {
                 "<span class='uk-flag'>UK</span>")
                .replace(Regex("""<img[^>]*src=["'][^"']*us_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
                 "<span class='us-flag'>US</span>")
+               .replace(Regex("""<img[^>]*class=["'][^"']*speaker[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='speaker-icon'>&#9654;</span>")
+               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='speaker-icon'>&#9654;</span>")
+               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.gif[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='speaker-icon'>&#9654;</span>")
+               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.svg[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
+                "<span class='speaker-icon'>&#9654;</span>")
                .replace(Regex("</img>", RegexOption.IGNORE_CASE), "")
         } else def
     }
@@ -606,8 +639,10 @@ private fun buildHtmlContent(definition: String, css: String): String {
 .cpepd .soundfile { display:inline;margin:0 2px; }
 .cpepd .soundfile a { display:inline-block;vertical-align:middle;text-decoration:none; }
 .cpepd .soundfile img { display:none; }
+.cpepd .speaker-icon { display:inline-block;vertical-align:middle;padding:2px 6px;margin:0 2px;background:var(--speaker-hover);border-radius:12px;color:var(--link);font-size:14px;cursor:pointer; }
+.cpepd .speaker-icon:hover { background:var(--speaker-hover);filter:brightness(1.2); }
 .cpepd a[href^="sound://"] { text-decoration:none;display:inline-block;vertical-align:middle;padding:2px 8px;margin:0 2px;background:var(--speaker-hover);border-radius:12px;color:var(--link);font-size:13px; }
-.cpepd a[href^="sound://"]::before { content:"\01F50A";margin-right:4px; }
+.cpepd a[href^="sound://"]::before { content:"\\25B6";margin-right:4px;font-size:11px; }
 .cpepd a[href^="sound://"]:hover { background:var(--speaker-hover);filter:brightness(1.2); }
 .cpepd .capvar { color:var(--subtle);font-style:italic;font-size:.9em; }
 .cpepd .inflection { display:block;margin:2px 0 2px 16px; }
@@ -658,10 +693,13 @@ inf{font-style:italic;}
 .phon,.pron,.ipa{color:var(--phon);font-family:'Lucida Sans Unicode','Arial Unicode MS',sans-serif;}
 .speaker,.sound,.audio-play{cursor:pointer;display:inline-block;padding:2px 6px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);font-size:14px;}
 .speaker:hover,.sound:hover,.audio-play:hover{background:var(--speaker-hover);}
+.speaker-icon{cursor:pointer;display:inline-block;padding:2px 6px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);font-size:14px;}
+.speaker-icon:hover{background:var(--speaker-hover);}
 .soundfile{display:inline;margin:0 2px;}
 .soundfile a{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;font-size:13px;}
 .soundfile a:hover{background:var(--speaker-hover);}
 a[href^="sound://"]{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;}
+a[href^="sound://"]::before{content:"\\25B6";margin-right:4px;font-size:11px;}
 a[href^="sound://"]:hover{background:var(--speaker-hover);}
 .pos,.pos2{display:inline-block;padding:2px 8px;margin:2px 4px;background:var(--pos-bg);border-radius:4px;font-style:italic;color:var(--header);font-size:.9em;}
 .bre,.ame,.gb,.us{display:inline-block;padding:1px 6px;margin:0 4px;border-radius:4px;font-size:.8em;font-weight:600;}

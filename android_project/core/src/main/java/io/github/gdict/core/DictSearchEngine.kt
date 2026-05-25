@@ -18,7 +18,8 @@ class DictSearchEngine {
         dictionaries: List<DictionaryManager.DictEntry>,
         loadedDicts: Map<Long, MdxParser>,
         cssCache: MutableMap<Long, String>,
-        loadedMdds: Map<Long, MdxParser>
+        loadedMdds: Map<Long, MdxParser>,
+        cssKeysCache: MutableMap<Long, List<String>>? = null
     ): List<SearchResult> {
         if (query.isBlank()) return emptyList()
         val results = mutableListOf<SearchResult>()
@@ -30,7 +31,7 @@ class DictSearchEngine {
             val parser = loadedDicts[dict.id]
             if (parser != null) {
                 log().d("DictSearchEngine", "  Searching '${dict.name}' (id=${dict.id}) using parser title='${parser.title}' words=${parser.wordCount}")
-                val dictResults = searchWithParser(parser, dict, query, cssCache, loadedMdds)
+                val dictResults = searchWithParser(parser, dict, query, cssCache, loadedMdds, cssKeysCache)
                 results.addAll(dictResults)
             } else {
                 log().w("DictSearchEngine", "  No parser for '${dict.name}' (id=${dict.id})")
@@ -46,12 +47,13 @@ class DictSearchEngine {
         dict: DictionaryManager.DictEntry,
         query: String,
         cssCache: MutableMap<Long, String>,
-        loadedMdds: Map<Long, MdxParser>
+        loadedMdds: Map<Long, MdxParser>,
+        cssKeysCache: MutableMap<Long, List<String>>? = null
     ): List<SearchResult> {
         return try {
             val results = mutableListOf<SearchResult>()
             log().i("DictSearchEngine", "    [SEARCH] dict='${dict.name}' query='$query' parserHash=${parser.hashCode()} parserTitle='${parser.title}' parserFile='${parser.fileName}' parserWords=${parser.wordCount}")
-            val css = buildCss(parser, dict.id, cssCache, loadedMdds)
+            val css = buildCss(parser, dict.id, cssCache, loadedMdds, cssKeysCache)
             if (css.isNotEmpty()) {
                 log().i("DictSearchEngine", "    [SEARCH] CSS loaded for '${dict.name}': ${css.length} chars")
             }
@@ -86,7 +88,8 @@ class DictSearchEngine {
         parser: MdxParser,
         dictId: Long,
         cssCache: MutableMap<Long, String>,
-        loadedMdds: Map<Long, MdxParser>
+        loadedMdds: Map<Long, MdxParser>,
+        cssKeysCache: MutableMap<Long, List<String>>? = null
     ): String {
         cssCache[dictId]?.let { return it }
         val sb = StringBuilder()
@@ -94,7 +97,9 @@ class DictSearchEngine {
         val mddParser = loadedMdds[dictId]
         if (mddParser != null && mddParser.wordCount > 0) {
             try {
-                val cssKeys = mddParser.findResourceKeys(".css")
+                val cssKeys = cssKeysCache?.get(dictId) ?: mddParser.findResourceKeys(".css").also {
+                    cssKeysCache?.put(dictId, it)
+                }
                 for (key in cssKeys) {
                     try {
                         val cssBytes = mddParser.readResourceBytesByKey(key)
@@ -115,10 +120,12 @@ class DictSearchEngine {
         return result
     }
 
-    fun getCssFromMdd(dictId: Long, loadedMdds: Map<Long, MdxParser>): String {
+    fun getCssFromMdd(dictId: Long, loadedMdds: Map<Long, MdxParser>, cssKeysCache: MutableMap<Long, List<String>>? = null): String {
         val mddParser = loadedMdds[dictId] ?: return ""
         log().i("DictSearchEngine", "getCssFromMdd: dictId=$dictId, mddParser.title='${mddParser.title}' words=${mddParser.wordCount}")
-        val cssKeys = mddParser.findResourceKeys(".css")
+        val cssKeys = cssKeysCache?.get(dictId) ?: mddParser.findResourceKeys(".css").also {
+            cssKeysCache?.put(dictId, it)
+        }
         log().i("DictSearchEngine", "getCssFromMdd: found ${cssKeys.size} CSS keys: $cssKeys")
         if (cssKeys.isEmpty()) return ""
         val sb = StringBuilder()

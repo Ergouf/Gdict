@@ -1,8 +1,7 @@
 ---
-alwaysApply: true
+alwaysApply: false
 description: Gdict 项目全局规则，AI 助手在编辑代码时必须遵循
 ---
-
 # Gdict 项目规则
 
 ## 项目概述
@@ -143,8 +142,12 @@ cd android_project
 ### WebView 资源拦截
 
 - 详情页通过 `WebViewClient.shouldInterceptRequest` 拦截资源请求
-- 从 MDD 同步读取 CSS/图片/音频资源
+- 从 MDD 同步读取 CSS/图片/音频/字体资源
 - `sound://` 自定义协议用于音频播放
+- 资源路径匹配：尝试多种格式（反斜杠、双反斜杠、仅文件名、正斜杠）
+- 支持拦截的文件类型：CSS、JS、图片（png/jpg/gif/svg/webp）、字体（ttf/woff/woff2）、音频（mp3/wav/ogg/spx）
+- `DictionaryManager` 维护 `resourceCache`（按路径缓存资源数据）和 `cssKeysCache`（按词典 ID 缓存 CSS 关键词列表）
+- 卸载词典时不清空 `resourceCache`，避免影响其他正在使用的词典
 
 ### 发音
 
@@ -152,6 +155,8 @@ cd android_project
 - 回退从 MDD 提取音频资源
 - 最终回退到 Android 本地 TTS
 - 需要 `INTERNET` 权限（已在 AndroidManifest.xml 声明）
+- 发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶（U+25B6），不使用 emoji
+- Cambridge EPD 等词典的发音图片（speaker/play/sound/volume 等）替换为 `.speaker-icon` 元素
 
 ### FSRS 间隔重复
 

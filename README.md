@@ -296,6 +296,12 @@ The detail page intercepts resource requests via `WebViewClient.shouldInterceptR
 2. Intercepted requests are served by synchronously reading from the MDD file
 3. Returns a `WebResourceResponse` containing the resource data
 
+**Resource Caching**: `DictionaryManager` maintains `resourceCache` and `cssKeysCache` to avoid repeated traversal of MDD keyword indexes. Resource lookup results are cached by path, and CSS key lists are cached by dictionary ID.
+
+**Path Matching**: The interceptor tries multiple path formats for each resource request (backslash, double backslash, filename only, forward slash) to improve MDD resource hit rate. Supported file types include CSS, JS, images, fonts (ttf/woff/woff2), and audio (mp3/wav/ogg/spx).
+
+**Speaker Icons**: Pronunciation icons in dictionaries like Cambridge EPD use CSS `::before` pseudo-elements to render the Unicode ▶ character (U+25B6), replacing unreliable emoji. Speaker-related images (speaker/play/sound/volume etc.) are uniformly replaced with `.speaker-icon` elements.
+
 ## Acknowledgments
 
 | Project | Description | Link |
