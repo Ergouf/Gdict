@@ -4,17 +4,26 @@
 
 本文档详细说明在本地开发环境中构建 Gdict Android 应用所需的步骤和配置。
 
+> **已集成开发环境**：项目 `android_sdk/` 目录已捆绑 JDK 17 (`jdk-17.0.12+7`) 和 Android SDK (API 34)，开箱即用，无需额外安装。
+
 ## 前提条件
 
 ### 1. JDK 17+
 
-项目需要 JDK 17 或更高版本。推荐使用 OpenJDK。
+项目需要 JDK 17 或更高版本。
 
-**Windows 安装方式**：
+**使用项目捆绑的 JDK（推荐）**：
+
+项目 `android_sdk/jdk-17.0.12+7/` 已包含 JDK 17，构建时设置 `JAVA_HOME` 指向该目录即可：
+
+```powershell
+$env:JAVA_HOME = "D:\workspace\Gdict\android_sdk\jdk-17.0.12+7"
+```
+
+**或自行安装**：
 
 - 下载 [Eclipse Temurin JDK 17](https://adoptium.net/)
 - 或通过 Android Studio 自带的 JDK（位于 `Android Studio安装目录/jbr/`）
-- 或下载 Android SDK Commandline Tools 附带的 JDK
 
 **配置 JAVA_HOME**：
 
@@ -29,9 +38,6 @@ JAVA_HOME=C:\path\to\jdk-17
 ```powershell
 # PowerShell
 $env:JAVA_HOME = "D:\path\to\jdk-17"
-
-# CMD
-set JAVA_HOME=D:\path\to\jdk-17
 ```
 
 验证安装：
@@ -45,17 +51,17 @@ java -version
 
 项目需要 Android SDK API 34。
 
-**手动安装**：
+**使用项目捆绑的 SDK（推荐）**：
+
+项目 `android_sdk/` 已包含完整 SDK，包含 `platforms/android-34` 和 `build-tools/34.0.0`。
+
+**或手动安装**：
 
 1. 下载 [Android SDK Commandline Tools](https://developer.android.com/studio#command-line-tools-only)
 2. 解压到目标目录（如 `D:\workspace\Gdict\android_sdk`）
 3. 安装必要的 SDK 组件：
 
 ```bash
-# 进入 SDK 目录
-cd D:\workspace\Gdict\android_sdk
-
-# 安装平台和构建工具
 cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 ```
 
@@ -69,12 +75,14 @@ cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-34" "build-tools;34.0
 # Android SDK 路径（注意 Windows 路径中的反斜杠需要转义）
 sdk.dir=D\\:\\workspace\\Gdict\\android_sdk
 
-# Release 签名配置（以下仅为示例，请替换为实际值）
+# Release 签名配置（可选，仅 Release 构建需要）
 storeFile=release.keystore
 storePassword=<你的 keystore 密码>
 keyAlias=gdict
 keyPassword=<你的 key 密码>
 ```
+
+> **注意**：如果使用项目捆绑的 SDK，路径为 `D\\:\\workspace\\Gdict\\android_sdk`。
 
 ### Release 密钥生成
 
@@ -92,6 +100,17 @@ keytool -genkeypair -v \
 > **注意**：`release.keystore` 文件已在 `.gitignore` 中排除，不会提交到版本控制。请妥善保管。
 
 ## 构建命令
+
+### PowerShell 环境变量
+
+> **重要**：在 PowerShell 中，批处理文件不能直接通过管道传递。构建时请设置环境变量后直接运行：
+
+```powershell
+# 设置环境变量并构建
+$env:JAVA_HOME = "D:\workspace\Gdict\android_sdk\jdk-17.0.12+7"
+$env:ANDROID_HOME = "D:\workspace\Gdict\android_sdk"
+& D:\workspace\Gdict\android_project\gradlew.bat -p D:\workspace\Gdict\android_project assembleDebug
+```
 
 ### 清理构建
 
@@ -146,11 +165,12 @@ cd android_project
 |------|------|------|
 | Kotlin | 1.9.22 | 编程语言 |
 | AGP | 8.2.2 | Android Gradle 插件 |
-| Jetpack Compose | BOM 2024.01.00 | UI 框架 |
-| Navigation Compose | 2.7.6 | 页面导航 |
-| Woodstox | - | XML 解析（MDX Header） |
+| Jetpack Compose | BOM 2024.02.02 | UI 框架 |
+| Navigation Compose | 2.7.7 | 页面导航 |
+| DataStore | 1.0.0 | 本地键值存储 |
+| Material Icons Extended | 1.6.3 | Material Design 图标库 |
 
-首次构建时 Gradle 会自动下载所有依赖。
+首本次构建时 Gradle 会自动下载所有依赖。
 
 ## 常见问题
 
@@ -159,8 +179,8 @@ cd android_project
 **原因**：系统未配置 Java 环境变量。
 
 **解决**：
-1. 确认已安装 JDK 17+
-2. 设置 `JAVA_HOME` 环境变量指向 JDK 安装目录
+1. 确认已安装 JDK 17+，或使用项目捆绑的 JDK
+2. 在运行 gradlew 前设置 `$env:JAVA_HOME`
 3. 或将 `java.exe` 所在目录添加到 `PATH`
 
 ### Q: `SDK location not found`
@@ -169,8 +189,29 @@ cd android_project
 
 **解决**：
 1. 确认 `android_project/local.properties` 文件存在
-2. 确认 `sdk.dir` 路径正确
-3. Windows 路径中反斜杠需要双写：`sdk.dir=D\\:\\path\\to\\sdk`
+2. 确认 `sdk.dir` 路径正确（Windows 路径反斜杠需双写：`sdk.dir=D\\:\\path\\to\\sdk`）
+3. 或设置 `$env:ANDROID_HOME` 环境变量
+
+### Q: PowerShell中运行gradlew.bat报 `CantActivateDocumentInPipeline`
+
+**原因**：PowerShell 不允许在管道中运行 `.bat` 文件。
+
+**解决**：不使用管道，直接调用：
+
+```powershell
+& D:\workspace\Gdict\android_project\gradlew.bat -p D:\workspace\Gdict\android_project assembleDebug
+```
+
+### Q: `Unresolved reference: BuildConfig`
+
+**原因**：AGP 8.x 默认关闭 `BuildConfig` 生成。
+
+**解决**：已在 `app/build.gradle.kts` 中启用：
+```kotlin
+buildFeatures {
+    buildConfig = true
+}
+```
 
 ### Q: `Compilation error`
 
@@ -212,6 +253,7 @@ allprojects {
 
 | 文件 | 说明 | 是否提交 Git |
 |------|------|-------------|
+| `android_sdk/` | 捆绑的 Android SDK + JDK 17 | ❌ (已在 .gitignore) |
 | `local.properties` | 本地 SDK 路径和签名配置 | ❌ (已在 .gitignore) |
 | `release.keystore` | 签名密钥文件 | ❌ (已在 .gitignore) |
 | `gradle.properties` | Gradle 全局配置 | ✅ |

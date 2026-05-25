@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Card
@@ -55,7 +54,6 @@ import io.github.gdict.data.SearchResultItem
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
-import kotlinx.coroutines.delay
 
 @Composable
 fun SearchScreen(
@@ -73,15 +71,6 @@ fun SearchScreen(
     LaunchedEffect(Unit) {
         if (wordOfTheDay.isEmpty()) {
             searchViewModel.loadWordOfTheDay()
-        }
-    }
-
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isNotBlank()) {
-            delay(300)
-            searchViewModel.searchWord(searchQuery.trim())
-        } else {
-            searchViewModel.clearSearchResults()
         }
     }
 
@@ -112,7 +101,10 @@ fun SearchScreen(
                 SearchBar(
                     query = searchQuery,
                     cardColor = cardColor,
-                    onQueryChange = { searchQuery = it },
+                    onQueryChange = {
+                        searchQuery = it
+                        searchViewModel.onSearchQueryChanged(it.trim())
+                    },
                     onSearch = {
                         if (searchQuery.isNotEmpty()) {
                             searchViewModel.searchWord(searchQuery)
@@ -167,8 +159,10 @@ fun SearchScreen(
                 }
             }
         } else if (searchQuery.isNotEmpty()) {
+            val suggestions by searchViewModel.suggestions.collectAsStateWithLifecycle(initialValue = emptyList())
             EmptySearchResult(
                 query = searchQuery,
+                suggestions = suggestions,
                 textColor = textColor,
                 onSuggestionClick = { suggestion ->
                     searchQuery = suggestion
@@ -257,13 +251,6 @@ private fun SearchBar(
                     modifier = Modifier.size(16.dp)
                 )
             }
-        } else {
-            Icon(
-                Icons.Default.Mic,
-                contentDescription = "语音",
-                tint = GdictColors.AmberAccent,
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }
@@ -459,10 +446,10 @@ private fun WordOfDayCard(
 @Composable
 private fun EmptySearchResult(
     query: String,
+    suggestions: List<String>,
     textColor: Color,
     onSuggestionClick: (String) -> Unit
 ) {
-    val suggestions = generateSuggestions(query)
 
     Box(
         modifier = Modifier
@@ -521,9 +508,3 @@ private fun SuggestionChip(
     }
 }
 
-private fun generateSuggestions(query: String): List<String> {
-    val q = query.lowercase()
-    val pool = listOf("witch", "stitch", "switchable", "twitch", "pitch", "ditch", "rich", "which", "niche", "cache")
-    val filtered = pool.filter { it != q && (it.contains(q.dropLast(1)) || q.dropLast(1).contains(it.dropLast(1))) }
-    return if (filtered.size >= 3) filtered.take(3) else pool.take(3)
-}

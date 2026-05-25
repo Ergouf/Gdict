@@ -1,7 +1,7 @@
 package io.github.gdict.core
 
 import android.content.Context
-import android.util.Log
+import io.github.gdict.core.GdictLogger.Companion.get as log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -40,7 +40,7 @@ class DictPersistence(private val context: Context) {
         val result = mutableListOf<DictionaryManager.DictEntry>()
         try {
             val json = JSONArray(jsonStr)
-            Log.i("DictPersistence", "Loading ${json.length()} persisted dictionaries from SharedPreferences...")
+            log().i("DictPersistence", "Loading ${json.length()} persisted dictionaries from SharedPreferences...")
             for (i in 0 until json.length()) {
                 val obj = json.getJSONObject(i)
                 val entry = DictionaryManager.DictEntry(
@@ -52,22 +52,22 @@ class DictPersistence(private val context: Context) {
                 )
                 val mdxFile = File(entry.dictFilePath)
                 val mdxTitle = DictFileImporter.readMdxHeaderTitleStatic(mdxFile)
-                Log.i("DictPersistence", "  Persisted[$i]: '${entry.name}' (id=${entry.id}) file=${mdxFile.name} exists=${mdxFile.exists()} size=${mdxFile.length()} mdxTitle='$mdxTitle'")
+                log().i("DictPersistence", "  Persisted[$i]: '${entry.name}' (id=${entry.id}) file=${mdxFile.name} exists=${mdxFile.exists()} size=${mdxFile.length()} mdxTitle='$mdxTitle'")
 
                 val dictDir = File(context.filesDir, "dictionaries/${entry.id}")
                 if (!dictDir.exists()) {
-                    Log.w("DictPersistence", "  Skipping '${entry.name}': directory not found at ${dictDir.absolutePath}")
+                    log().w("DictPersistence", "  Skipping '${entry.name}': directory not found at ${dictDir.absolutePath}")
                     continue
                 }
                 if (!mdxFile.exists() || mdxFile.length() == 0L) {
-                    Log.w("DictPersistence", "  Skipping '${entry.name}': MDX file not found or empty at ${entry.dictFilePath}")
+                    log().w("DictPersistence", "  Skipping '${entry.name}': MDX file not found or empty at ${entry.dictFilePath}")
                     continue
                 }
                 result.add(entry)
             }
-            Log.i("DictPersistence", "Loaded ${result.size}/${json.length()} persisted dictionaries")
+            log().i("DictPersistence", "Loaded ${result.size}/${json.length()} persisted dictionaries")
         } catch (e: Exception) {
-            Log.e("DictPersistence", "loadPersistedDictionaries FAILED: ${e.message}")
+            log().e("DictPersistence", "loadPersistedDictionaries FAILED: ${e.message}")
         }
         return result
     }

@@ -10,7 +10,7 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
 - **Multi-Dictionary** — Add, remove, enable/disable dictionaries, persistent across restarts, batch folder import
 - **Word Search** — Binary search O(log n) exact match + prefix predictive search
 - **HTML Rendering** — WebView renders original dictionary HTML, MDD CSS/img/audio resource extraction
-- **MDD Audio Playback** — Extract pronunciation audio from MDD, fallback to TTS
+- **Pronunciation** — Edge TTS (Microsoft cloud) → MDD audio extraction → local TTS fallback
 - **Word of the Day** — Dynamic daily word generation from loaded dictionaries
 - **Bookmarks** — Save words, delete with confirmation dialog
 - **Search History** — Auto-recorded search history
@@ -62,7 +62,7 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
 | Navigation | Navigation Compose |
 | State Management | ViewModel + StateFlow |
 | Data Persistence | SharedPreferences (JSON) |
-| Audio | MediaPlayer + TextToSpeech |
+| Audio | Edge TTS + MediaPlayer + TextToSpeech |
 | Build | Gradle Kotlin DSL |
 
 ## Project Structure
@@ -89,9 +89,10 @@ Gdict/
 │   │   │       │   ├── WordDetailScreen.kt # Detail + pronunciation
 │   │   │       │   ├── BookmarksScreen.kt  # Bookmarks
 │   │   │       │   ├── FlashcardScreen.kt  # Spaced repetition (FSRS)
-│   │   │       │   ├── HistoryScreen.kt    # Search history
 │   │   │       │   ├── DictionariesScreen.kt # Dictionary management
 │   │   │       │   └── SettingsScreen.kt   # Settings
+│   │   │       ├── tts/
+│   │   │       │   └── EdgeTtsClient.kt    # Microsoft Edge TTS client
 │   │   │       └── theme/
 │   │   │           ├── Color.kt            # GdictColors palette
 │   │   │           ├── Theme.kt            # GdictTheme + Edge-to-Edge
@@ -101,6 +102,7 @@ Gdict/
 │   ├── core/                               # Core library module
 │   │   ├── src/main/java/io/github/gdict/core/
 │   │   │   ├── MdxParser.kt                # MDX/MDD parser (streaming lookup)
+│   │   │   ├── GdictLogger.kt              # Logging interface abstraction
 │   │   │   ├── Lzo1xDecompressor.kt        # LZO1X decompressor
 │   │   │   ├── RipeMD128.kt                # RipeMD-128 hash
 │   │   │   ├── DictionaryManager.kt        # Dictionary manager (coordinator)
@@ -212,8 +214,10 @@ cd android_project
 ### Pronunciation
 
 - Tap the speaker button on the detail page
-- Prefers MDD audio extraction when available
-- Falls back to system TTS
+- Uses Microsoft Edge TTS (cloud neural voice) as primary engine
+- Falls back to MDD audio extraction if offline
+- Falls back to local TTS as last resort
+- Supports `sound://` custom protocol links in dictionary HTML
 
 ### Bookmarks
 
@@ -297,7 +301,6 @@ The detail page intercepts resource requests via `WebViewClient.shouldInterceptR
 | Project | Description | Link |
 |------|------|------|
 | **Linux Kernel** | LZO1X decompression algorithm, ported from `lib/lzo/lzo1x_decompress_safe.c` | [GitHub: torvalds/linux](https://github.com/torvalds/linux) |
-| **Woodstox** | XML StAX parser for MDX Header parsing | [GitHub: FasterXML/woodstox](https://github.com/FasterXML/woodstox) |
 | **Jetpack Compose** | Android declarative UI framework | [Android Developers](https://developer.android.com/compose) |
 | **Material Design 3** | Google design system | [Material Design 3](https://m3.material.io/) |
 

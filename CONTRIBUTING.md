@@ -23,8 +23,8 @@ Please include the following information:
 ### Prerequisites
 
 - Android Studio Hedgehog (2023.1.1) or later
-- JDK 17+
-- Android SDK API 34
+- JDK 17+ (project bundles JDK in `android_sdk/jdk-17.0.12+7/`)
+- Android SDK API 34 (project bundles SDK in `android_sdk/`)
 
 ### First Steps After Cloning
 
@@ -52,8 +52,8 @@ Please include the following information:
 
 ### Project Structure
 
-- `android_project/app/` — UI & ViewModel layer (Jetpack Compose)
-- `android_project/core/` — Core engine (MDX parser, FSRS, search) — no Android UI dependency
+- `android_project/app/` — UI & ViewModel layer (Jetpack Compose) + Edge TTS client
+- `android_project/core/` — Core engine (MDX parser, FSRS, search, logging abstraction) — no Android UI dependency
 - `export_project/` — Standalone export tool
 
 ## Code Style

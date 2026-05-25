@@ -2,30 +2,23 @@ package io.github.gdict.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
 import io.github.gdict.data.AppRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AppRepository = (application as GdictApplication).repository
 
-    private val _darkMode = MutableStateFlow(false)
-    val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
+    val darkMode: StateFlow<Boolean> = repository.darkMode
 
-    private val _scanPopup = MutableStateFlow(false)
-    val scanPopup: StateFlow<Boolean> = _scanPopup.asStateFlow()
+    private val _scanPopup = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val scanPopup: kotlinx.coroutines.flow.StateFlow<Boolean> = _scanPopup
 
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _errorMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val errorMessage: kotlinx.coroutines.flow.StateFlow<String?> = _errorMessage
 
     fun setDarkMode(enabled: Boolean) {
-        _darkMode.value = enabled
+        repository.setDarkMode(enabled)
     }
 
     fun setScanPopup(enabled: Boolean) {

@@ -3,7 +3,7 @@ package io.github.gdict.core
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.util.Log
+import io.github.gdict.core.GdictLogger.Companion.get as log
 import androidx.annotation.WorkerThread
 import java.io.File
 
@@ -29,9 +29,9 @@ class DictionaryManager(private val context: Context) {
     private val searchEngine = DictSearchEngine()
 
     private val dictionaries = mutableListOf<DictEntry>()
-    private val loadedDicts = mutableMapOf<Long, MdxParser>()
-    private val loadedMdds = mutableMapOf<Long, MdxParser>()
-    private val cssCache = mutableMapOf<Long, String>()
+    private val loadedDicts = java.util.concurrent.ConcurrentHashMap<Long, MdxParser>()
+    private val loadedMdds = java.util.concurrent.ConcurrentHashMap<Long, MdxParser>()
+    private val cssCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
 
     init {
         val persisted = persistence.loadPersistedDictionaries()
@@ -60,96 +60,93 @@ class DictionaryManager(private val context: Context) {
                 }
                 dictionaries.removeAll { it.name == name || it.path == sourceUri }
                 dictionaries.add(entry)
+                removed
             }
             loadDictionary(entry)
-            synchronized(this) {
-                val loadedParser = loadedDicts[entry.id]
-                if (loadedParser != null) {
-                    Log.i("DictMgr", "  VERIFIED: '${entry.name}' → parser title='${loadedParser.title}' words=${loadedParser.wordCount}")
+            val loadedParser = loadedDicts[entry.id]
+            if (loadedParser != null) {
+                log().i("DictMgr", "  VERIFIED: '${entry.name}' → parser title='${loadedParser.title}' words=${loadedParser.wordCount}")
+                synchronized(this) {
                     persistence.saveDictionaries(dictionaries.toList())
-                } else {
-                    Log.e("DictMgr", "  FAILED: '${entry.name}' parser not loaded after loadDictionary!")
-                    val dictDir = File(context.filesDir, "dictionaries/${entry.id}")
-                    dictDir.deleteRecursively()
-                    throw RuntimeException("词典 '${name}' 加载失败，无法读取词典数据")
                 }
+            } else {
+                log().e("DictMgr", "  FAILED: '${entry.name}' parser not loaded after loadDictionary!")
+                val dictDir = File(context.filesDir, "dictionaries/${entry.id}")
+                dictDir.deleteRecursively()
+                throw RuntimeException("词典 '${name}' 加载失败，无法读取词典数据")
             }
             return entry
         } catch (e: Throwable) {
-            Log.e("DictMgr", "addOrUpdateDictionary CRASHED for '$name': ${e.javaClass.name} - ${e.message}", e)
+            log().e("DictMgr", "addOrUpdateDictionary CRASHED for '$name': ${e.javaClass.name} - ${e.message}", e)
             throw RuntimeException("导入 '$name' 时出错: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }
 
     private fun loadDictionary(entry: DictEntry) {
         val mdxFile = File(entry.dictFilePath)
-        Log.i("DictMgr", "Loading '${entry.name}' (id=${entry.id}) from: ${entry.dictFilePath}")
+        log().i("DictMgr", "Loading '${entry.name}' (id=${entry.id}) from: ${entry.dictFilePath}")
         if (!mdxFile.exists()) {
-            Log.e("DictMgr", "  File not found: ${entry.dictFilePath}")
+            log().e("DictMgr", "  File not found: ${entry.dictFilePath}")
             return
         }
         if (!mdxFile.name.lowercase().endsWith(".mdx")) {
-            Log.e("DictMgr", "  Not an .mdx file: ${entry.dictFilePath}")
+            log().e("DictMgr", "  Not an .mdx file: ${entry.dictFilePath}")
             return
         }
         if (mdxFile.length() == 0L) {
-            Log.e("DictMgr", "  File is empty!")
+            log().e("DictMgr", "  File is empty!")
             return
         }
 
         try {
             val parser = MdxParser(mdxFile)
-            Log.i("DictMgr", "  PARSER IDENTITY: hashCode=${parser.hashCode()} filePath='${parser.filePath}' fileName='${parser.fileName}' fileSize=${parser.fileSize} title='${parser.title}' words=${parser.wordCount}")
+            log().i("DictMgr", "  PARSER IDENTITY: hashCode=${parser.hashCode()} filePath='${parser.filePath}' fileName='${parser.fileName}' fileSize=${parser.fileSize} title='${parser.title}' words=${parser.wordCount}")
 
             if (parser.wordCount <= 0) {
-                Log.e("DictMgr", "  Loaded '${entry.name}' but wordCount=${parser.wordCount}, keywords empty!")
+                log().e("DictMgr", "  Loaded '${entry.name}' but wordCount=${parser.wordCount}, keywords empty!")
                 parser.close()
                 return
             }
-            synchronized(this) {
-                loadedDicts.remove(entry.id)?.close()
-                loadedDicts[entry.id] = parser
-            }
+            loadedDicts.remove(entry.id)?.close()
+            loadedDicts[entry.id] = parser
 
             val mddFile = fileImporter.findCompanionMdd(mdxFile)
-            Log.i("DictMgr", "  MDD lookup for '${mdxFile.name}': ${if (mddFile != null) "'${mddFile.name}' (${mddFile.length()} bytes)" else "NOT FOUND"}")
+            log().i("DictMgr", "  MDD lookup for '${mdxFile.name}': ${if (mddFile != null) "'${mddFile.name}' (${mddFile.length()} bytes)" else "NOT FOUND"}")
             if (mddFile != null) {
                 try {
-                    Log.i("DictMgr", "  Loading MDD: '${mddFile.name}' size=${mddFile.length()} bytes...")
+                    log().i("DictMgr", "  Loading MDD: '${mddFile.name}' size=${mddFile.length()} bytes...")
                     val mddParser = MdxParser(mddFile)
-                    Log.i("DictMgr", "  MDD parsed: wordCount=${mddParser.wordCount} title='${mddParser.title}'")
+                    log().i("DictMgr", "  MDD parsed: wordCount=${mddParser.wordCount} title='${mddParser.title}'")
                     if (mddParser.wordCount > 0) {
-                        synchronized(this) {
-                            loadedMdds.remove(entry.id)?.close()
-                            loadedMdds[entry.id] = mddParser
-                        }
-                        Log.i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
+                        loadedMdds.remove(entry.id)?.close()
+                        loadedMdds[entry.id] = mddParser
+                        log().i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
                     } else {
-                        Log.w("DictMgr", "  MDD '${mddFile.name}' has wordCount=0, treating as empty")
+                        log().w("DictMgr", "  MDD '${mddFile.name}' has wordCount=0, treating as empty")
                         mddParser.close()
                     }
                 } catch (e: OutOfMemoryError) {
-                    Log.e("DictMgr", "  OOM loading MDD '${mddFile.name}' (${mddFile.length()} bytes): ${e.message}")
+                    log().e("DictMgr", "  OOM loading MDD '${mddFile.name}' (${mddFile.length()} bytes): ${e.message}")
                     System.gc()
                 } catch (e: Exception) {
-                    Log.e("DictMgr", "  Failed to load MDD '${mddFile.name}': ${e.javaClass.simpleName}: ${e.message}", e)
+                    log().e("DictMgr", "  Failed to load MDD '${mddFile.name}': ${e.javaClass.simpleName}: ${e.message}", e)
                 }
             }
 
-            Log.i("DictMgr", "  LOADED OK: '${entry.name}' → title='${parser.title}' words=${parser.wordCount} encoding='${parser.encoding}' file=${mdxFile.name}")
+            log().i("DictMgr", "  LOADED OK: '${entry.name}' → title='${parser.title}' words=${parser.wordCount} encoding='${parser.encoding}' file=${mdxFile.name}")
         } catch (e: Exception) {
-            Log.e("DictMgr", "  FAILED to load ${entry.name}: ${e.javaClass.simpleName}: ${e.message}", e)
+            log().e("DictMgr", "  FAILED to load ${entry.name}: ${e.javaClass.simpleName}: ${e.message}", e)
         } catch (e: OutOfMemoryError) {
-            Log.e("DictMgr", "  OUT OF MEMORY loading ${entry.name}: ${e.message}")
+            log().e("DictMgr", "  OUT OF MEMORY loading ${entry.name}: ${e.message}")
             System.gc()
         }
     }
 
     fun removeDictionary(id: Long) {
+        loadedDicts.remove(id)?.close()
+        loadedMdds.remove(id)?.close()
+        cssCache.remove(id)
         synchronized(this) {
-            loadedDicts.remove(id)?.close()
-            loadedMdds.remove(id)?.close()
-            cssCache.remove(id)
             dictionaries.removeAll { it.id == id }
         }
         val dictDir = File(context.filesDir, "dictionaries/$id")
@@ -172,18 +169,18 @@ class DictionaryManager(private val context: Context) {
 
     fun getDictionaries(): List<DictEntry> = synchronized(this) { dictionaries.toList() }
 
-    fun getParserForDictionary(id: Long): MdxParser? = synchronized(this) { loadedDicts[id] }
+    fun getParserForDictionary(id: Long): MdxParser? = loadedDicts[id]
 
     fun getCssFromMdd(dictId: Long): String {
-        val mddParser = synchronized(this) { loadedMdds[dictId] } ?: return ""
+        val mddParser = loadedMdds[dictId] ?: return ""
         return searchEngine.getCssFromMdd(dictId, mapOf(dictId to mddParser))
     }
 
     @WorkerThread
     fun searchWord(query: String): List<SearchResult> {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
-        val dictsSnapshot = synchronized(this) { loadedDicts.toMap() }
-        val mddsSnapshot = synchronized(this) { loadedMdds.toMap() }
+        val dictsSnapshot = loadedDicts.toMap()
+        val mddsSnapshot = loadedMdds.toMap()
         return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot).map {
             SearchResult(it.word, it.definition, it.dictionaryName, it.css)
         }
@@ -192,21 +189,33 @@ class DictionaryManager(private val context: Context) {
     @WorkerThread
     fun getAudioResource(word: String): ByteArray? {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
-        val mddsSnapshot = synchronized(this) { loadedMdds.toMap() }
+        val mddsSnapshot = loadedMdds.toMap()
         return searchEngine.getAudioResource(word, snapshot, mddsSnapshot)
     }
 
     @WorkerThread
     fun getAudioResourceByPath(path: String): ByteArray? {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
-        val mddsSnapshot = synchronized(this) { loadedMdds.toMap() }
+        val mddsSnapshot = loadedMdds.toMap()
         return searchEngine.getAudioResourceByPath(path, snapshot, mddsSnapshot)
+    }
+
+    @WorkerThread
+    fun searchSuggestions(prefix: String, limit: Int = 10): List<String> {
+        if (prefix.isBlank()) return emptyList()
+        val results = mutableSetOf<String>()
+        for ((_, parser) in loadedDicts) {
+            val matches = parser.readArticlesPredictive(prefix)
+            results.addAll(matches.keys)
+            if (results.size >= limit) break
+        }
+        return results.take(limit)
     }
 
     @WorkerThread
     fun getRandomWords(count: Int = 5): List<Pair<String, String>> {
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
-        val dictsSnapshot = synchronized(this) { loadedDicts.toMap() }
+        val dictsSnapshot = loadedDicts.toMap()
         return searchEngine.getRandomWords(count, snapshot, dictsSnapshot)
     }
 
@@ -217,114 +226,113 @@ class DictionaryManager(private val context: Context) {
     fun diagnoseAllDictionaries(): String {
         val sb = StringBuilder()
         sb.appendLine("=== Gdict Dictionary Diagnostics ===")
-        sb.appendLine("Total dicts: ${dictionaries.size}, Loaded parsers: ${loadedDicts.size}")
+        sb.appendLine("Total dicts: ${synchronized(this) { dictionaries.size }}, Loaded parsers: ${loadedDicts.size}")
         sb.appendLine()
 
-        synchronized(this) {
-            for ((i, dict) in dictionaries.withIndex()) {
-                sb.appendLine("--- Dict[$i] ---")
-                sb.appendLine("  id=${dict.id} name='${dict.name}'")
-                sb.appendLine("  path='${dict.path}'")
-                sb.appendLine("  dictFilePath='${dict.dictFilePath}'")
-                sb.appendLine("  isEnabled=${dict.isEnabled}")
+        val dictSnapshot = synchronized(this) { dictionaries.toList() }
+        for ((i, dict) in dictSnapshot.withIndex()) {
+            sb.appendLine("--- Dict[$i] ---")
+            sb.appendLine("  id=${dict.id} name='${dict.name}'")
+            sb.appendLine("  path='${dict.path}'")
+            sb.appendLine("  dictFilePath='${dict.dictFilePath}'")
+            sb.appendLine("  isEnabled=${dict.isEnabled}")
 
-                val mdxFile = File(dict.dictFilePath)
-                sb.appendLine("  fileExists=${mdxFile.exists()} fileSize=${mdxFile.length()}")
+            val mdxFile = File(dict.dictFilePath)
+            sb.appendLine("  fileExists=${mdxFile.exists()} fileSize=${mdxFile.length()}")
 
-                val dictDir = mdxFile.parentFile
-                val dictDirFiles = dictDir?.listFiles()?.sortedBy { it.name }
-                sb.appendLine("  Files in dictDir (${dictDirFiles?.size ?: 0}): ${dictDirFiles?.joinToString { "${it.name}(${it.length()})" }}")
+            val dictDir = mdxFile.parentFile
+            val dictDirFiles = dictDir?.listFiles()?.sortedBy { it.name }
+            sb.appendLine("  Files in dictDir (${dictDirFiles?.size ?: 0}): ${dictDirFiles?.joinToString { "${it.name}(${it.length()})" }}")
+
+            try {
+                val uri2 = android.net.Uri.parse(dict.path)
+                if (dict.path.startsWith("content://") && DocumentsContract.isTreeUri(uri2)) {
+                    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                        uri2,
+                        DocumentsContract.getTreeDocumentId(uri2)
+                    )
+                    val cursor = context.contentResolver.query(
+                        childrenUri,
+                        arrayOf(
+                            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                            DocumentsContract.Document.COLUMN_SIZE
+                        ),
+                        null,
+                        null,
+                        null
+                    )
+                    val fileList = mutableListOf<String>()
+                    cursor?.use {
+                        while (it.moveToNext()) {
+                            val name = it.getString(1)
+                            val size = it.getLong(2)
+                            if (name != null) {
+                                fileList.add("$name($size)")
+                            }
+                        }
+                    }
+                    sb.appendLine("  Files in original dir (${fileList.size}): ${fileList.joinToString()}")
+                }
+            } catch (e: Exception) {
+                sb.appendLine("  Original dir list failed: ${e.message}")
+            }
+
+            val parser = loadedDicts[dict.id]
+            if (parser != null) {
+                sb.appendLine("  parser: title='${parser.title}' words=${parser.wordCount}")
+                sb.appendLine("          encoding='${parser.encoding}' caseSensitive=${parser.isKeyCaseSensitive}")
 
                 try {
-                    val uri2 = android.net.Uri.parse(dict.path)
-                    if (dict.path.startsWith("content://") && DocumentsContract.isTreeUri(uri2)) {
-                        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                            uri2,
-                            DocumentsContract.getTreeDocumentId(uri2)
-                        )
-                        val cursor = context.contentResolver.query(
-                            childrenUri,
-                            arrayOf(
-                                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                                DocumentsContract.Document.COLUMN_SIZE
-                            ),
-                            null,
-                            null,
-                            null
-                        )
-                        val fileList = mutableListOf<String>()
-                        cursor?.use {
-                            while (it.moveToNext()) {
-                                val name = it.getString(1)
-                                val size = it.getLong(2)
-                                if (name != null) {
-                                    fileList.add("$name($size)")
-                                }
-                            }
+                    val testWord = "read"
+                    val articles = parser.readArticles(testWord)
+                    sb.appendLine("  search('$testWord'): ${articles.size} results")
+                    for ((word, def) in articles) {
+                        val preview = def?.take(80)?.replace("\n", "\\n") ?: "(null)"
+                        val hash = def?.hashCode() ?: 0
+                        sb.appendLine("    ['$word'] hash=$hash len=${def?.length ?: 0} preview='$preview'")
+                        if (def != null && def.length <= 2000) {
+                            val rawEscaped = def
+                                .replace("&", "&amp;")
+                                .replace("<", "&lt;")
+                                .replace(">", "&gt;")
+                                .replace("\n", "\\n")
+                                .replace("\r", "\\r")
+                            sb.appendLine("    RAW(first500): '${rawEscaped.take(500)}'")
+                        } else if (def != null) {
+                            val rawEscaped = def.take(500)
+                                .replace("&", "&amp;")
+                                .replace("<", "&lt;")
+                                .replace(">", "&gt;")
+                                .replace("\n", "\\n")
+                            sb.appendLine("    RAW(first500): '${rawEscaped}' ... (truncated, total=${def.length})")
                         }
-                        sb.appendLine("  Files in original dir (${fileList.size}): ${fileList.joinToString()}")
                     }
                 } catch (e: Exception) {
-                    sb.appendLine("  Original dir list failed: ${e.message}")
+                    sb.appendLine("  search ERROR: ${e.javaClass.simpleName}: ${e.message}")
                 }
 
-                val parser = loadedDicts[dict.id]
-                if (parser != null) {
-                    sb.appendLine("  parser: title='${parser.title}' words=${parser.wordCount}")
-                    sb.appendLine("          encoding='${parser.encoding}' caseSensitive=${parser.isKeyCaseSensitive}")
-
-                    try {
-                        val testWord = "read"
-                        val articles = parser.readArticles(testWord)
-                        sb.appendLine("  search('$testWord'): ${articles.size} results")
-                        for ((word, def) in articles) {
-                            val preview = def?.take(80)?.replace("\n", "\\n") ?: "(null)"
-                            val hash = def?.hashCode() ?: 0
-                            sb.appendLine("    ['$word'] hash=$hash len=${def?.length ?: 0} preview='$preview'")
-                            if (def != null && def.length <= 2000) {
-                                val rawEscaped = def
-                                    .replace("&", "&amp;")
-                                    .replace("<", "&lt;")
-                                    .replace(">", "&gt;")
-                                    .replace("\n", "\\n")
-                                    .replace("\r", "\\r")
-                                sb.appendLine("    RAW(first500): '${rawEscaped.take(500)}'")
-                            } else if (def != null) {
-                                val rawEscaped = def.take(500)
-                                    .replace("&", "&amp;")
-                                    .replace("<", "&lt;")
-                                    .replace(">", "&gt;")
-                                    .replace("\n", "\\n")
-                                sb.appendLine("    RAW(first500): '${rawEscaped}' ... (truncated, total=${def.length})")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        sb.appendLine("  search ERROR: ${e.javaClass.simpleName}: ${e.message}")
-                    }
-
-                    try {
-                        val first3Keywords = parser.getAllKeywords().take(3)
-                        sb.appendLine("  first keywords: $first3Keywords")
-                    } catch (_: Exception) {}
-                } else {
-                    sb.appendLine("  parser: NULL (not loaded!)")
-                }
-                sb.appendLine()
+                try {
+                    val first3Keywords = parser.getAllKeywords().take(3)
+                    sb.appendLine("  first keywords: $first3Keywords")
+                } catch (_: Exception) {}
+            } else {
+                sb.appendLine("  parser: NULL (not loaded!)")
             }
+            sb.appendLine()
+        }
 
-            sb.appendLine("=== Parser identity check ===")
-            val parserIdentities = mutableMapOf<Int, String>()
-            for ((id, parser) in loadedDicts) {
-                val identity = "${parser.title}|${parser.wordCount}|${parser.hashCode()}|${parser.fileName}"
-                parserIdentities[id.toInt()] = identity
-                sb.appendLine("  parser[$id] → $identity")
-            }
-            val uniqueParsers = parserIdentities.values.toSet()
-            sb.appendLine("  Unique parser identities: ${uniqueParsers.size}/${parserIdentities.size}")
-            if (uniqueParsers.size < parserIdentities.size) {
-                sb.appendLine("  WARNING: Duplicate parser detected!")
-            }
+        sb.appendLine("=== Parser identity check ===")
+        val parserIdentities = mutableMapOf<Int, String>()
+        for ((id, parser) in loadedDicts) {
+            val identity = "${parser.title}|${parser.wordCount}|${parser.hashCode()}|${parser.fileName}"
+            parserIdentities[id.toInt()] = identity
+            sb.appendLine("  parser[$id] → $identity")
+        }
+        val uniqueParsers = parserIdentities.values.toSet()
+        sb.appendLine("  Unique parser identities: ${uniqueParsers.size}/${parserIdentities.size}")
+        if (uniqueParsers.size < parserIdentities.size) {
+            sb.appendLine("  WARNING: Duplicate parser detected!")
         }
         return sb.toString()
     }
@@ -438,7 +446,7 @@ class DictionaryManager(private val context: Context) {
                     sb.appendLine("     First 200 chars: ${cssContent.take(200).replace("\n", "\\n")}")
                 }
 
-                val companionCss = parser?.companionCss ?: ""
+                val companionCss = parser.companionCss
                 val compLen = companionCss.length
                 sb.appendLine("  companionCss: ${if (compLen > 0) "$compLen chars" else "EMPTY!"}")
                 if (compLen > 0 && compLen <= 500) {

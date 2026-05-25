@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
-import android.util.Log
+import io.github.gdict.core.GdictLogger.Companion.get as log
 import java.io.File
 
 class DictFileImporter(private val context: Context) {
@@ -28,17 +28,17 @@ class DictFileImporter(private val context: Context) {
         val dictDir = File(context.filesDir, "dictionaries/$id")
         dictDir.mkdirs()
 
-        Log.i("DictFileImporter", "=== addOrUpdateDictionary '$name' id=$id ===")
-        Log.i("DictFileImporter", "  sourceUri: $sourceUri")
-        Log.i("DictFileImporter", "  companionUris: ${companionUris.size}")
+        log().i("DictFileImporter", "=== addOrUpdateDictionary '$name' id=$id ===")
+        log().i("DictFileImporter", "  sourceUri: $sourceUri")
+        log().i("DictFileImporter", "  companionUris: ${companionUris.size}")
 
         val copyResult = copyDictionaryFiles(sourceUri, dictDir)
         val copiedFiles = copyResult.files.toMutableList()
         val primaryFile = copyResult.primaryFile
-        Log.i("DictFileImporter", "  Primary copy: ${primaryFile?.name} (${primaryFile?.length()} bytes)")
-        Log.i("DictFileImporter", "  Total copied: ${copiedFiles.size} files")
+        log().i("DictFileImporter", "  Primary copy: ${primaryFile?.name} (${primaryFile?.length()} bytes)")
+        log().i("DictFileImporter", "  Total copied: ${copiedFiles.size} files")
         for (f in copiedFiles) {
-            Log.i("DictFileImporter", "    -> ${f.name} (${f.length()} bytes)")
+            log().i("DictFileImporter", "    -> ${f.name} (${f.length()} bytes)")
         }
 
         for (companionUri in companionUris) {
@@ -46,23 +46,23 @@ class DictFileImporter(private val context: Context) {
                 val compFile = copyToInternal(Uri.parse(companionUri), dictDir)
                 if (compFile != null) {
                     copiedFiles.add(compFile)
-                    Log.i("DictFileImporter", "  Companion: ${compFile.name} (${compFile.length()} bytes)")
+                    log().i("DictFileImporter", "  Companion: ${compFile.name} (${compFile.length()} bytes)")
                 } else {
-                    Log.w("DictFileImporter", "  Companion copy failed: $companionUri")
+                    log().w("DictFileImporter", "  Companion copy failed: $companionUri")
                 }
             } catch (e: Exception) {
-                Log.e("DictFileImporter", "  Companion exception: ${e.message}")
+                log().e("DictFileImporter", "  Companion exception: ${e.message}")
             }
         }
 
         var mdxFile = if (primaryFile != null && primaryFile.name.lowercase().endsWith(".mdx")) {
-            Log.i("DictFileImporter", "  Using primary file as MDX: ${primaryFile.name}")
+            log().i("DictFileImporter", "  Using primary file as MDX: ${primaryFile.name}")
             primaryFile
         } else {
             copiedFiles.firstOrNull { it.name.lowercase().endsWith(".mdx") }
         }
         if (mdxFile == null) {
-            Log.w("DictFileImporter", "  No .mdx file found by extension, trying content detection...")
+            log().w("DictFileImporter", "  No .mdx file found by extension, trying content detection...")
             for (i in copiedFiles.indices) {
                 val file = copiedFiles[i]
                 val detected = detectMdxOrMddExtension(file)
@@ -70,11 +70,11 @@ class DictFileImporter(private val context: Context) {
                     val newName = sanitizeFileName(file.name) + detected
                     val newFile = File(file.parentFile, newName)
                     if (file.renameTo(newFile)) {
-                        Log.i("DictFileImporter", "  Detected MDX/MDD by header, renamed: ${file.name} -> $newName")
+                        log().i("DictFileImporter", "  Detected MDX/MDD by header, renamed: ${file.name} -> $newName")
                         copiedFiles[i] = newFile
                         if (primaryFile == file) mdxFile = newFile
                     } else {
-                        Log.w("DictFileImporter", "  Failed to rename ${file.name} to $newName")
+                        log().w("DictFileImporter", "  Failed to rename ${file.name} to $newName")
                     }
                 }
             }
@@ -83,16 +83,16 @@ class DictFileImporter(private val context: Context) {
             }
         }
         if (mdxFile == null) {
-            Log.e("DictFileImporter", "  NO .mdx file found among ${copiedFiles.size} copied files!")
+            log().e("DictFileImporter", "  NO .mdx file found among ${copiedFiles.size} copied files!")
             for (f in copiedFiles) {
-                Log.e("DictFileImporter", "    existing file: ${f.name}")
+                log().e("DictFileImporter", "    existing file: ${f.name}")
             }
             dictDir.deleteRecursively()
             throw RuntimeException("未能从导入路径中找到 .mdx 词典文件，请确认选择了正确的 .mdx 文件")
         }
 
         val mdxTitle = readMdxHeaderTitle(mdxFile)
-        Log.i("DictFileImporter", "  MDX file verified: '${mdxFile.name}' (${mdxFile.length()} bytes) title='$mdxTitle'")
+        log().i("DictFileImporter", "  MDX file verified: '${mdxFile.name}' (${mdxFile.length()} bytes) title='$mdxTitle'")
 
         val entry = DictionaryManager.DictEntry(
             id = id,
@@ -140,7 +140,7 @@ class DictFileImporter(private val context: Context) {
                     }
                 } else {
                     val realName = resolveDocumentName(uri)
-                    Log.i("DictFileImporter", "  resolveDocumentName: '$realName' for uri: $sourceUri")
+                    log().i("DictFileImporter", "  resolveDocumentName: '$realName' for uri: $sourceUri")
                     copyToInternal(uri, realName, targetDir)?.let { f ->
                         copied.add(f)
                         primaryFile = f
@@ -165,7 +165,7 @@ class DictFileImporter(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e("DictFileImporter", "copyDictionaryFiles FAILED: ${e.message}", e)
+            log().e("DictFileImporter", "copyDictionaryFiles FAILED: ${e.message}", e)
         }
         return CopyResult(copied, primaryFile)
     }
@@ -182,14 +182,14 @@ class DictFileImporter(private val context: Context) {
                     if (colIndex >= 0) {
                         val name = cursor.getString(colIndex)
                         if (!name.isNullOrBlank()) {
-                            Log.i("DictFileImporter", "resolveDocumentName: got '$name' via OpenableColumns")
+                            log().i("DictFileImporter", "resolveDocumentName: got '$name' via OpenableColumns")
                             return name
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w("DictFileImporter", "resolveDocumentName: OpenableColumns query failed: ${e.message}")
+            log().w("DictFileImporter", "resolveDocumentName: OpenableColumns query failed: ${e.message}")
         }
 
         try {
@@ -203,14 +203,14 @@ class DictFileImporter(private val context: Context) {
                     if (colIndex >= 0) {
                         val name = cursor.getString(colIndex)
                         if (!name.isNullOrBlank()) {
-                            Log.i("DictFileImporter", "resolveDocumentName: got '$name' via DocumentsContract")
+                            log().i("DictFileImporter", "resolveDocumentName: got '$name' via DocumentsContract")
                             return name
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w("DictFileImporter", "resolveDocumentName: DocumentsContract query failed: ${e.message}")
+            log().w("DictFileImporter", "resolveDocumentName: DocumentsContract query failed: ${e.message}")
         }
 
         if (uri.authority == "com.android.providers.media.documents") {
@@ -227,13 +227,13 @@ class DictFileImporter(private val context: Context) {
                     if (cursor.moveToFirst()) {
                         val name = cursor.getString(0)
                         if (!name.isNullOrBlank()) {
-                            Log.i("DictFileImporter", "resolveDocumentName: got '$name' via MediaStore")
+                            log().i("DictFileImporter", "resolveDocumentName: got '$name' via MediaStore")
                             return name
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.w("DictFileImporter", "resolveDocumentName: MediaStore query failed: ${e.message}")
+                log().w("DictFileImporter", "resolveDocumentName: MediaStore query failed: ${e.message}")
             }
         }
 
@@ -244,7 +244,7 @@ class DictFileImporter(private val context: Context) {
                     val filePath = docId.substringAfter("raw:")
                     val fileName = File(filePath).name
                     if (fileName.isNotBlank() && fileName.contains(".")) {
-                        Log.i("DictFileImporter", "resolveDocumentName: got '$fileName' via raw path")
+                        log().i("DictFileImporter", "resolveDocumentName: got '$fileName' via raw path")
                         return fileName
                     }
                 }
@@ -260,13 +260,13 @@ class DictFileImporter(private val context: Context) {
                     if (cursor.moveToFirst()) {
                         val name = cursor.getString(0)
                         if (!name.isNullOrBlank()) {
-                            Log.i("DictFileImporter", "resolveDocumentName: got '$name' via Downloads")
+                            log().i("DictFileImporter", "resolveDocumentName: got '$name' via Downloads")
                             return name
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.w("DictFileImporter", "resolveDocumentName: Downloads query failed: ${e.message}")
+                log().w("DictFileImporter", "resolveDocumentName: Downloads query failed: ${e.message}")
             }
         }
 
@@ -276,7 +276,7 @@ class DictFileImporter(private val context: Context) {
                 val decoded = try { java.net.URLDecoder.decode(docId, "UTF-8") } catch (_: Exception) { docId }
                 val candidate = decoded.substringAfterLast('/')
                 if (candidate.contains(".") && !candidate.matches(Regex("^\\d+$")) && !candidate.contains(":")) {
-                    Log.i("DictFileImporter", "resolveDocumentName: got '$candidate' from documentId")
+                    log().i("DictFileImporter", "resolveDocumentName: got '$candidate' from documentId")
                     return candidate
                 }
             } catch (_: Exception) {}
@@ -285,7 +285,7 @@ class DictFileImporter(private val context: Context) {
         val lastSegment = uri.lastPathSegment ?: "unknown"
         val decoded = try { java.net.URLDecoder.decode(lastSegment, "UTF-8") } catch (_: Exception) { lastSegment }
         val candidate = decoded.substringAfterLast('/')
-        Log.w("DictFileImporter", "resolveDocumentName: fallback to lastPathSegment '$candidate'")
+        log().w("DictFileImporter", "resolveDocumentName: fallback to lastPathSegment '$candidate'")
         return candidate
     }
 
@@ -363,7 +363,7 @@ class DictFileImporter(private val context: Context) {
             if (targetFile.exists() && targetFile.length() > 0) targetFile
             else { targetFile.delete(); null }
         } catch (e: Exception) {
-            Log.e("DictFileImporter", "copyToInternal FAILED '$displayName': ${e.message}")
+            log().e("DictFileImporter", "copyToInternal FAILED '$displayName': ${e.message}")
             null
         }
     }
@@ -436,7 +436,7 @@ class DictFileImporter(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e("DictFileImporter", "scanDirectory failed: ${e.message}")
+            log().e("DictFileImporter", "scanDirectory failed: ${e.message}")
         }
         return candidates
     }

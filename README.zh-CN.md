@@ -43,7 +43,7 @@
 - **多词典管理** — 添加、删除、启用/停用词典，重启后自动恢复，支持文件夹批量扫描导入
 - **单词搜索** — 二分查找 O(log n) 精确匹配 + 前缀预测搜索，实时响应
 - **HTML 释义渲染** — WebView 渲染词典原始 HTML 内容，从 MDD 提取 CSS/图片/音频资源
-- **MDD 音频播放** — 从 MDD 资源包提取真人发音音频，回退到系统 TTS 语音合成
+- **发音功能** — 微软 Edge TTS 云端发音 → MDD 真人发音提取 → 本地 TTS 兜底
 - **Word of the Day** — 从已加载词典中动态生成每日推荐单词
 - **生词本** — 收藏单词，支持删除和二次确认对话框
 - **闪卡复习 (FSRS)** — 基于 Free Spaced Repetition Scheduler 算法的间隔重复系统
@@ -96,7 +96,7 @@
 | 导航 | Navigation Compose | 类型安全导航 + 参数传递 |
 | 状态管理 | ViewModel + StateFlow | 5 个专用 ViewModel 分离关注点 |
 | 数据持久化 | SharedPreferences (JSON) | 轻量级数据存储 |
-| 音频 | MediaPlayer + TextToSpeech | MDD 音频提取 + TTS 回退 |
+| 音频 | Edge TTS + MediaPlayer + TextToSpeech | 云端 + 本地发音引擎 |
 | 构建 | Gradle Kotlin DSL | 模块化构建配置 |
 
 ## 项目结构
@@ -123,9 +123,10 @@ Gdict/
 │   │   │       │   ├── WordDetailScreen.kt   # 词条详情页 + 发音 + WebView
 │   │   │       │   ├── BookmarksScreen.kt    # 生词本页
 │   │   │       │   ├── FlashcardScreen.kt    # 闪卡复习页 (FSRS)
-│   │   │       │   ├── HistoryScreen.kt      # 历史记录页
 │   │   │       │   ├── DictionariesScreen.kt # 词典管理页
 │   │   │       │   └── SettingsScreen.kt     # 设置页
+│   │   │       ├── tts/
+│   │   │       │   └── EdgeTtsClient.kt      # 微软 Edge TTS 客户端
 │   │   │       └── theme/
 │   │   │           ├── Color.kt              # GdictColors 色板
 │   │   │           ├── Theme.kt              # GdictTheme + Edge-to-Edge
@@ -135,6 +136,7 @@ Gdict/
 │   ├── core/                                 # 核心库模块（纯逻辑，无 UI 依赖）
 │   │   ├── src/main/java/io/github/gdict/core/
 │   │   │   ├── MdxParser.kt                  # MDX/MDD 解析器
+│   │   │   ├── GdictLogger.kt                # 日志接口抽象
 │   │   │   ├── Lzo1xDecompressor.kt          # LZO1X 解压
 │   │   │   ├── RipeMD128.kt                  # RipeMD-128 哈希
 │   │   │   ├── DictionaryManager.kt          # 词典管理（协调器）
@@ -168,8 +170,8 @@ Gdict/
 
 核心依赖：
 - Android Studio Hedgehog (2023.1.1) 或更高版本
-- JDK 17+（需配置 `JAVA_HOME` 环境变量）
-- Android SDK API 34
+- JDK 17+（项目 `android_sdk/` 已捆绑 JDK 17，开箱即用）
+- Android SDK API 34（项目 `android_sdk/` 已包含）
 - Gradle 8.5（项目自带 wrapper，无需手动安装）
 
 ### 构建调试版
@@ -259,9 +261,10 @@ cd android_project
 ### 发音功能
 
 - 在词条详情页，点击 🎵 按钮播放单词发音
-- **优先**从 MDD 资源包提取真人发音音频
-- **回退**到系统 TTS 文字转语音
-- MDD 资源中的音频通过 WebView 资源拦截机制实时加载
+- **优先**使用微软 Edge TTS 云端神经网络语音（英文 `en-US-AriaNeural` 音色）
+- **回退**从 MDD 资源包提取真人发音音频（离线可用）
+- **最终回退**到本地 Android TTS 语音合成
+- 支持 HTML 中 `sound://` 自定义协议链接
 
 ### 生词本与闪卡复习
 
@@ -428,7 +431,7 @@ Gdict 实现了 [FSRS (Free Spaced Repetition Scheduler)](https://github.com/ope
 
 ### Q: 为什么发音有时候是机器音？
 
-应用优先从 MDD 资源包提取真人发音。如果导入的词典没有 MDD 文件，或 MDD 中没有对应单词的音频，则回退到系统 TTS。
+应用优先使用微软 Edge TTS 云端神经网络语音。如果无网络，则回退到 MDD 真人发音；如果词典没有配套 MDD 文件或不包含该单词的音频，最终回退到本地 TTS。
 
 ### Q: 闪卡复习中的 FSRS 是什么？
 
@@ -471,7 +474,6 @@ FSRS（Free Spaced Repetition Scheduler）是下一代间隔重复算法，相�
 | 项目 | 说明 | 链接 |
 |------|------|------|
 | **Linux Kernel** | LZO1X 解压缩算法，移植自 `lib/lzo/lzo1x_decompress_safe.c` | [torvalds/linux](https://github.com/torvalds/linux) |
-| **Woodstox** | XML StAX 解析器，用于解析 MDX Header | [FasterXML/woodstox](https://github.com/FasterXML/woodstox) |
 | **FSRS** | 间隔重复调度算法 | [open-spaced-repetition](https://github.com/open-spaced-repetition/fsrs4anki) |
 | **Jetpack Compose** | Android 声明式 UI 框架 | [Android Developers](https://developer.android.com/compose) |
 | **Material Design 3** | Google 设计系统 | [Material Design 3](https://m3.material.io/) |

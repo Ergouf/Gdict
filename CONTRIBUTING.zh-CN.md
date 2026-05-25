@@ -23,8 +23,8 @@
 ### 前提条件
 
 - Android Studio Hedgehog (2023.1.1) 或更高版本
-- JDK 17+
-- Android SDK API 34
+- JDK 17+（项目 `android_sdk/` 已捆绑 JDK 17）
+- Android SDK API 34（项目 `android_sdk/` 已包含）
 
 ### 克隆后的第一步
 
@@ -52,8 +52,8 @@
 
 ### 项目结构
 
-- `android_project/app/` — 界面和 ViewModel 层（Jetpack Compose）
-- `android_project/core/` — 核心引擎（MDX 解析器、FSRS 算法、搜索引擎）— 不依赖 Android UI
+- `android_project/app/` — 界面和 ViewModel 层（Jetpack Compose）+ Edge TTS 客户端
+- `android_project/core/` — 核心引擎（MDX 解析器、FSRS 算法、搜索引擎、日志抽象）— 不依赖 Android UI
 - `export_project/` — 独立导出工具
 
 ## 代码风格

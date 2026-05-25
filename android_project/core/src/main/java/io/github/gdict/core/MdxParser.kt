@@ -1,6 +1,6 @@
 package io.github.gdict.core
 
-import android.util.Log
+import io.github.gdict.core.GdictLogger.Companion.get as log
 import java.io.Closeable
 import java.io.File
 import java.io.RandomAccessFile
@@ -46,7 +46,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
     private var sortedLowercaseEntries: List<Pair<String, Int>> = emptyList()
 
     private val raf: RandomAccessFile = RandomAccessFile(mdxFile, "r")
+    @Volatile
     private var closed = false
+    @Volatile
     private var parseFailed = false
 
     var isResourceMode = false
@@ -58,16 +60,18 @@ class MdxParser(private val mdxFile: File) : Closeable {
         try {
             parse()
         } catch (e: Exception) {
-            Log.e(TAG, "解析MDX文件失败: ${e.message}", e)
+            log().e(TAG, "解析MDX文件失败: ${e.message}", e)
             parseFailed = true
             close()
         }
     }
 
     override fun close() {
-        if (closed) return
-        closed = true
-        try { raf.close() } catch (_: Exception) {}
+        synchronized(raf) {
+            if (closed) return
+            closed = true
+            try { raf.close() } catch (_: Exception) {}
+        }
     }
 
     val companionCss: String by lazy {
@@ -89,9 +93,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 try {
                     sb.append(cssFile.readText(Charsets.UTF_8))
                     sb.append("\n")
-                    Log.i(TAG, "Loaded CSS from: ${cssFile.name} (${cssFile.length()} bytes)")
+                    log().i(TAG, "Loaded CSS from: ${cssFile.name} (${cssFile.length()} bytes)")
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to read CSS: ${cssFile.name}: ${e.message}")
+                    log().w(TAG, "Failed to read CSS: ${cssFile.name}: ${e.message}")
                 }
             }
         }
@@ -99,32 +103,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         return sb.toString()
     }
 
-    fun transformHtml(raw: String): String {
-        var result = raw
-        result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
-            val content = match.groupValues[1].trim()
-            if (content.isEmpty()) " " else " $content "
-        }
-        result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
-        result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
-        result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
-        result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
-        result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
-        result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
-        result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
-        result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
-        result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
-        result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
-        result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
-        result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
-        result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
-        result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
-        return result
-    }
+    fun transformHtml(raw: String): String = transformHtmlStatic(raw)
 
     fun readArticles(word: String): Map<String, String?> {
         val results = mutableMapOf<String, String?>()
@@ -255,7 +234,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 if (actualSize <= 0) return null
                 return decompressed.copyOfRange(recordStart, recordStart + actualSize)
             } catch (e: Exception) {
-                Log.e(TAG, "readRecordBytes error at $offset: ${e.message}")
+                log().e(TAG, "readRecordBytes error at $offset: ${e.message}")
                 return null
             }
         }
@@ -264,7 +243,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
     private fun readResourceBytesStream(key: String): ByteArray? {
         if (keywordSectionStart < 0 || recordBlockInfos.isEmpty()) return null
         val targetKey = if (key.startsWith("\\")) key else "\\$key"
-        Log.d(TAG, "Stream resource lookup: '$targetKey'")
+        log().d(TAG, "Stream resource lookup: '$targetKey'")
         synchronized(raf) {
             val savedPosition = raf.filePointer
             try {
@@ -289,15 +268,15 @@ class MdxParser(private val mdxFile: File) : Closeable {
                     keyIndexDecompLen = 0
                 }
 
-                Log.d(TAG, "Stream header: numKeyBlocks=$numKeyBlocks idxComp=$keyIndexCompLen idxDecomp=$keyIndexDecompLen")
+                log().d(TAG, "Stream header: numKeyBlocks=$numKeyBlocks idxComp=$keyIndexCompLen idxDecomp=$keyIndexDecompLen")
 
                 if (numKeyBlocks <= 0 || numKeyBlocks > 10000000 || keyIndexCompLen <= 0) {
-                    Log.w(TAG, "Stream: invalid header values")
+                    log().w(TAG, "Stream: invalid header values")
                     return null
                 }
 
                 if (keyIndexCompLen > 100 * 1024 * 1024) {
-                    Log.w(TAG, "Stream: keyIndexCompLen too large ($keyIndexCompLen), cannot stream")
+                    log().w(TAG, "Stream: keyIndexCompLen too large ($keyIndexCompLen), cannot stream")
                     return null
                 }
 
@@ -307,9 +286,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 if ((encrypt and 2) != 0 && keyIndexRaw.size > 8) {
                     val checksumBytes = keyIndexRaw.copyOfRange(4, 8)
                     val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
-                    val key = RipeMD128.digest(keyInput)
-                    fastDecrypt(keyIndexRaw, 8, key)
-                    Log.d(TAG, "Stream: key index decrypted")
+                    val decryptKey = RipeMD128.digest(keyInput)
+                    fastDecrypt(keyIndexRaw, 8, decryptKey)
+                    log().d(TAG, "Stream: key index decrypted")
                 }
 
                 val keyIndexData = if (engineVersion >= 2.0 && keyIndexDecompLen > 0) {
@@ -317,11 +296,11 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 } else keyIndexRaw
 
                 val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
-                Log.d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for '$targetKey'")
+                log().d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for '$targetKey'")
 
                 for ((blockIdx, meta) in blockMetas.withIndex()) {
                     if (meta.compSize <= 0 || meta.compSize > 50 * 1024 * 1024) {
-                        Log.w(TAG, "Stream: skip block $blockIdx compSize=${meta.compSize}")
+                        log().w(TAG, "Stream: skip block $blockIdx compSize=${meta.compSize}")
                         continue
                     }
                     val compData = ByteArray(meta.compSize.toInt())
@@ -335,15 +314,15 @@ class MdxParser(private val mdxFile: File) : Closeable {
                         val wordBytes = stream.readNullTerminated(bpu)
                         val word = String(wordBytes, charset(encoding))
                         if (word.equals(targetKey, ignoreCase = true) || word.endsWith(targetKey, ignoreCase = true)) {
-                            Log.i(TAG, "Stream found: '$word' at offset=$recordOffset")
+                            log().i(TAG, "Stream found: '$word' at offset=$recordOffset")
                             return readRecordBytes(recordOffset, 0)
                         }
                     }
                 }
-                Log.w(TAG, "Stream lookup not found: '$targetKey'")
+                log().w(TAG, "Stream lookup not found: '$targetKey'")
                 return null
             } catch (e: Exception) {
-                Log.e(TAG, "Stream resource error: ${e.message}")
+                log().e(TAG, "Stream resource error: ${e.message}")
                 return null
             } finally {
                 raf.seek(savedPosition)
@@ -409,7 +388,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "findResourceKeysStream error: ${e.message}")
+                log().e(TAG, "findResourceKeysStream error: ${e.message}")
             } finally {
                 raf.seek(savedPosition)
             }
@@ -541,7 +520,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val idx = findRecordBlockIndex(offset) ?: return null
         val rbInfo = recordBlockInfos[idx]
         if (rbInfo.compressedSize > Int.MAX_VALUE || rbInfo.decompressedSize > Int.MAX_VALUE) {
-            Log.e(TAG, "readRecord: block size exceeds Int.MAX_VALUE")
+            log().e(TAG, "readRecord: block size exceeds Int.MAX_VALUE")
             return null
         }
         synchronized(raf) {
@@ -562,7 +541,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 val bytes = decompressed.copyOfRange(recordStart, recordStart + actualSize)
                 return decodeRecordString(bytes)
             } catch (e: Exception) {
-                Log.e(TAG, "readRecord error at $offset: ${e.message}")
+                log().e(TAG, "readRecord error at $offset: ${e.message}")
                 return null
             }
         }
@@ -625,7 +604,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 else -> String(bytes, Charsets.UTF_8)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "解码字符串失败: ${e.message}")
+            log().w(TAG, "解码字符串失败: ${e.message}")
             String(bytes, Charsets.ISO_8859_1)
         }
     }
@@ -684,7 +663,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
 
     private fun parse() {
         val fileSize = mdxFile.length()
-        Log.i(TAG, "开始解析文件: ${mdxFile.name} (${fileSize} bytes)")
+        log().i(TAG, "开始解析文件: ${mdxFile.name} (${fileSize} bytes)")
         if (fileSize < 12) {
             throw IllegalArgumentException("文件太小: ${mdxFile.name} ($fileSize bytes < 12)")
         }
@@ -692,11 +671,11 @@ class MdxParser(private val mdxFile: File) : Closeable {
         keywordSectionStart = raf.filePointer
         parseKeywordSection()
         if (wordCount == 0 && mdxFile.length() > 10 * 1024 * 1024) {
-            Log.w(TAG, "大文件MDD关键词区为空，启用资源流式模式")
+            log().w(TAG, "大文件MDD关键词区为空，启用资源流式模式")
             isResourceMode = true
         }
         parseRecordSection()
-        Log.i(TAG, "解析完成: title='$title' words=$wordCount blocks=${recordBlockInfos.size} encoding='$encoding' version=$engineVersion bpu=$bpu resourceMode=$isResourceMode")
+        log().i(TAG, "解析完成: title='$title' words=$wordCount blocks=${recordBlockInfos.size} encoding='$encoding' version=$engineVersion bpu=$bpu resourceMode=$isResourceMode")
     }
 
     private fun parseHeader() {
@@ -706,7 +685,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         }
         val headerBytes = ByteArray(headerLen)
         raf.readFully(headerBytes)
-        val checksum = raf.readIntLE()
+        raf.readIntLE()
 
         val headerStr = String(headerBytes, Charsets.UTF_16LE)
 
@@ -726,7 +705,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         bpu = if (encoding.uppercase().replace("-", "").startsWith("UTF16")) 2 else 1
         numberWidth = if (engineVersion >= 2.0) 8 else 4
 
-        Log.i(TAG, "Header: title='$title' encoding='$encoding' (raw='$rawEncoding') encrypt=$encrypt caseSensitive=$isKeyCaseSensitive engineVer=$engineVersion headerLen=$headerLen bpu=$bpu numberWidth=$numberWidth")
+        log().i(TAG, "Header: title='$title' encoding='$encoding' (raw='$rawEncoding') encrypt=$encrypt caseSensitive=$isKeyCaseSensitive engineVer=$engineVersion headerLen=$headerLen bpu=$bpu numberWidth=$numberWidth")
     }
 
     private fun parseKeywordSection() {
@@ -736,30 +715,28 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val keyIndexCompLen: Long
         val keyBlocksLen: Long
 
-        val headerStart = raf.filePointer
-
         if (engineVersion >= 2.0) {
             numKeyBlocks = raf.readLongBE()
             totalEntries = raf.readLongBE()
             keyIndexDecompLen = raf.readLongBE()
             keyIndexCompLen = raf.readLongBE()
             keyBlocksLen = raf.readLongBE()
-            val kwChecksum = raf.readIntBE()
-            Log.i(TAG, "Keyword V2: numKeyBlocks=$numKeyBlocks totalEntries=$totalEntries idxDecomp=$keyIndexDecompLen idxComp=$keyIndexCompLen keyBlocksLen=$keyBlocksLen")
+            raf.readIntBE()
+            log().i(TAG, "Keyword V2: numKeyBlocks=$numKeyBlocks totalEntries=$totalEntries idxDecomp=$keyIndexDecompLen idxComp=$keyIndexCompLen keyBlocksLen=$keyBlocksLen")
         } else {
             numKeyBlocks = raf.readIntBE().toLong()
             totalEntries = raf.readIntBE().toLong()
             keyIndexCompLen = raf.readIntBE().toLong()
             keyBlocksLen = raf.readIntBE().toLong()
             keyIndexDecompLen = 0
-            Log.i(TAG, "Keyword V1: numKeyBlocks=$numKeyBlocks totalEntries=$totalEntries idxLen=$keyIndexCompLen keyBlocksLen=$keyBlocksLen")
+            log().i(TAG, "Keyword V1: numKeyBlocks=$numKeyBlocks totalEntries=$totalEntries idxLen=$keyIndexCompLen keyBlocksLen=$keyBlocksLen")
         }
 
         val sectionEndPos = raf.filePointer + keyIndexCompLen + keyBlocksLen
         keywordSectionEnd = sectionEndPos
 
         if (numKeyBlocks <= 0 || numKeyBlocks > 10000000) {
-            Log.e(TAG, "无效的numKeyBlocks: $numKeyBlocks, seeking to record section")
+            log().e(TAG, "无效的numKeyBlocks: $numKeyBlocks, seeking to record section")
             raf.seek(sectionEndPos)
             return
         }
@@ -769,13 +746,13 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val remainingBytes = fileSize - currentPos
 
         if (keyIndexCompLen <= 0 || keyIndexCompLen > remainingBytes) {
-            Log.e(TAG, "无效的keyIndexCompLen: $keyIndexCompLen (文件剩余: $remainingBytes bytes), seeking to record section")
+            log().e(TAG, "无效的keyIndexCompLen: $keyIndexCompLen (文件剩余: $remainingBytes bytes), seeking to record section")
             raf.seek(sectionEndPos)
             return
         }
 
         if (keyIndexDecompLen > 0 && keyIndexDecompLen > 200 * 1024 * 1024) {
-            Log.e(TAG, "keyIndexDecompLen过大: ${keyIndexDecompLen} (>200MB), 启用流式模式, seeking to record section")
+            log().e(TAG, "keyIndexDecompLen过大: ${keyIndexDecompLen} (>200MB), 启用流式模式, seeking to record section")
             raf.seek(sectionEndPos)
             return
         }
@@ -789,7 +766,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
             val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
             val key = RipeMD128.digest(keyInput)
             fastDecrypt(keyIndexRaw, 8, key)
-            Log.i(TAG, "Keyword index decrypted: keyIndexCompLen=$keyIndexCompLen")
+            log().i(TAG, "Keyword index decrypted: keyIndexCompLen=$keyIndexCompLen")
         }
 
         val keyIndexData = if (engineVersion >= 2.0) {
@@ -803,7 +780,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val maxCompSize = keyBlocksLen + keyIndexCompLen + 1024
         val needsUtf16Fallback = blockMetas.any { it.compSize <= 0 || it.compSize > maxCompSize || it.decompSize <= 0 || it.decompSize > 500 * 1024 * 1024 }
         if (needsUtf16Fallback && bpu == 1) {
-            Log.w(TAG, "Key block info解析异常(compSize超出范围)，尝试UTF-16LE编码 (bpu=2)")
+            log().w(TAG, "Key block info解析异常(compSize超出范围)，尝试UTF-16LE编码 (bpu=2)")
             val origBpu = bpu
             val origEncoding = encoding
             bpu = 2
@@ -811,27 +788,27 @@ class MdxParser(private val mdxFile: File) : Closeable {
             blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
             val stillBad = blockMetas.any { it.compSize <= 0 || it.compSize > maxCompSize || it.decompSize <= 0 || it.decompSize > 500 * 1024 * 1024 }
             if (stillBad) {
-                Log.w(TAG, "UTF-16LE回退也失败，恢复原编码")
+                log().w(TAG, "UTF-16LE回退也失败，恢复原编码")
                 bpu = origBpu
                 encoding = origEncoding
                 blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
             } else {
-                Log.i(TAG, "UTF-16LE回退成功! blockMetas=${blockMetas.size}, meta[0]: compSize=${blockMetas[0].compSize} decompSize=${blockMetas[0].decompSize}")
+                log().i(TAG, "UTF-16LE回退成功! blockMetas=${blockMetas.size}, meta[0]: compSize=${blockMetas[0].compSize} decompSize=${blockMetas[0].decompSize}")
             }
         }
 
-        Log.i(TAG, "Key block info解析完成: ${blockMetas.size} blocks (encoding=$encoding bpu=$bpu)")
+        log().i(TAG, "Key block info解析完成: ${blockMetas.size} blocks (encoding=$encoding bpu=$bpu)")
 
         val maxBlockSize = 50 * 1024 * 1024
         var totalAllocated = 0L
 
         for ((blockIdx, meta) in blockMetas.withIndex()) {
             if (meta.compSize <= 0 || meta.compSize > maxBlockSize) {
-                Log.w(TAG, "  Block $blockIdx: 跳过异常块 compSize=${meta.compSize} (max=$maxBlockSize)")
+                log().w(TAG, "  Block $blockIdx: 跳过异常块 compSize=${meta.compSize} (max=$maxBlockSize)")
                 continue
             }
             if (totalAllocated + meta.compSize > 200 * 1024 * 1024) {
-                Log.w(TAG, "  Block $blockIdx: 总分配超限，跳过 (已分配=${totalAllocated})")
+                log().w(TAG, "  Block $blockIdx: 总分配超限，跳过 (已分配=${totalAllocated})")
                 break
             }
 
@@ -842,7 +819,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
             val blockData = decompressBlock(blockCompData, meta.decompSize)
 
             if (blockData.size != meta.decompSize) {
-                Log.w(TAG, "  Block $blockIdx: decomp size mismatch! expected=${meta.decompSize} actual=${blockData.size}")
+                log().w(TAG, "  Block $blockIdx: decomp size mismatch! expected=${meta.decompSize} actual=${blockData.size}")
             }
 
             val blockStream = ByteStream(blockData)
@@ -867,10 +844,10 @@ class MdxParser(private val mdxFile: File) : Closeable {
             }
 
             if (entriesInBlock != meta.numEntries) {
-                Log.w(TAG, "  Block $blockIdx: entry count mismatch! parsed=$entriesInBlock expected=${meta.numEntries} compSize=${meta.compSize} decompSize=${meta.decompSize}")
+                log().w(TAG, "  Block $blockIdx: entry count mismatch! parsed=$entriesInBlock expected=${meta.numEntries} compSize=${meta.compSize} decompSize=${meta.decompSize}")
             }
             if (blockIdx < 5 || entriesInBlock != meta.numEntries) {
-                Log.d(TAG, "  Block $blockIdx: $entriesInBlock entries (meta=${meta.numEntries}) remaining=${blockStream.remaining}")
+                log().d(TAG, "  Block $blockIdx: $entriesInBlock entries (meta=${meta.numEntries}) remaining=${blockStream.remaining}")
             }
         }
 
@@ -903,14 +880,14 @@ class MdxParser(private val mdxFile: File) : Closeable {
         }.sortedBy { it.first }
 
         wordCount = keywordIndex.size
-        Log.i(TAG, "关键词加载完成: $wordCount")
+        log().i(TAG, "关键词加载完成: $wordCount")
         if (wordCount > 0) {
-            Log.d(TAG, "前5个词: ${keywordIndex.take(5).map { it.word }}")
-            Log.d(TAG, "后5个词: ${keywordIndex.takeLast(5).map { it.word }}")
+            log().d(TAG, "前5个词: ${keywordIndex.take(5).map { it.word }}")
+            log().d(TAG, "后5个词: ${keywordIndex.takeLast(5).map { it.word }}")
         }
 
         raf.seek(keywordSectionEnd)
-        Log.i(TAG, "parseKeywordSection done, seeked to $keywordSectionEnd")
+        log().i(TAG, "parseKeywordSection done, seeked to $keywordSectionEnd")
     }
 
     /**
@@ -978,7 +955,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
 
     private fun parseRecordSection() {
         val recordSectionStart = raf.filePointer
-        Log.i(TAG, "parseRecordSection starting at offset $recordSectionStart (keywordSectionEnd=$keywordSectionEnd)")
+        log().i(TAG, "parseRecordSection starting at offset $recordSectionStart (keywordSectionEnd=$keywordSectionEnd)")
 
         val numRecordBlocks: Long
         val numEntries: Long
@@ -997,15 +974,15 @@ class MdxParser(private val mdxFile: File) : Closeable {
             blocksLen = raf.readIntBE().toLong()
         }
 
-        Log.i(TAG, "Record section: numRecordBlocks=$numRecordBlocks numEntries=$numEntries indexLen=$indexLen blocksLen=$blocksLen")
+        log().i(TAG, "Record section: numRecordBlocks=$numRecordBlocks numEntries=$numEntries indexLen=$indexLen blocksLen=$blocksLen")
 
         if (numRecordBlocks <= 0 || numRecordBlocks > 10000000) {
-            Log.e(TAG, "Invalid numRecordBlocks=$numRecordBlocks, dumping raw bytes at offset $recordSectionStart")
+            log().e(TAG, "Invalid numRecordBlocks=$numRecordBlocks, dumping raw bytes at offset $recordSectionStart")
             try {
                 raf.seek(recordSectionStart)
                 val dump = ByteArray(minOf(64, (mdxFile.length() - recordSectionStart).toInt()))
                 raf.readFully(dump)
-                Log.e(TAG, "Raw bytes: ${dump.joinToString(" ") { "%02X".format(it) }}")
+                log().e(TAG, "Raw bytes: ${dump.joinToString(" ") { "%02X".format(it) }}")
             } catch (_: Exception) {}
             return
         }
@@ -1036,7 +1013,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
             raf.seek(blockPos + compSizes[i])
         }
 
-        Log.i(TAG, "Record blocks加载完成: ${recordBlockInfos.size}")
+        log().i(TAG, "Record blocks加载完成: ${recordBlockInfos.size}")
     }
 
     private fun fastDecrypt(buf: ByteArray, startOffset: Int, key: ByteArray) {
@@ -1059,7 +1036,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val expectedChecksum = readAdler32(data)
         val compressedData = data.copyOfRange(8, data.size)
 
-        Log.d(TAG, "  decompressBlock: input=${data.size}B compType=$compType expectedDecomp=$expectedDecompSize compressedLen=${compressedData.size}")
+        log().d(TAG, "  decompressBlock: input=${data.size}B compType=$compType expectedDecomp=$expectedDecompSize compressedLen=${compressedData.size}")
 
         val result = when (compType) {
             0 -> {
@@ -1071,7 +1048,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 try {
                     Lzo1xDecompressor.decompress(compressedData, expectedDecompSize)
                 } catch (e: Exception) {
-                    Log.e(TAG, "LZO解压失败: ${e.message}")
+                    log().e(TAG, "LZO解压失败: ${e.message}")
                     ByteArray(0)
                 }
             }
@@ -1079,7 +1056,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 decompressZlib(compressedData, expectedDecompSize, expectedChecksum)
             }
             else -> {
-                Log.w(TAG, "未知压缩类型=$compType, 返回原始数据")
+                log().w(TAG, "未知压缩类型=$compType, 返回原始数据")
                 val raw = ByteArray(minOf(expectedDecompSize, compressedData.size))
                 System.arraycopy(compressedData, 0, raw, 0, raw.size)
                 raw
@@ -1089,7 +1066,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         if (expectedChecksum != 0L && result.isNotEmpty()) {
             val actualChecksum = computeAdler32(result)
             if (actualChecksum != expectedChecksum) {
-                Log.w(TAG, "Adler32校验和不匹配: expected=$expectedChecksum actual=$actualChecksum")
+                log().w(TAG, "Adler32校验和不匹配: expected=$expectedChecksum actual=$actualChecksum")
             }
         }
 
@@ -1119,6 +1096,70 @@ class MdxParser(private val mdxFile: File) : Closeable {
     companion object {
         private const val TAG = "MdxParser"
 
+        fun transformHtmlStatic(raw: String): String {
+            var result = raw
+            result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
+                val content = match.groupValues[1].trim()
+                if (content.isEmpty()) " " else " $content "
+            }
+            result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
+            result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
+            result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
+            result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
+            result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
+            result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
+            result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
+            result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
+            result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
+            result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
+            result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
+            result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
+            result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
+            result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
+            result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
+            result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
+            result = result.replace(Regex("<ipa>", RegexOption.IGNORE_CASE), "<span class='ipa'>")
+            result = result.replace(Regex("</ipa>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<prongrp>", RegexOption.IGNORE_CASE), "<span class='prongrp'>")
+            result = result.replace(Regex("</prongrp>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<inflection>", RegexOption.IGNORE_CASE), "<span class='inflection'>")
+            result = result.replace(Regex("</inflection>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<capvar>", RegexOption.IGNORE_CASE), "<span class='capvar'>")
+            result = result.replace(Regex("</capvar>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<sense-block>", RegexOption.IGNORE_CASE), "<span class='sense-block'>")
+            result = result.replace(Regex("</sense-block>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<sense-body>", RegexOption.IGNORE_CASE), "<span class='sense-body'>")
+            result = result.replace(Regex("</sense-body>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<di-head>", RegexOption.IGNORE_CASE), "<span class='di-head'>")
+            result = result.replace(Regex("</di-head>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<di-title>", RegexOption.IGNORE_CASE), "<span class='di-title'>")
+            result = result.replace(Regex("</di-title>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<di-body>", RegexOption.IGNORE_CASE), "<span class='di-body'>")
+            result = result.replace(Regex("</di-body>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<arl>", RegexOption.IGNORE_CASE), "<span class='arl'>")
+            result = result.replace(Regex("</arl>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<base>", RegexOption.IGNORE_CASE), "<span class='base'>")
+            result = result.replace(Regex("</base>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<results>", RegexOption.IGNORE_CASE), "<span class='results'>")
+            result = result.replace(Regex("</results>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<forms>", RegexOption.IGNORE_CASE), "<span class='forms'>")
+            result = result.replace(Regex("</forms>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<inflections>", RegexOption.IGNORE_CASE), "<span class='inflections'>")
+            result = result.replace(Regex("</inflections>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<pron>", RegexOption.IGNORE_CASE), "<span class='pron'>")
+            result = result.replace(Regex("</pron>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<ussymbol>", RegexOption.IGNORE_CASE), "<span class='ussymbol'>")
+            result = result.replace(Regex("</ussymbol>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("<sense-info>", RegexOption.IGNORE_CASE), "<span class='sense-info'>")
+            result = result.replace(Regex("</sense-info>", RegexOption.IGNORE_CASE), "</span>")
+            result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+                "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
+            }
+            return result
+        }
+
         private fun computeAdler32(data: ByteArray): Long {
             val adler = Adler32()
             adler.update(data)
@@ -1138,9 +1179,9 @@ class MdxParser(private val mdxFile: File) : Closeable {
                     if (len > 0) {
                         val decompressed = result.copyOf(len)
                         val cksum = computeAdler32(decompressed)
-                        Log.d(TAG, "  zlib nowrap=$nowrap len=$len adler32=$cksum expected=$expectedChecksum")
+                        log().d(TAG, "  zlib nowrap=$nowrap len=$len adler32=$cksum expected=$expectedChecksum")
                         if (expectedChecksum > 0 && cksum == expectedChecksum) {
-                            Log.d(TAG, "  Adler32 matched, using nowrap=$nowrap")
+                            log().d(TAG, "  Adler32 matched, using nowrap=$nowrap")
                             return decompressed
                         }
                         if (bestResult == null) bestResult = decompressed

@@ -56,6 +56,9 @@ class AppRepository(private val context: Context) {
     private val _dictionaries = MutableStateFlow<List<Dictionary>>(emptyList())
     val dictionaries: StateFlow<List<Dictionary>> = _dictionaries.asStateFlow()
 
+    private val _darkMode = MutableStateFlow(prefs.getBoolean("dark_mode", false))
+    val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
+
     private val _history = MutableStateFlow<List<HistoryItem>>(emptyList())
     val history: StateFlow<List<HistoryItem>> = _history.asStateFlow()
 
@@ -129,6 +132,11 @@ class AppRepository(private val context: Context) {
     fun removeFromHistory(item: HistoryItem) {
         _history.value = _history.value.filter { it.word != item.word }
         saveHistory(_history.value)
+    }
+
+    fun setDarkMode(enabled: Boolean) {
+        _darkMode.value = enabled
+        prefs.edit().putBoolean("dark_mode", enabled).apply()
     }
 
     fun clearHistory() {
@@ -229,6 +237,10 @@ class AppRepository(private val context: Context) {
         val fileCss = parser?.companionCss ?: ""
         val mddCss = dictionaryManager.getCssFromMdd(dict.id)
         return fileCss + mddCss
+    }
+
+    suspend fun searchSuggestions(prefix: String, limit: Int = 10): List<String> = withContext(Dispatchers.IO) {
+        dictionaryManager.searchSuggestions(prefix, limit)
     }
 
     suspend fun getRandomWords(count: Int = 5): List<Pair<String, String>> = withContext(Dispatchers.IO) {

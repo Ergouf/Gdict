@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.gdict.core.MdxParser
+import io.github.gdict.tts.EdgeTtsClient
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
@@ -190,15 +192,24 @@ fun WordDetailScreen(
                                 isPlaying = true
                                 coroutineScope.launch {
                                     try {
-                                        val audioData = settingsViewModel.getAudioResource(word)
-                                        if (audioData != null) {
+                                        val edgeTtsData = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            EdgeTtsClient.synthesize(word)
+                                        }
+                                        if (edgeTtsData != null) {
                                             withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                                playAudioBytes(context, audioData)
+                                                playAudioBytes(context, edgeTtsData)
                                             }
                                         } else {
-                                            val engine = tts
-                                            if (engine != null && ttsReady) {
-                                                engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
+                                            val audioData = settingsViewModel.getAudioResource(word)
+                                            if (audioData != null) {
+                                                withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                    playAudioBytes(context, audioData)
+                                                }
+                                            } else {
+                                                val engine = tts
+                                                if (engine != null && ttsReady) {
+                                                    engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
+                                                }
                                             }
                                         }
                                     } catch (_: Exception) {
@@ -561,7 +572,7 @@ private fun HtmlContent(
 
 private fun buildHtmlContent(definition: String, css: String): String {
     val isCambridgeEpd = definition.contains("cepd18.css")
-    val transformedDef = transformMdxTags(definition).let { def ->
+    val transformedDef = MdxParser.transformHtmlStatic(definition).let { def ->
         if (isCambridgeEpd) {
             def.replace(Regex("""<img[^>]*src=["'][^"']*uk_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
                 "<span class='uk-flag'>UK</span>")
@@ -705,70 +716,6 @@ $jsBlock
 </body>
 </html>
     """.trimIndent()
-}
-
-private fun transformMdxTags(input: String): String {
-    var result = input
-    result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
-        val content = match.groupValues[1].trim()
-        if (content.isEmpty()) " " else " $content "
-    }
-    result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
-    result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
-    result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
-    result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
-    result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
-    result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
-    result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
-    result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
-    result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
-    result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
-    result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
-    result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
-    result = result.replace(Regex("<ipa>", RegexOption.IGNORE_CASE), "<span class='ipa'>")
-    result = result.replace(Regex("</ipa>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<prongrp>", RegexOption.IGNORE_CASE), "<span class='prongrp'>")
-    result = result.replace(Regex("</prongrp>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<inflection>", RegexOption.IGNORE_CASE), "<span class='inflection'>")
-    result = result.replace(Regex("</inflection>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<capvar>", RegexOption.IGNORE_CASE), "<span class='capvar'>")
-    result = result.replace(Regex("</capvar>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<sense-block>", RegexOption.IGNORE_CASE), "<span class='sense-block'>")
-    result = result.replace(Regex("</sense-block>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<sense-body>", RegexOption.IGNORE_CASE), "<span class='sense-body'>")
-    result = result.replace(Regex("</sense-body>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<di-head>", RegexOption.IGNORE_CASE), "<span class='di-head'>")
-    result = result.replace(Regex("</di-head>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<di-title>", RegexOption.IGNORE_CASE), "<span class='di-title'>")
-    result = result.replace(Regex("</di-title>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<di-body>", RegexOption.IGNORE_CASE), "<span class='di-body'>")
-    result = result.replace(Regex("</di-body>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<arl>", RegexOption.IGNORE_CASE), "<span class='arl'>")
-    result = result.replace(Regex("</arl>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<base>", RegexOption.IGNORE_CASE), "<span class='base'>")
-    result = result.replace(Regex("</base>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<results>", RegexOption.IGNORE_CASE), "<span class='results'>")
-    result = result.replace(Regex("</results>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<forms>", RegexOption.IGNORE_CASE), "<span class='forms'>")
-    result = result.replace(Regex("</forms>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<inflections>", RegexOption.IGNORE_CASE), "<span class='inflections'>")
-    result = result.replace(Regex("</inflections>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<pron>", RegexOption.IGNORE_CASE), "<span class='pron'>")
-    result = result.replace(Regex("</pron>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<ussymbol>", RegexOption.IGNORE_CASE), "<span class='ussymbol'>")
-    result = result.replace(Regex("</ussymbol>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("<sense-info>", RegexOption.IGNORE_CASE), "<span class='sense-info'>")
-    result = result.replace(Regex("</sense-info>", RegexOption.IGNORE_CASE), "</span>")
-    result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
-        "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
-    }
-    return result
 }
 
 private fun extractPartOfSpeech(definition: String): String {
