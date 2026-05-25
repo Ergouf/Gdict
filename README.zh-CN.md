@@ -413,11 +413,15 @@ Gdict 实现了 [FSRS (Free Spaced Repetition Scheduler)](https://github.com/ope
 3. 返回包含资源数据的 `WebResourceResponse`
 4. HTML 中的 `sound://` 自定义协议引用也会被拦截并处理为音频播放
 
-**资源缓存**：`DictionaryManager` 维护 `resourceCache` 和 `cssKeysCache`，避免重复遍历 MDD 关键词索引。资源查找结果按路径缓存，CSS 关键词列表按词典 ID 缓存。
+**资源缓存**：`DictionaryManager` 维护 `resourceCache` 和 `cssKeysCache`，避免重复遍历 MDD 关键词索引。资源查找结果按路径缓存，CSS 关键词列表按词典 ID 缓存。`SearchViewModel` 额外维护按词典名缓存的 CSS，避免导航到详情页时重复从 MDD 读取。
 
-**路径匹配**：拦截器对每个资源请求尝试多种路径格式（反斜杠、双反斜杠、仅文件名、正斜杠），提高 MDD 资源命中率。支持拦截的文件类型包括 CSS、JS、图片、字体（ttf/woff/woff2）和音频（mp3/wav/ogg/spx）。
+**路径匹配**：拦截器对每个资源请求尝试多种路径格式（反斜杠、双反斜杠、仅文件名、正斜杠），并对 URL 编码字符（如 `%20`）进行解码，提高 MDD 资源命中率。支持拦截的文件类型包括 CSS、JS、图片、字体（ttf/woff/woff2）和音频（mp3/wav/ogg/spx）。
 
-**发音图标**：Cambridge EPD 等词典的发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶ 字符（U+25B6），替代不可靠的 emoji。发音相关图片（speaker/play/sound/volume 等）统一替换为 `.speaker-icon` 元素。
+**发音图标**：Cambridge EPD 等词典的发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶ 字符（U+25B6），替代不可靠的 emoji。发音相关图片（speaker/play/sound/volume 等）统一替换为 `.speaker-icon` 元素。Cambridge 专用 CSS 始终注入，不再受 MDD CSS 是否为空影响。
+
+**交叉引用跳转**：词典 HTML 中的 `entry://` 链接（如 Collins 中的 `entry://bad`）被 `shouldOverrideUrlLoading` 拦截，提取目标词条名后通过 `SearchViewModel.searchWordForResult` 异步搜索，获取第一个匹配结果的 definition 后导航到详情页。
+
+**WebView 加载优化**：通过 `setTag/getTag` 比较 HTML 内容避免重复调用 `loadDataWithBaseURL`；CSS 已内联注入时移除原始 `<link rel="stylesheet">` 标签，避免 WebView 尝试加载外部 CSS；`blockNetworkLoads = true` 阻止不必要的网络请求。
 
 ## 常见问题 (FAQ)
 
@@ -451,9 +455,11 @@ FSRS（Free Spaced Repetition Scheduler）是下一代间隔重复算法，相�
 
 ### v1.1.02 (2026-05-25)
 
-- **修复**: Collins COBUILD 等大型词典加载慢、需多次点击的问题 — 新增资源缓存（`resourceCache`）和 CSS Keys 缓存（`cssKeysCache`），避免重复遍历 MDD 关键词索引
-- **修复**: Cambridge EPD 18th 词典发音喇叭图标不显示 — 将不可靠的 emoji（🔊）替换为 Unicode ▶ 字符，新增 `.speaker-icon` CSS 样式，增强发音相关图片的替换规则
-- **优化**: WebView 资源拦截增强 — 扩展拦截文件类型（字体、音频），增加多路径格式匹配（反斜杠/正斜杠/仅文件名），提高 MDD 资源命中率
+- **修复**: Collins COBUILD 等大型词典加载慢、需多次点击的问题 — 新增资源缓存（`resourceCache`）和 CSS Keys 缓存（`cssKeysCache`），WebView 内容去重避免重复加载，`entry://` 链接拦截，URL 解码处理空格等特殊字符，CSS 已内联注入时移除原始 `<link>` 标签
+- **修复**: Cambridge EPD 18th 词典发音喇叭图标不显示 — Cambridge 专用 CSS 始终注入（不再受 MDD CSS 是否为空影响），将不可靠的 emoji 替换为 Unicode ▶ 字符，新增 `.speaker-icon` CSS 样式，增强发音相关图片的替换规则
+- **新增**: `entry://` 交叉引用跳转 — 点击词典中的交叉引用链接（如 Collins 中的 `entry://bad`），自动搜索目标词条并导航到详情页
+- **优化**: SearchViewModel CSS 缓存 — 搜索结果中的 CSS 按词典名缓存，避免导航到详情页时重复从 MDD 读取
+- **优化**: WebView 资源拦截增强 — 扩展拦截文件类型（字体、音频），增加多路径格式匹配（反斜杠/正斜杠/仅文件名），URL 解码处理 `%20` 等编码字符，提高 MDD 资源命中率
 - **优化**: 卸载词典时不再清空所有词典的资源缓存，避免影响其他正在使用的词典
 
 ### v1.1.01 (2026-05-24)

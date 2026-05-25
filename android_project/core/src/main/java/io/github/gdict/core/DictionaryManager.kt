@@ -156,6 +156,7 @@ class DictionaryManager(private val context: Context) {
         loadedMdds.remove(id)?.close()
         cssCache.remove(id)
         cssKeysCache.remove(id)
+        resourceCache.clear()
         synchronized(this) {
             dictionaries.removeAll { it.id == id }
         }

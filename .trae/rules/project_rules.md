@@ -16,18 +16,27 @@ Gdict 是一款遵循 Material Design 3 的 Android 词典应用，支持 MDX/MD
 ### MVVM 分层
 
 ```
-Screen (Compose) → ViewModel (StateFlow) → AppRepository → core 模块
+Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 ```
 
 - 每个 Screen 对应一个或多个专用 ViewModel
-- ViewModel 之间不互相引用，通过 AppRepository 共享数据
-- AppRepository 是单例，持有 DictionaryManager 实例
+- ViewModel 之间不互相引用，通过 Repository 共享数据
+- Repository 按职责拆分为独立单例，由 `GdictApplication` 持有
+
+### Repository 职责划分
+
+| Repository | 职责 |
+|------------|------|
+| DictionaryRepository | 词典管理、搜索、音频资源获取 |
+| HistoryRepository | 搜索历史管理 |
+| BookmarkRepository | 收藏管理、FSRS 复习调度 |
+| SettingsRepository | 深色模式、扫描弹窗开关等设置项 |
 
 ### ViewModel 职责划分
 
 | ViewModel | 职责 |
 |-----------|------|
-| SettingsViewModel | 深色模式、扫描弹窗开关、音频资源获取 |
+| SettingsViewModel | 设置项读写（委托 SettingsRepository） |
 | SearchViewModel | 搜索、搜索历史、Word of the Day |
 | BookmarkViewModel | 收藏管理 |
 | FlashcardViewModel | FSRS 闪卡复习会话 |
@@ -36,7 +45,7 @@ Screen (Compose) → ViewModel (StateFlow) → AppRepository → core 模块
 ### Screen 依赖关系
 
 - SearchScreen → SearchViewModel + SettingsViewModel
-- WordDetailScreen → SettingsViewModel
+- WordDetailScreen → DictionaryRepository + SettingsViewModel
 - BookmarksScreen → BookmarkViewModel + SettingsViewModel
 - FlashcardScreen → FlashcardViewModel + SettingsViewModel + BookmarkViewModel
 - DictionariesScreen → DictionaryViewModel
@@ -141,13 +150,22 @@ cd android_project
 
 ### WebView 资源拦截
 
+- 详情页使用 `MdxWebView` 组件（`ui/webview/MdxWebView.kt`）封装 WebView 逻辑
+- HTML 内容由 `HtmlContentBuilder`（`ui/webview/HtmlContentBuilder.kt`）构建，支持 CSS 注入和主题切换
+- 不同词典的定制化渲染通过 `DictionaryRenderer` 接口（`ui/webview/DictionaryRenderer.kt`）实现
+  - `DefaultRenderer`：默认渲染，直接透传 HTML
+  - `CambridgeEpdRenderer`：Cambridge EPD 专用，替换发音图片为 CSS 图标
+- 音频播放由 `AudioPlayer` 单例（`ui/webview/AudioPlayer.kt`）处理
 - 详情页通过 `WebViewClient.shouldInterceptRequest` 拦截资源请求
 - 从 MDD 同步读取 CSS/图片/音频/字体资源
 - `sound://` 自定义协议用于音频播放
-- 资源路径匹配：尝试多种格式（反斜杠、双反斜杠、仅文件名、正斜杠）
+- `entry://` 自定义协议用于交叉引用跳转（`shouldOverrideUrlLoading` 拦截，提取目标词条名后异步搜索并导航）
+- 资源路径匹配：尝试多种格式（反斜杠、双反斜杠、仅文件名、正斜杠），URL 解码处理 `%20` 等编码字符
 - 支持拦截的文件类型：CSS、JS、图片（png/jpg/gif/svg/webp）、字体（ttf/woff/woff2）、音频（mp3/wav/ogg/spx）
 - `DictionaryManager` 维护 `resourceCache`（按路径缓存资源数据）和 `cssKeysCache`（按词典 ID 缓存 CSS 关键词列表）
-- 卸载词典时不清空 `resourceCache`，避免影响其他正在使用的词典
+- `SearchViewModel` 维护按词典名缓存的 CSS，避免导航到详情页时重复从 MDD 读取
+- 卸载词典时清空 `resourceCache`，避免缓存残留
+- WebView 加载优化：`setTag/getTag` 内容去重避免重复 `loadDataWithBaseURL`；CSS 内联注入后移除原始 `<link>` 标签；`blockNetworkLoads = true`
 
 ### 发音
 
@@ -157,6 +175,8 @@ cd android_project
 - 需要 `INTERNET` 权限（已在 AndroidManifest.xml 声明）
 - 发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶（U+25B6），不使用 emoji
 - Cambridge EPD 等词典的发音图片（speaker/play/sound/volume 等）替换为 `.speaker-icon` 元素
+- Cambridge 专用 CSS 始终注入，不受 MDD CSS 是否为空影响
+- `entry://` 交叉引用跳转通过 `SearchViewModel.searchWordForResult` 异步搜索后导航
 
 ### FSRS 间隔重复
 

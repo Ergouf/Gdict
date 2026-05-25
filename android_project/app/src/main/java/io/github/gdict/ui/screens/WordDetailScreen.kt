@@ -1,21 +1,11 @@
 package io.github.gdict.ui.screens
 
-import android.content.Context
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioManager
-import android.media.AudioTrack
-import android.os.Build
 import android.speech.tts.TextToSpeech
-import android.view.ViewGroup
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,21 +45,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.gdict.core.MdxParser
+import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.tts.EdgeTtsClient
 import io.github.gdict.ui.theme.GdictColors
+import io.github.gdict.ui.webview.AudioPlayer
+import io.github.gdict.ui.webview.MdxWebView
 import io.github.gdict.viewmodel.SettingsViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import java.util.Locale
-
-private val TRANSPARENT_PNG = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15.toByte(), 0xC4.toByte(), 0x89.toByte(), 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C.toByte(), 0x62, 0x00, 0x02, 0x00, 0x01, 0x00, 0x05, 0x18, 0x8D.toByte(), 0xD4.toByte(), 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE.toByte(), 0x42, 0x60, 0x82.toByte())
 
 @Composable
 fun WordDetailScreen(
@@ -81,6 +67,8 @@ fun WordDetailScreen(
     isBookmarked: Boolean,
     onBack: () -> Unit,
     onToggleBookmark: () -> Unit,
+    onEntryClick: (String) -> Unit = {},
+    dictionaryRepository: DictionaryRepository,
     settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -144,7 +132,7 @@ fun WordDetailScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White.copy(alpha = 0.9f)
                     )
-                    IconButton(onClick = { /* share */ }, modifier = Modifier.size(40.dp)) {
+                    IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Default.Share,
                             contentDescription = "分享",
@@ -192,18 +180,18 @@ fun WordDetailScreen(
                                 isPlaying = true
                                 coroutineScope.launch {
                                     try {
-                                        val edgeTtsData = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        val edgeTtsData = withContext(Dispatchers.IO) {
                                             EdgeTtsClient.synthesize(word)
                                         }
                                         if (edgeTtsData != null) {
-                                            withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                                playAudioBytes(context, edgeTtsData)
+                                            withContext(Dispatchers.IO) {
+                                                AudioPlayer.play(context, edgeTtsData)
                                             }
                                         } else {
-                                            val audioData = settingsViewModel.getAudioResource(word)
+                                            val audioData = dictionaryRepository.getAudioResource(word)
                                             if (audioData != null) {
-                                                withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                                    playAudioBytes(context, audioData)
+                                                withContext(Dispatchers.IO) {
+                                                    AudioPlayer.play(context, audioData)
                                                 }
                                             } else {
                                                 val engine = tts
@@ -270,13 +258,43 @@ fun WordDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             DefinitionCard(
-                word = word,
                 definition = definition,
                 css = css,
                 cardColor = cardColor,
                 textColor = textColor,
                 darkMode = darkMode,
-                settingsViewModel = settingsViewModel
+                dictionaryRepository = dictionaryRepository,
+                onEntryClick = onEntryClick,
+                onPlayAudio = { audioPath ->
+                    val fallbackWord = audioPath.removeSuffix(".mp3")
+                        .removeSuffix(".wav")
+                        .removeSuffix(".ogg")
+                        .removeSuffix(".spx")
+                        .substringAfterLast("/")
+                        .substringAfterLast("\\")
+                    coroutineScope.launch {
+                        try {
+                            val edgeTtsData = withContext(Dispatchers.IO) {
+                                EdgeTtsClient.synthesize(fallbackWord)
+                            }
+                            if (edgeTtsData != null) {
+                                withContext(Dispatchers.IO) {
+                                    AudioPlayer.play(context, edgeTtsData)
+                                }
+                            } else {
+                                val engine = tts
+                                if (engine != null && ttsReady) {
+                                    engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
+                                }
+                            }
+                        } catch (_: Exception) {
+                            val engine = tts
+                            if (engine != null && ttsReady) {
+                                engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
+                            }
+                        }
+                    }
+                }
             )
         }
     }
@@ -401,13 +419,14 @@ private fun ActionButton(
 
 @Composable
 private fun DefinitionCard(
-    word: String,
     definition: String,
     css: String,
     cardColor: Color,
     textColor: Color,
     darkMode: Boolean,
-    settingsViewModel: SettingsViewModel
+    dictionaryRepository: DictionaryRepository,
+    onEntryClick: (String) -> Unit = {},
+    onPlayAudio: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -427,333 +446,16 @@ private fun DefinitionCard(
                 color = textColor
             )
             Spacer(modifier = Modifier.height(12.dp))
-            HtmlContent(
+            MdxWebView(
                 definition = definition,
                 css = css,
                 darkMode = darkMode,
-                settingsViewModel = settingsViewModel
+                dictionaryRepository = dictionaryRepository,
+                onEntryClick = onEntryClick,
+                onPlayAudio = onPlayAudio
             )
         }
     }
-}
-
-@Composable
-private fun HtmlContent(
-    definition: String,
-    css: String,
-    darkMode: Boolean,
-    settingsViewModel: SettingsViewModel
-) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val currentDarkMode by rememberUpdatedState(darkMode)
-    val currentDef by rememberUpdatedState(definition)
-    val currentCss by rememberUpdatedState(css)
-
-    AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                settings.javaScriptEnabled = true
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
-                settings.domStorageEnabled = true
-                setBackgroundColor(0x00000000)
-                isVerticalScrollBarEnabled = false
-                isHorizontalScrollBarEnabled = false
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    settings.isAlgorithmicDarkeningAllowed = true
-                }
-                webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        view?.evaluateJavascript("setTheme($currentDarkMode);fixInlineStyles();", null)
-                    }
-
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?
-                    ): Boolean {
-                        val url = request?.url?.toString() ?: return false
-                        if (url.startsWith("sound://")) {
-                            val audioPath = url.removePrefix("sound://")
-                            coroutineScope.launch {
-                                try {
-                                    val audioData = settingsViewModel.getAudioResourceByPath(audioPath)
-                                    if (audioData != null) {
-                                        withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                            playAudioBytes(context, audioData)
-                                        }
-                                    } else {
-                                        val word = audioPath.removeSuffix(".mp3")
-                                            .removeSuffix(".wav")
-                                            .removeSuffix(".ogg")
-                                            .removeSuffix(".spx")
-                                            .substringAfterLast("/")
-                                            .substringAfterLast("\\")
-                                        val fallbackData = settingsViewModel.getAudioResource(word)
-                                        if (fallbackData != null) {
-                                            withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                                playAudioBytes(context, fallbackData)
-                                            }
-                                        }
-                                    }
-                                } catch (_: Exception) {}
-                            }
-                            return true
-                        }
-                        return false
-                    }
-
-                    override fun shouldInterceptRequest(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?
-                    ): android.webkit.WebResourceResponse? {
-                        val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                        if (url.startsWith("file:///android_asset/") || url.startsWith("data:")) {
-                            return super.shouldInterceptRequest(view, request)
-                        }
-                        val path = request.url?.path ?: return super.shouldInterceptRequest(view, request)
-                        val lowerPath = path.lowercase()
-                        if (lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
-                            lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
-                            lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp") ||
-                            lowerPath.endsWith(".css") || lowerPath.endsWith(".js") ||
-                            lowerPath.endsWith(".ttf") || lowerPath.endsWith(".woff") ||
-                            lowerPath.endsWith(".woff2") || lowerPath.endsWith(".mp3") ||
-                            lowerPath.endsWith(".wav") || lowerPath.endsWith(".ogg") ||
-                            lowerPath.endsWith(".spx")
-                        ) {
-                            try {
-                                val mimeType = when {
-                                    lowerPath.endsWith(".png") -> "image/png"
-                                    lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg") -> "image/jpeg"
-                                    lowerPath.endsWith(".gif") -> "image/gif"
-                                    lowerPath.endsWith(".svg") -> "image/svg+xml"
-                                    lowerPath.endsWith(".webp") -> "image/webp"
-                                    lowerPath.endsWith(".css") -> "text/css"
-                                    lowerPath.endsWith(".js") -> "application/javascript"
-                                    lowerPath.endsWith(".ttf") -> "font/ttf"
-                                    lowerPath.endsWith(".woff") -> "font/woff"
-                                    lowerPath.endsWith(".woff2") -> "font/woff2"
-                                    lowerPath.endsWith(".mp3") -> "audio/mpeg"
-                                    lowerPath.endsWith(".wav") -> "audio/wav"
-                                    lowerPath.endsWith(".ogg") -> "audio/ogg"
-                                    lowerPath.endsWith(".spx") -> "audio/speex"
-                                    else -> "application/octet-stream"
-                                }
-
-                                val normalizedPath = path.replace("/", "\\")
-                                val trimmedPath = normalizedPath.trimStart('\\')
-                                val candidates = buildList {
-                                    add("\\$trimmedPath")
-                                    add("\\\\$trimmedPath")
-                                    val fileName = path.substringAfterLast("/")
-                                    if (fileName.isNotEmpty()) {
-                                        add("\\$fileName")
-                                    }
-                                    val pathWithForwardSlash = "/" + path.trimStart('/')
-                                    add(pathWithForwardSlash)
-                                }
-
-                                for (candidate in candidates) {
-                                    val data = settingsViewModel.getResourceByPathSync(candidate)
-                                    if (data != null) {
-                                        android.util.Log.d("MdxWebView", "Resource loaded via '$candidate': ${data.size} bytes")
-                                        return android.webkit.WebResourceResponse(
-                                            mimeType, "UTF-8", java.io.ByteArrayInputStream(data)
-                                        )
-                                    }
-                                }
-
-                                android.util.Log.w("MdxWebView", "Resource not found: $path (tried: $candidates)")
-                                val isImage = lowerPath.endsWith(".png") || lowerPath.endsWith(".jpg") ||
-                                    lowerPath.endsWith(".jpeg") || lowerPath.endsWith(".gif") ||
-                                    lowerPath.endsWith(".svg") || lowerPath.endsWith(".webp")
-                                if (isImage) {
-                                    return android.webkit.WebResourceResponse(
-                                        "image/png", "UTF-8", java.io.ByteArrayInputStream(TRANSPARENT_PNG)
-                                    )
-                                }
-                            } catch (e: Exception) {
-                                android.util.Log.e("MdxWebView", "Error loading resource: $path", e)
-                            }
-                        }
-                        return super.shouldInterceptRequest(view, request)
-                    }
-                }
-            }
-        },
-        update = { webView ->
-            val htmlContent = buildHtmlContent(currentDef, currentCss)
-            webView.loadDataWithBaseURL("https://mdx.local/", htmlContent, "text/html", "UTF-8", null)
-        },
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-private fun buildHtmlContent(definition: String, css: String): String {
-    val isCambridgeEpd = definition.contains("cepd18.css")
-    val transformedDef = MdxParser.transformHtmlStatic(definition).let { def ->
-        if (isCambridgeEpd) {
-            def.replace(Regex("""<img[^>]*src=["'][^"']*uk_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='uk-flag'>UK</span>")
-               .replace(Regex("""<img[^>]*src=["'][^"']*us_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='us-flag'>US</span>")
-               .replace(Regex("""<img[^>]*class=["'][^"']*speaker[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='speaker-icon'>&#9654;</span>")
-               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='speaker-icon'>&#9654;</span>")
-               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.gif[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='speaker-icon'>&#9654;</span>")
-               .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.svg[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='speaker-icon'>&#9654;</span>")
-               .replace(Regex("</img>", RegexOption.IGNORE_CASE), "")
-        } else def
-    }
-
-    val dictCssBlock = if (css.isNotEmpty()) {
-        "<style>\n$css\n</style>\n"
-    } else if (isCambridgeEpd) {
-        """
-<style>
-.cpepd .arl { display:block;margin:6px 0;padding:8px 10px;border-bottom:1px solid var(--border); }
-.cpepd .hit { display:block;margin:4px 0;padding:2px 0; }
-.cpepd .hit+.hit { border-top:1px solid var(--border-light);padding-top:6px; }
-.cpepd .results { display:inline; }
-.cpepd .base { display:inline;font-size:1em; }
-.cpepd .hw { font-weight:bold;font-size:1.2em;color:var(--header);display:inline; }
-.cpepd .inf { color:var(--phon);font-style:italic; }
-.cpepd .comment { color:var(--subtle);font-style:italic;font-size:.9em; }
-.cpepd .forms { display:block;margin:2px 0 2px 16px; }
-.cpepd .inflections { display:inline; }
-.cpepd .inflections .base { color:var(--subtle); }
-.cpepd .pron,.cpepd .ipa { color:var(--phon);font-family:'Lucida Sans Unicode','Arial Unicode MS',sans-serif;display:inline; }
-.cpepd .prongrp { display:block;margin:3px 0;padding:2px 0; }
-.cpepd .ussymbol { display:inline-block;padding:0 4px;margin:0 2px;font-size:.8em;font-weight:600; }
-.cpepd .uk-flag { display:inline-block;padding:1px 5px;margin:0 2px;background:var(--flag-uk);color:#fff;border-radius:3px;font-size:10px;font-weight:bold;vertical-align:middle;letter-spacing:.5px; }
-.cpepd .us-flag { display:inline-block;padding:1px 5px;margin:0 2px;background:var(--flag-us);color:#fff;border-radius:3px;font-size:10px;font-weight:bold;vertical-align:middle;letter-spacing:.5px; }
-.cpepd .soundfile { display:inline;margin:0 2px; }
-.cpepd .soundfile a { display:inline-block;vertical-align:middle;text-decoration:none; }
-.cpepd .soundfile img { display:none; }
-.cpepd .speaker-icon { display:inline-block;vertical-align:middle;padding:2px 6px;margin:0 2px;background:var(--speaker-hover);border-radius:12px;color:var(--link);font-size:14px;cursor:pointer; }
-.cpepd .speaker-icon:hover { background:var(--speaker-hover);filter:brightness(1.2); }
-.cpepd a[href^="sound://"] { text-decoration:none;display:inline-block;vertical-align:middle;padding:2px 8px;margin:0 2px;background:var(--speaker-hover);border-radius:12px;color:var(--link);font-size:13px; }
-.cpepd a[href^="sound://"]::before { content:"\\25B6";margin-right:4px;font-size:11px; }
-.cpepd a[href^="sound://"]:hover { background:var(--speaker-hover);filter:brightness(1.2); }
-.cpepd .capvar { color:var(--subtle);font-style:italic;font-size:.9em; }
-.cpepd .inflection { display:block;margin:2px 0 2px 16px; }
-</style>
-"""
-    } else {
-        ""
-    }
-
-    val varCss = """
-:root {
-  --bg:#FFFFFF;--text:#424242;--header:#2C4A6E;--link:#4ECDC4;--phon:#1565C0;
-  --border:rgba(128,128,128,0.15);--border-light:rgba(128,128,128,0.08);
-  --accent-bg:rgba(44,74,110,0.1);--speaker-bg:rgba(78,205,196,0.15);
-  --speaker-hover:rgba(78,205,196,0.3);--def-border:rgba(78,205,196,0.3);
-  --example:#666;--subtle:#9E9E9E;
-  --flag-uk:#012169;--flag-us:#B31942;
-  --tag-bg:rgba(244,67,54,0.1);--tag-color:#D32F2F;
-  --pos-bg:rgba(44,74,110,0.1);--table-border:#E0E0E0;
-  --uk-badge-bg:rgba(33,150,243,0.1);--uk-badge-color:#1976D2;
-  --di-head-border:var(--header);
-}
-body.dark {
-  --bg:#1A1C17;--text:#E1E4DA;--header:#8BB8E8;--link:#4ECDC4;--phon:#A8D8EA;
-  --border:rgba(255,255,255,0.1);--border-light:rgba(255,255,255,0.06);
-  --accent-bg:rgba(139,184,232,0.12);--speaker-bg:rgba(78,205,196,0.2);
-  --speaker-hover:rgba(78,205,196,0.35);--def-border:rgba(78,205,196,0.4);
-  --example:#A0A0A0;--subtle:#888;
-  --flag-uk:#1A3A8A;--flag-us:#8B1A2B;
-  --tag-bg:rgba(244,67,54,0.15);--tag-color:#EF9A9A;
-  --pos-bg:rgba(139,184,232,0.12);--table-border:rgba(255,255,255,0.12);
-  --uk-badge-bg:rgba(100,181,246,0.12);--uk-badge-color:#64B5F6;
-  --di-head-border:var(--header);
-}
-
-body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.7;color:var(--text);background:var(--bg);margin:0;padding:8px 12px;word-wrap:break-word;}
-h1,h2,h3{color:var(--header);font-weight:600;margin:12px 0 8px;}
-a{color:var(--link);text-decoration:none;}
-img{max-width:100%;height:auto;}
-table{border-collapse:collapse;width:100%;}
-td,th{border:1px solid var(--table-border);padding:8px;}
-hw{font-weight:bold;color:var(--header);}
-inf{font-style:italic;}
-.arl{display:block;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.hit{display:block;margin:2px 0;padding:2px 0;}
-.comment{font-style:italic;color:var(--subtle);}
-.capvar{color:var(--subtle);font-style:italic;}
-.phon,.pron,.ipa{color:var(--phon);font-family:'Lucida Sans Unicode','Arial Unicode MS',sans-serif;}
-.speaker,.sound,.audio-play{cursor:pointer;display:inline-block;padding:2px 6px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);font-size:14px;}
-.speaker:hover,.sound:hover,.audio-play:hover{background:var(--speaker-hover);}
-.speaker-icon{cursor:pointer;display:inline-block;padding:2px 6px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);font-size:14px;}
-.speaker-icon:hover{background:var(--speaker-hover);}
-.soundfile{display:inline;margin:0 2px;}
-.soundfile a{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;font-size:13px;}
-.soundfile a:hover{background:var(--speaker-hover);}
-a[href^="sound://"]{cursor:pointer;display:inline-block;padding:2px 8px;margin:0 4px;background:var(--speaker-bg);border-radius:12px;color:var(--link);text-decoration:none;}
-a[href^="sound://"]::before{content:"\\25B6";margin-right:4px;font-size:11px;}
-a[href^="sound://"]:hover{background:var(--speaker-hover);}
-.pos,.pos2{display:inline-block;padding:2px 8px;margin:2px 4px;background:var(--pos-bg);border-radius:4px;font-style:italic;color:var(--header);font-size:.9em;}
-.bre,.ame,.gb,.us{display:inline-block;padding:1px 6px;margin:0 4px;border-radius:4px;font-size:.8em;font-weight:600;}
-.bre,.gb{background:var(--uk-badge-bg);color:var(--uk-badge-color);}
-.ame,.us{background:var(--tag-bg);color:var(--tag-color);}
-.ussymbol{display:inline-block;padding:1px 6px;margin:0 4px;border-radius:4px;font-size:.8em;font-weight:600;background:var(--tag-bg);color:var(--tag-color);}
-.label,.sense{margin:4px 0;padding:2px 0;}
-.definition,.def{margin:4px 0 8px;padding-left:12px;border-left:3px solid var(--def-border);}
-.example,.ex{color:var(--example);font-style:italic;margin:4px 0 4px 16px;}
-.di-head{display:block;margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--di-head-border);}
-.di-title{display:block;font-size:1.3em;font-weight:700;}
-.di-info{display:inline;}
-.di-body{display:block;margin:4px 0;}
-.sense-block{display:block;margin:8px 0;padding:4px 0;}
-.sense-head{display:block;margin:6px 0 2px;}
-.sense-body{display:block;margin:2px 0;padding-left:8px;}
-.sense-info{display:inline;}
-.prongrp{display:block;margin:2px 0;}
-.inflection{display:block;margin:4px 0;padding-left:12px;}
-.INFLX{display:inline;margin:0 4px;color:var(--subtle);}
-.base{display:inline;}
-.results{display:inline;}
-.forms{display:inline;}
-.inflections{display:inline;}
-.hw{font-size:1.1em;color:var(--header);}
-.inf{font-style:italic;}
-.cm{font-weight:600;}
-"""
-
-    val jsBlock = """
-<script>
-function setTheme(d){if(d){document.body.classList.add('dark')}else{document.body.classList.remove('dark')}}
-function fixInlineStyles(){if(!document.body.classList.contains('dark'))return;var els=document.querySelectorAll('[style]');for(var i=0;i<els.length;i++){var s=els[i].style;var bg=s.backgroundColor||'';if(bg){var lb=bg.toLowerCase();if(lb.indexOf('#fff')>=0||lb.indexOf('#ffffff')>=0||lb.indexOf('white')>=0||lb.indexOf('rgb(255,')>=0){s.backgroundColor=''}}var bi=s.backgroundImage||'';if(bi&&bi.indexOf('url(')>=0&&bi.indexOf('data:')<0){s.backgroundImage='none'}var co=s.color||'';if(co){var lc=co.toLowerCase();if(lc.indexOf('#000')>=0||lc.indexOf('#000000')>=0||lc.indexOf('black')>=0||lc.indexOf('rgb(0,')>=0){s.color=''}}var b=s.background||'';if(b&&b.indexOf('#fff')>=0){s.background=''}}}
-document.addEventListener('DOMContentLoaded',fixInlineStyles)
-</script>
-"""
-
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-$varCss
-</style>
-$dictCssBlock
-</head>
-<body>
-$transformedDef
-$jsBlock
-</body>
-</html>
-    """.trimIndent()
 }
 
 private fun extractPartOfSpeech(definition: String): String {
@@ -798,29 +500,4 @@ private fun extractPartOfSpeech(definition: String): String {
         }
     }
     return ""
-}
-
-private fun playAudioBytes(context: Context, audioData: ByteArray) {
-    val tempFile = File(context.cacheDir, "dict_audio_${System.currentTimeMillis()}.mp3")
-    var mediaPlayer: android.media.MediaPlayer? = null
-    try {
-        FileOutputStream(tempFile).use { it.write(audioData) }
-        mediaPlayer = android.media.MediaPlayer()
-        mediaPlayer.setDataSource(tempFile.absolutePath)
-        mediaPlayer.setOnCompletionListener {
-            it.release()
-            tempFile.delete()
-        }
-        mediaPlayer.setOnErrorListener { mp, _, _ ->
-            mp.release()
-            tempFile.delete()
-            false
-        }
-        mediaPlayer.prepare()
-        mediaPlayer.start()
-    } catch (e: Exception) {
-        mediaPlayer?.release()
-        tempFile.delete()
-        throw e
-    }
 }

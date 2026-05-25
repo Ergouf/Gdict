@@ -6,8 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
 import io.github.gdict.core.DictFileImporter
-import io.github.gdict.data.AppRepository
-import io.github.gdict.data.Dictionary
+import io.github.gdict.data.DictionaryRepository
+import io.github.gdict.core.model.Dictionary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,9 +18,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class DictionaryViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: AppRepository = (application as GdictApplication).repository
+    private val dictionaryRepo: DictionaryRepository = (application as GdictApplication).dictionaryRepository
 
-    val dictionaries: StateFlow<List<Dictionary>> = repository.dictionaries
+    val dictionaries: StateFlow<List<Dictionary>> = dictionaryRepo.dictionaries
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _importing = MutableStateFlow(false)
@@ -42,7 +42,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
 
     fun scanDirectory(uri: Uri): List<DictFileImporter.DictCandidate> {
         return try {
-            repository.scanDirectory(uri)
+            dictionaryRepo.scanDirectory(uri)
         } catch (e: Exception) {
             _errorMessage.value = "扫描目录失败: ${e.message}"
             emptyList()
@@ -52,7 +52,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
     fun addDictionary(name: String, path: String, companionFiles: List<String> = emptyList()) {
         viewModelScope.launch {
             try {
-                repository.addDictionary(name, path, companionFiles)
+                dictionaryRepo.addDictionary(name, path, companionFiles)
             } catch (e: Throwable) {
                 _errorMessage.value = "添加词典失败: ${e.javaClass.simpleName} - ${e.message}"
                 android.util.Log.e("VM", "addDictionary failed", e)
@@ -69,7 +69,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
                 withContext(Dispatchers.IO) {
                     for (candidate in candidates) {
                         try {
-                            repository.addDictionary(candidate.name, candidate.fileUri, candidate.companionFiles)
+                            dictionaryRepo.addDictionary(candidate.name, candidate.fileUri, candidate.companionFiles)
                             successCount++
                             android.util.Log.i("VM", "Imported OK: ${candidate.name}")
                         } catch (e: Throwable) {
@@ -96,7 +96,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
 
     fun removeDictionary(dictionary: Dictionary) {
         try {
-            repository.removeDictionary(dictionary)
+            dictionaryRepo.removeDictionary(dictionary)
         } catch (e: Exception) {
             _errorMessage.value = "移除词典失败: ${e.message}"
         }
@@ -104,7 +104,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
 
     fun toggleDictionary(dictionary: Dictionary) {
         try {
-            repository.toggleDictionary(dictionary)
+            dictionaryRepo.toggleDictionary(dictionary)
         } catch (e: Exception) {
             _errorMessage.value = "切换词典状态失败: ${e.message}"
         }
@@ -113,7 +113,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
     fun diagnoseDictionaries() {
         viewModelScope.launch {
             _diagnosticResult.value = withContext(Dispatchers.IO) {
-                repository.diagnoseDictionaries() + "\n\n" + repository.testMddResourcesAndHtml()
+                dictionaryRepo.diagnoseDictionaries() + "\n\n" + dictionaryRepo.testMddResourcesAndHtml()
             }
         }
     }

@@ -296,11 +296,15 @@ The detail page intercepts resource requests via `WebViewClient.shouldInterceptR
 2. Intercepted requests are served by synchronously reading from the MDD file
 3. Returns a `WebResourceResponse` containing the resource data
 
-**Resource Caching**: `DictionaryManager` maintains `resourceCache` and `cssKeysCache` to avoid repeated traversal of MDD keyword indexes. Resource lookup results are cached by path, and CSS key lists are cached by dictionary ID.
+**Resource Caching**: `DictionaryManager` maintains `resourceCache` and `cssKeysCache` to avoid repeated traversal of MDD keyword indexes. Resource lookup results are cached by path, and CSS key lists are cached by dictionary ID. `SearchViewModel` additionally caches CSS by dictionary name to avoid re-reading from MDD when navigating to the detail page.
 
-**Path Matching**: The interceptor tries multiple path formats for each resource request (backslash, double backslash, filename only, forward slash) to improve MDD resource hit rate. Supported file types include CSS, JS, images, fonts (ttf/woff/woff2), and audio (mp3/wav/ogg/spx).
+**Path Matching**: The interceptor tries multiple path formats for each resource request (backslash, double backslash, filename only, forward slash) and decodes URL-encoded characters (e.g., `%20`), improving MDD resource hit rate. Supported file types include CSS, JS, images, fonts (ttf/woff/woff2), and audio (mp3/wav/ogg/spx).
 
-**Speaker Icons**: Pronunciation icons in dictionaries like Cambridge EPD use CSS `::before` pseudo-elements to render the Unicode ▶ character (U+25B6), replacing unreliable emoji. Speaker-related images (speaker/play/sound/volume etc.) are uniformly replaced with `.speaker-icon` elements.
+**Speaker Icons**: Pronunciation icons in dictionaries like Cambridge EPD use CSS `::before` pseudo-elements to render the Unicode ▶ character (U+25B6), replacing unreliable emoji. Speaker-related images (speaker/play/sound/volume etc.) are uniformly replaced with `.speaker-icon` elements. Cambridge-specific CSS is always injected regardless of whether MDD CSS is available.
+
+**Entry Cross-References**: `entry://` links in dictionary HTML (e.g., `entry://bad` in Collins) are intercepted by `shouldOverrideUrlLoading`. The target entry name is extracted and searched asynchronously via `SearchViewModel.searchWordForResult`, then navigated to the detail page with the first matching result's definition.
+
+**WebView Loading Optimization**: HTML content deduplication via `setTag/getTag` prevents redundant `loadDataWithBaseURL` calls; original `<link rel="stylesheet">` tags are removed when CSS is already inlined; `blockNetworkLoads = true` prevents unnecessary network requests.
 
 ## Acknowledgments
 

@@ -53,8 +53,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.gdict.core.Rating
 import io.github.gdict.core.SchedulingCard
-import io.github.gdict.data.BookmarkItem
-import io.github.gdict.data.ReviewStats
+import io.github.gdict.core.model.BookmarkItem
+import io.github.gdict.core.model.ReviewStats
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.BookmarkViewModel
 import io.github.gdict.viewmodel.FlashcardViewModel

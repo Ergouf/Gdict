@@ -3,17 +3,17 @@ package io.github.gdict.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import io.github.gdict.GdictApplication
+import io.github.gdict.data.BookmarkRepository
 import io.github.gdict.core.Rating
 import io.github.gdict.core.SchedulingCard
-import io.github.gdict.data.AppRepository
-import io.github.gdict.data.BookmarkItem
-import io.github.gdict.data.ReviewStats
+import io.github.gdict.core.model.BookmarkItem
+import io.github.gdict.core.model.ReviewStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class FlashcardViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: AppRepository = (application as GdictApplication).repository
+    private val bookmarkRepo: BookmarkRepository = (application as GdictApplication).bookmarkRepository
 
     private val _reviewStats = MutableStateFlow(ReviewStats(0, 0, 0, 0))
     val reviewStats: StateFlow<ReviewStats> = _reviewStats.asStateFlow()
@@ -41,14 +41,14 @@ class FlashcardViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
     fun startReviewSession() {
-        val due = repository.getDueBookmarks()
-        val new = repository.getNewBookmarks()
+        val due = bookmarkRepo.getDueBookmarks()
+        val new = bookmarkRepo.getNewBookmarks()
         val combined = (due + new).distinctBy { it.id }
         _dueBookmarks.value = combined
         _currentCardIndex.value = 0
         _sessionReviewed.value = 0
         if (combined.isNotEmpty()) {
-            _currentScheduling.value = repository.getSchedulingForBookmark(combined[0])
+            _currentScheduling.value = bookmarkRepo.getSchedulingForBookmark(combined[0])
         }
         refreshReviewStats()
     }
@@ -61,13 +61,13 @@ class FlashcardViewModel(application: Application) : AndroidViewModel(applicatio
         val item = items[index]
         val scheduling = _currentScheduling.value[rating] ?: return
 
-        repository.applyReview(item, scheduling)
+        bookmarkRepo.applyReview(item, scheduling)
         _sessionReviewed.value = _sessionReviewed.value + 1
 
         val nextIndex = index + 1
         if (nextIndex < items.size) {
             _currentCardIndex.value = nextIndex
-            _currentScheduling.value = repository.getSchedulingForBookmark(items[nextIndex])
+            _currentScheduling.value = bookmarkRepo.getSchedulingForBookmark(items[nextIndex])
         } else {
             _currentCardIndex.value = items.size
             _currentScheduling.value = emptyMap()
@@ -81,7 +81,7 @@ class FlashcardViewModel(application: Application) : AndroidViewModel(applicatio
         val nextIndex = index + 1
         if (nextIndex < items.size) {
             _currentCardIndex.value = nextIndex
-            _currentScheduling.value = repository.getSchedulingForBookmark(items[nextIndex])
+            _currentScheduling.value = bookmarkRepo.getSchedulingForBookmark(items[nextIndex])
         } else {
             _currentCardIndex.value = items.size
             _currentScheduling.value = emptyMap()
@@ -89,6 +89,6 @@ class FlashcardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun refreshReviewStats() {
-        _reviewStats.value = repository.getReviewStats()
+        _reviewStats.value = bookmarkRepo.getReviewStats()
     }
 }

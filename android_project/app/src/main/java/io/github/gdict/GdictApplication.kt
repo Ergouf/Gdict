@@ -3,10 +3,16 @@ package io.github.gdict
 import android.app.Application
 import android.util.Log
 import io.github.gdict.core.GdictLogger
-import io.github.gdict.data.AppRepository
+import io.github.gdict.data.BookmarkRepository
+import io.github.gdict.data.DictionaryRepository
+import io.github.gdict.data.HistoryRepository
+import io.github.gdict.data.SettingsRepository
 
 class GdictApplication : Application() {
-    val repository: AppRepository by lazy { AppRepository(this) }
+    val dictionaryRepository: DictionaryRepository by lazy { DictionaryRepository(this) }
+    val historyRepository: HistoryRepository by lazy { HistoryRepository(this) }
+    val bookmarkRepository: BookmarkRepository by lazy { BookmarkRepository(this) }
+    val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
 
     override fun onCreate() {
         super.onCreate()

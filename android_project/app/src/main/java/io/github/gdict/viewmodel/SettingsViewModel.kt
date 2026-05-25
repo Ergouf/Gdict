@@ -3,26 +3,26 @@ package io.github.gdict.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import io.github.gdict.GdictApplication
-import io.github.gdict.data.AppRepository
+import io.github.gdict.data.SettingsRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: AppRepository = (application as GdictApplication).repository
+    private val settingsRepo: SettingsRepository = (application as GdictApplication).settingsRepository
 
-    val darkMode: StateFlow<Boolean> = repository.darkMode
+    val darkMode: StateFlow<Boolean> = settingsRepo.darkMode
 
-    private val _scanPopup = kotlinx.coroutines.flow.MutableStateFlow(false)
-    val scanPopup: kotlinx.coroutines.flow.StateFlow<Boolean> = _scanPopup
+    val scanPopup: StateFlow<Boolean> = settingsRepo.scanPopup
 
-    private val _errorMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-    val errorMessage: kotlinx.coroutines.flow.StateFlow<String?> = _errorMessage
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
 
     fun setDarkMode(enabled: Boolean) {
-        repository.setDarkMode(enabled)
+        settingsRepo.setDarkMode(enabled)
     }
 
     fun setScanPopup(enabled: Boolean) {
-        _scanPopup.value = enabled
+        settingsRepo.setScanPopup(enabled)
     }
 
     fun clearError() {
@@ -31,22 +31,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun clearAllData() {
         try {
-            repository.clearHistory()
-            repository.clearBookmarks()
+            val app = getApplication<GdictApplication>()
+            app.historyRepository.clearHistory()
+            app.bookmarkRepository.clearBookmarks()
         } catch (e: Exception) {
             _errorMessage.value = "清除数据失败: ${e.message}"
         }
-    }
-
-    suspend fun getAudioResource(word: String): ByteArray? {
-        return repository.getAudioResource(word)
-    }
-
-    suspend fun getAudioResourceByPath(path: String): ByteArray? {
-        return repository.getAudioResourceByPath(path)
-    }
-
-    fun getResourceByPathSync(path: String): ByteArray? {
-        return repository.getResourceByPathSync(path)
     }
 }

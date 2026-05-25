@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
-import io.github.gdict.data.AppRepository
-import io.github.gdict.data.BookmarkItem
+import io.github.gdict.data.BookmarkRepository
+import io.github.gdict.core.model.BookmarkItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 
 class BookmarkViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: AppRepository = (application as GdictApplication).repository
+    private val bookmarkRepo: BookmarkRepository = (application as GdictApplication).bookmarkRepository
 
-    val bookmarks: StateFlow<List<BookmarkItem>> = repository.bookmarks
+    val bookmarks: StateFlow<List<BookmarkItem>> = bookmarkRepo.bookmarks
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -29,9 +29,9 @@ class BookmarkViewModel(application: Application) : AndroidViewModel(application
         try {
             val existing = bookmarks.value.find { it.word == word && it.dictionaryName == dictionaryName }
             if (existing != null) {
-                repository.removeBookmark(existing)
+                bookmarkRepo.removeBookmark(existing)
             } else {
-                repository.addBookmark(word, definition, dictionaryName)
+                bookmarkRepo.addBookmark(word, definition, dictionaryName)
             }
         } catch (e: Exception) {
             _errorMessage.value = "收藏操作失败: ${e.message}"
@@ -39,10 +39,10 @@ class BookmarkViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun addBookmark(word: String, definition: String = "", dictionaryName: String = "") {
-        repository.addBookmark(word, definition, dictionaryName)
+        bookmarkRepo.addBookmark(word, definition, dictionaryName)
     }
 
     fun removeBookmark(item: BookmarkItem) {
-        repository.removeBookmark(item)
+        bookmarkRepo.removeBookmark(item)
     }
 }

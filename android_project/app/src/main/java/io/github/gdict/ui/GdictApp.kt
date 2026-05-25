@@ -33,11 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import io.github.gdict.GdictApplication
 import io.github.gdict.ui.screens.BookmarksScreen
 import io.github.gdict.ui.screens.DictionariesScreen
 import io.github.gdict.ui.screens.FlashcardScreen
@@ -64,6 +67,7 @@ import io.github.gdict.viewmodel.DictionaryViewModel
 import io.github.gdict.viewmodel.FlashcardViewModel
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
 sealed class Screen(
     val route: String,
@@ -206,6 +210,7 @@ private fun GdictAppContent(
                 val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
                 val isBookmarked by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
                 val css = searchViewModel.getCssForDictionary(dictionaryName)
+                val entryCoroutineScope = rememberCoroutineScope()
 
                 WordDetailScreen(
                     word = word,
@@ -215,6 +220,18 @@ private fun GdictAppContent(
                     isBookmarked = isBookmarked.any { it.word == word && it.dictionaryName == dictionaryName },
                     onBack = { navController.popBackStack() },
                     onToggleBookmark = { bookmarkViewModel.toggleBookmark(word, definition, dictionaryName) },
+                    onEntryClick = { entryWord ->
+                        entryCoroutineScope.launch {
+                            val results = searchViewModel.searchWordForResult(entryWord)
+                            val result = results.firstOrNull()
+                            if (result != null) {
+                                val encodedDef = Uri.encode(result.definition)
+                                val encodedDict = Uri.encode(result.dictionaryName)
+                                navController.navigate("word_detail/${Uri.encode(entryWord)}/$encodedDef/$encodedDict")
+                            }
+                        }
+                    },
+                    dictionaryRepository = (LocalContext.current.applicationContext as GdictApplication).dictionaryRepository,
                     settingsViewModel = settingsViewModel
                 )
             }

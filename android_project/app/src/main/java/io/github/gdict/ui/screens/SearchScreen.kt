@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.gdict.data.HistoryItem
-import io.github.gdict.data.SearchResultItem
+import io.github.gdict.core.model.HistoryItem
+import io.github.gdict.core.model.SearchResultItem
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel

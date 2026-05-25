@@ -4,9 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
-import io.github.gdict.data.AppRepository
-import io.github.gdict.data.HistoryItem
-import io.github.gdict.data.SearchResultItem
+import io.github.gdict.data.DictionaryRepository
+import io.github.gdict.data.HistoryRepository
+import io.github.gdict.core.model.Dictionary
+import io.github.gdict.core.model.HistoryItem
+import io.github.gdict.core.model.SearchResultItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +23,10 @@ import kotlinx.coroutines.FlowPreview
 
 @OptIn(FlowPreview::class)
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: AppRepository = (application as GdictApplication).repository
+    private val dictionaryRepo: DictionaryRepository = (application as GdictApplication).dictionaryRepository
+    private val historyRepo: HistoryRepository = (application as GdictApplication).historyRepository
 
-    val history: StateFlow<List<HistoryItem>> = repository.history
+    val history: StateFlow<List<HistoryItem>> = historyRepo.history
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _searchResults = MutableStateFlow<List<SearchResultItem>>(emptyList())
@@ -39,6 +42,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
+
+    private val cssCache = mutableMapOf<String, String>()
 
     init {
         _searchQuery
@@ -80,11 +85,16 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         val currentVersion = ++searchVersion
         viewModelScope.launch {
             try {
-                val results = repository.searchWord(word)
+                val results = dictionaryRepo.searchWord(word)
                 if (currentVersion == searchVersion) {
                     _searchResults.value = results
+                    for (result in results) {
+                        if (result.css.isNotEmpty()) {
+                            cssCache[result.dictionaryName] = result.css
+                        }
+                    }
                     if (results.isNotEmpty()) {
-                        repository.addToHistory(word)
+                        historyRepo.addToHistory(word)
                     }
                 }
             } catch (e: Exception) {
@@ -98,28 +108,28 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadSuggestions(query: String) {
         viewModelScope.launch {
             try {
-                _suggestions.value = repository.searchSuggestions(query, 10)
+                _suggestions.value = dictionaryRepo.searchSuggestions(query, 10)
             } catch (_: Exception) {
             }
         }
     }
 
     fun addToHistory(word: String) {
-        repository.addToHistory(word)
+        historyRepo.addToHistory(word)
     }
 
     fun removeFromHistory(item: HistoryItem) {
-        repository.removeFromHistory(item)
+        historyRepo.removeFromHistory(item)
     }
 
     fun clearHistory() {
-        repository.clearHistory()
+        historyRepo.clearHistory()
     }
 
     fun loadWordOfTheDay() {
         viewModelScope.launch {
             try {
-                val words = repository.getRandomWords(5)
+                val words = dictionaryRepo.getRandomWords(5)
                 _wordOfTheDay.value = words
             } catch (_: Exception) {
             }
@@ -127,6 +137,19 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun getCssForDictionary(dictionaryName: String): String {
-        return repository.getCssForDictionary(dictionaryName)
+        cssCache[dictionaryName]?.let { return it }
+        val css = dictionaryRepo.getCssForDictionary(dictionaryName)
+        if (css.isNotEmpty()) {
+            cssCache[dictionaryName] = css
+        }
+        return css
+    }
+
+    suspend fun searchWordForResult(word: String): List<SearchResultItem> {
+        return try {
+            dictionaryRepo.searchWord(word)
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 }

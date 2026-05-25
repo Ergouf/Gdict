@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
-import io.github.gdict.data.Dictionary
+import io.github.gdict.core.model.Dictionary
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.DictionaryViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
