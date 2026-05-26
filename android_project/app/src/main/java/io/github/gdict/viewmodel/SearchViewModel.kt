@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
+import io.github.gdict.R
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.data.HistoryRepository
 import io.github.gdict.core.model.Dictionary
@@ -99,7 +100,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } catch (e: Exception) {
                 if (currentVersion == searchVersion) {
-                    _errorMessage.value = "搜索失败: ${e.message}"
+                    _errorMessage.value = getApplication<GdictApplication>().getString(R.string.search_failed, e.message)
                 }
             }
         }

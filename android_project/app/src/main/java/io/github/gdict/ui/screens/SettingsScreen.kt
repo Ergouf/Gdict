@@ -24,18 +24,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -54,12 +55,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.BuildConfig
+import io.github.gdict.R
 import io.github.gdict.ui.theme.GdictColors
+import io.github.gdict.util.LocaleHelper
 import io.github.gdict.viewmodel.SettingsViewModel
 
 private const val GITHUB_REPO_URL = "https://github.com/iuroc/gdict"
@@ -114,10 +118,12 @@ fun SettingsScreen(
 ) {
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle()
     val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
+    val currentLanguage by settingsViewModel.language.collectAsStateWithLifecycle()
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
     val cardColor = if (darkMode) GdictColors.DarkSurface else Color.White
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.DarkGray
     val context = LocalContext.current
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -152,13 +158,13 @@ fun SettingsScreen(
                 }
                 Column {
                     Text(
-                        "Profile",
+                        stringResource(R.string.profile),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        "Manage your settings",
+                        stringResource(R.string.manage_your_settings),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.8f)
                     )
@@ -169,10 +175,10 @@ fun SettingsScreen(
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            SettingsSection(title = "Dictionaries", cardColor = cardColor, textColor = textColor) {
+            SettingsSection(title = stringResource(R.string.section_dictionaries), cardColor = cardColor, textColor = textColor) {
                 SettingsButtonItem(
-                    title = "Dictionary Management",
-                    description = "Add, remove and manage dictionaries",
+                    title = stringResource(R.string.dictionary_management),
+                    description = stringResource(R.string.dictionary_management_desc),
                     icon = Icons.Outlined.MenuBook,
                     textColor = textColor,
                     onClick = onNavigateToDictionaries
@@ -181,23 +187,31 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "Appearance", cardColor = cardColor, textColor = textColor) {
+            SettingsSection(title = stringResource(R.string.section_appearance), cardColor = cardColor, textColor = textColor) {
                 SettingsSwitchItem(
-                    title = "Dark Mode",
-                    description = "Toggle dark/light theme",
+                    title = stringResource(R.string.dark_mode),
+                    description = stringResource(R.string.dark_mode_desc),
                     icon = Icons.Outlined.DarkMode,
                     checked = darkMode,
                     textColor = textColor,
                     onCheckedChange = { settingsViewModel.setDarkMode(it) }
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsButtonItem(
+                    title = stringResource(R.string.language),
+                    description = stringResource(R.string.language_desc),
+                    icon = Icons.Outlined.Language,
+                    textColor = textColor,
+                    onClick = { showLanguageDialog = true }
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "Features", cardColor = cardColor, textColor = textColor) {
+            SettingsSection(title = stringResource(R.string.section_features), cardColor = cardColor, textColor = textColor) {
                 SettingsSwitchItem(
-                    title = "Scan Popup",
-                    description = "Enable scan popup feature",
+                    title = stringResource(R.string.scan_popup),
+                    description = stringResource(R.string.scan_popup_desc),
                     icon = Icons.Outlined.QrCodeScanner,
                     checked = scanPopup,
                     textColor = textColor,
@@ -207,9 +221,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            SettingsSection(title = "About", cardColor = cardColor, textColor = textColor) {
+            SettingsSection(title = stringResource(R.string.section_about), cardColor = cardColor, textColor = textColor) {
                 SettingsButtonItem(
-                    title = "Version Info",
+                    title = stringResource(R.string.version_info),
                     description = "Gdict v${BuildConfig.VERSION_NAME}",
                     icon = Icons.Outlined.Info,
                     textColor = textColor,
@@ -217,7 +231,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsButtonItem(
-                    title = "Project Repository",
+                    title = stringResource(R.string.project_repository),
                     description = GITHUB_REPO_URL,
                     icon = GitHubMark,
                     textColor = textColor,
@@ -229,8 +243,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(4.dp))
                 var showClearDialog by remember { mutableStateOf(false) }
                 SettingsButtonItem(
-                    title = "Clear Data",
-                    description = "Clear all history and bookmarks",
+                    title = stringResource(R.string.clear_data),
+                    description = stringResource(R.string.clear_data_desc),
                     icon = Icons.Outlined.DeleteOutline,
                     textColor = textColor,
                     onClick = { showClearDialog = true }
@@ -238,19 +252,19 @@ fun SettingsScreen(
                 if (showClearDialog) {
                     AlertDialog(
                         onDismissRequest = { showClearDialog = false },
-                        title = { Text("Confirm Clear") },
-                        text = { Text("Are you sure you want to clear all history and bookmarks?") },
+                        title = { Text(stringResource(R.string.confirm_clear)) },
+                        text = { Text(stringResource(R.string.confirm_clear_message)) },
                         confirmButton = {
                             TextButton(onClick = {
                                 settingsViewModel.clearAllData()
                                 showClearDialog = false
                             }) {
-                                Text("Clear", color = GdictColors.CoralAccent)
+                                Text(stringResource(R.string.clear), color = GdictColors.CoralAccent)
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showClearDialog = false }) {
-                                Text("Cancel")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     )
@@ -260,6 +274,70 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLanguage = currentLanguage,
+            onSelect = { tag ->
+                settingsViewModel.setLanguage(tag)
+                showLanguageDialog = false
+                (context as? android.app.Activity)?.recreate()
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun LanguageSelectionDialog(
+    currentLanguage: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        LocaleHelper.LANG_FOLLOW_SYSTEM to stringResource(R.string.lang_follow_system),
+        LocaleHelper.LANG_ENGLISH to stringResource(R.string.lang_english),
+        LocaleHelper.LANG_SIMPLIFIED_CHINESE to stringResource(R.string.lang_simplified_chinese),
+        LocaleHelper.LANG_TRADITIONAL_CHINESE to stringResource(R.string.lang_traditional_chinese)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_language)) },
+        text = {
+            Column {
+                options.forEach { (tag, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onSelect(tag) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = tag == currentLanguage,
+                            onClick = { onSelect(tag) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = GdictColors.NavyBlue
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.clickable { onSelect(tag) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable

@@ -14,6 +14,9 @@ class SettingsRepository(private val context: Context) {
     private val _scanPopup = MutableStateFlow(prefs.getBoolean("scan_popup", false))
     val scanPopup: StateFlow<Boolean> = _scanPopup.asStateFlow()
 
+    private val _language = MutableStateFlow(prefs.getString("language", "") ?: "")
+    val language: StateFlow<String> = _language.asStateFlow()
+
     fun setDarkMode(enabled: Boolean) {
         _darkMode.value = enabled
         prefs.edit().putBoolean("dark_mode", enabled).apply()
@@ -22,5 +25,10 @@ class SettingsRepository(private val context: Context) {
     fun setScanPopup(enabled: Boolean) {
         _scanPopup.value = enabled
         prefs.edit().putBoolean("scan_popup", enabled).apply()
+    }
+
+    fun setLanguage(tag: String) {
+        _language.value = tag
+        prefs.edit().putString("language", tag).apply()
     }
 }

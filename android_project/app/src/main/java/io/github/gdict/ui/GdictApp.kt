@@ -54,6 +54,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.gdict.GdictApplication
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.ui.screens.BookmarksScreen
 import io.github.gdict.ui.screens.DictionariesScreen
 import io.github.gdict.ui.screens.FlashcardScreen
@@ -71,14 +73,14 @@ import kotlinx.coroutines.launch
 
 sealed class Screen(
     val route: String,
-    val title: String,
+    val titleResId: Int,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    object Search : Screen("search", "Search", Icons.Filled.Search, Icons.Outlined.Search)
-    object Bookmarks : Screen("bookmarks", "Favorites", Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder)
-    object Learning : Screen("learning", "Learning", Icons.Filled.School, Icons.Outlined.School)
-    object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
+    object Search : Screen("search", R.string.nav_search, Icons.Filled.Search, Icons.Outlined.Search)
+    object Bookmarks : Screen("bookmarks", R.string.nav_favorites, Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder)
+    object Learning : Screen("learning", R.string.nav_learning, Icons.Filled.School, Icons.Outlined.School)
+    object Profile : Screen("profile", R.string.nav_profile, Icons.Filled.Person, Icons.Outlined.Person)
 }
 
 @Composable
@@ -293,12 +295,12 @@ fun GdictBottomNavItem(
     ) {
         Icon(
             imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
-            contentDescription = screen.title,
+            contentDescription = stringResource(screen.titleResId),
             tint = if (isSelected) GdictColors.NavyBlue else GdictColors.MediumGray,
             modifier = Modifier.size(24.dp)
         )
         Text(
-            text = screen.title,
+            text = stringResource(screen.titleResId),
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
             ),

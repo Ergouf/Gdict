@@ -36,6 +36,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictionaryManager
 import io.github.gdict.core.model.Dictionary
@@ -93,7 +95,7 @@ fun DictionariesScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "Dictionaries",
+                        stringResource(R.string.dictionaries),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -108,7 +110,7 @@ fun DictionariesScreen(
                             ) {
                                 Icon(
                                     Icons.Default.MoreVert,
-                                    contentDescription = "更多",
+                                    contentDescription = stringResource(R.string.cd_more),
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -119,7 +121,7 @@ fun DictionariesScreen(
                                 modifier = Modifier.background(Color.White)
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Scan Import") },
+                                    text = { Text(stringResource(R.string.scan_import)) },
                                     onClick = {
                                         showMenu = false
                                     },
@@ -128,7 +130,7 @@ fun DictionariesScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Diagnostics") },
+                                    text = { Text(stringResource(R.string.diagnostics)) },
                                     onClick = {
                                         showMenu = false
                                         dictionaryViewModel.diagnoseDictionaries()
@@ -156,7 +158,7 @@ fun DictionariesScreen(
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "添加词典",
+                        contentDescription = stringResource(R.string.cd_add_dictionary),
                         tint = Color.White
                     )
                 }
@@ -264,13 +266,13 @@ fun DictionariesScreen(
                                 )
                             }
                             Text(
-                                "No dictionaries",
+                                stringResource(R.string.no_dictionaries),
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = GdictColors.DarkGray
                             )
                             Text(
-                                "Tap the button to add dictionaries",
+                                stringResource(R.string.tap_to_add_dictionaries),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = GdictColors.MediumGray
                             )
@@ -346,7 +348,7 @@ fun DictionariesScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "词典诊断结果",
+                            stringResource(R.string.diagnostic_result),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -354,17 +356,17 @@ fun DictionariesScreen(
                         TextButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("诊断结果", vmDiagnosticResult)
+                                val clip = ClipData.newPlainText(stringResource(R.string.diagnostic_clip_label), vmDiagnosticResult)
                                 clipboard.setPrimaryClip(clip)
                             }
                         ) {
                             Icon(
                                 Icons.Default.ContentCopy,
-                                contentDescription = "复制",
+                                contentDescription = stringResource(R.string.cd_copy),
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("复制")
+                            Text(stringResource(R.string.copy))
                         }
                     }
 
@@ -398,7 +400,7 @@ fun DictionariesScreen(
                             showDiagnostics = false
                             dictionaryViewModel.clearDiagnosticResult()
                         }) {
-                            Text("关闭")
+                            Text(stringResource(R.string.close))
                         }
                     }
                 }
@@ -503,7 +505,7 @@ fun DictionaryItemCard(
                 ) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = "移除",
+                        contentDescription = stringResource(R.string.cd_remove),
                         tint = GdictColors.MediumGray,
                         modifier = Modifier.size(16.dp)
                     )
@@ -569,7 +571,7 @@ fun AddDictionaryDialog(
             if (candidates.isNotEmpty()) {
                 onBatchSelect(candidates)
             } else {
-                scanError = "未在此目录中发现支持的词典文件（.mdx/.dsl/.bgl等）"
+                scanError = context.getString(R.string.scan_error_no_dict)
             }
         }
     }
@@ -579,7 +581,7 @@ fun AddDictionaryDialog(
         containerColor = dialogBg,
         title = {
             Text(
-                "Add Dictionary",
+                    stringResource(R.string.add_dictionary),
                 fontWeight = FontWeight.Bold,
                 color = titleColor
             )
@@ -592,7 +594,7 @@ fun AddDictionaryDialog(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Dictionary Name") },
+                    label = { Text(stringResource(R.string.dictionary_name)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -607,8 +609,8 @@ fun AddDictionaryDialog(
                     value = path,
                     onValueChange = { path = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Dictionary Path") },
-                    placeholder = { Text("Select file or scan folder...") },
+                    label = { Text(stringResource(R.string.dictionary_path)) },
+                    placeholder = { Text(stringResource(R.string.dictionary_path_hint)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -624,7 +626,7 @@ fun AddDictionaryDialog(
                         }) {
                             Icon(
                                 Icons.Default.InsertDriveFile,
-                                contentDescription = "选择文件",
+                                contentDescription = stringResource(R.string.cd_select_file),
                                 tint = GdictColors.NavyBlue
                             )
                         }
@@ -642,7 +644,7 @@ fun AddDictionaryDialog(
                 ) {
                     Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Scan folder for dictionaries")
+                    Text(stringResource(R.string.scan_folder_for_dictionaries))
                 }
 
                 if (scanError != null) {
@@ -669,7 +671,7 @@ fun AddDictionaryDialog(
                 )
             ) {
                 Text(
-                    "Add",
+                    stringResource(R.string.add),
                     color = Color.White
                 )
             }
@@ -677,7 +679,7 @@ fun AddDictionaryDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    "Cancel",
+                    stringResource(R.string.cancel),
                     color = GdictColors.MediumGray
                 )
             }
@@ -701,7 +703,7 @@ fun BatchImportDialog(
         containerColor = dialogBg,
         title = {
             Text(
-                "Select dictionaries to import",
+                    stringResource(R.string.select_dictionaries_to_import),
                 fontWeight = FontWeight.Bold,
                 color = titleColor
             )
@@ -764,7 +766,7 @@ fun BatchImportDialog(
                 )
             ) {
                 Text(
-                    "Import ${selected.size}",
+                    stringResource(R.string.import_count, selected.size),
                     color = Color.White
                 )
             }
@@ -772,7 +774,7 @@ fun BatchImportDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    "Cancel",
+                    stringResource(R.string.cancel),
                     color = GdictColors.MediumGray
                 )
             }

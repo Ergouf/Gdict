@@ -1,0 +1,93 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.5/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.jetifier.ignorelist=common,layoutlib' is experimental.
+
+> Task :app:clean
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :core:preBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :core:writeDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :core:generateDebugResValues UP-TO-DATE
+> Task :core:generateDebugResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata
+> Task :core:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :core:extractDeepLinksDebug UP-TO-DATE
+> Task :core:processDebugManifest UP-TO-DATE
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :core:compileDebugLibraryResources UP-TO-DATE
+> Task :core:parseDebugLocalResources UP-TO-DATE
+> Task :core:generateDebugRFile UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors
+> Task :core:compileDebugKotlin UP-TO-DATE
+> Task :core:javaPreCompileDebug UP-TO-DATE
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :core:mergeDebugShaders UP-TO-DATE
+> Task :core:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :core:packageDebugAssets UP-TO-DATE
+> Task :app:preparePaparazziDebugResources
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:processDebugJavaRes UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+> Task :app:compileDebugKotlin
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/tts/EdgeTtsClient.kt:52:13 Variable 'encodedVoice' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:53:9 Variable 'importing' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:55:9 Variable 'dialogBg' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:56:9 Variable 'cardBg' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:198:47 'MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:258:65 'LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.LibraryBooks
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:420:9 Variable 'surfaceBg' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt:626:47 'InsertDriveFile: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.InsertDriveFile
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/FlashcardScreen.kt:222:5 Parameter 'cardColor' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/FlashcardScreen.kt:224:5 Parameter 'darkMode' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/FlashcardScreen.kt:728:5 Parameter 'cardColor' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/FlashcardScreen.kt:730:5 Parameter 'darkMode' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/SearchScreen.kt:448:5 Parameter 'query' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/SettingsScreen.kt:176:43 'MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/WordDetailScreen.kt:65:5 Parameter 'dictionaryName' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/WordDetailScreen.kt:124:43 'ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack
+w: file:///D:/workspace/Gdict/android_project/app/src/main/java/io/github/gdict/ui/screens/WordDetailScreen.kt:217:43 'VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:131:9 Variable 'searchQuery' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:132:9 Variable 'sampleResults' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:272:43 'ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:299:43 'VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.VolumeUp
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:861:43 'MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.MenuBook
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:869:49 Destructured parameter 'count' is never used
+w: file:///D:/workspace/Gdict/android_project/app/src/test/java/io/github/gdict/ui/screens/ScreenshotTest.kt:947:44 'MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+See the Paparazzi report at: file:///D:/workspace/Gdict/android_project/app/build/reports/paparazzi/debug/index.html
+
+> Task :app:recordPaparazziDebug
+
+BUILD SUCCESSFUL in 1m 43s
+44 actionable tasks: 28 executed, 16 up-to-date
