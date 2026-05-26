@@ -61,8 +61,6 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
   </table>
 </div>
 
-> *Screenshot files should be placed in the `screenshots/` directory. Replace the placeholder paths with actual screenshots taken from a device or emulator.*
-
 ## Tech Stack
 
 | Category | Technology |
