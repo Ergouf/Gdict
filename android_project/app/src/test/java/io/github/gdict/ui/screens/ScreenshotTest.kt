@@ -550,7 +550,7 @@ private fun FlashcardFrontSnapshot() {
 
 @Composable
 private fun FlashcardBackSnapshot() {
-    val cardBg = Color(0xFF1A2332)
+    val cardBg = Color(0xFF2C4A6E)
 
     Column(
         modifier = Modifier
@@ -640,13 +640,13 @@ private fun FlashcardBackSnapshot() {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.10f))
+                                .background(Color.White.copy(alpha = 0.18f))
                                 .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 "blasphemes blaspheming\nblasphemed",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.75f),
+                                color = Color.White.copy(alpha = 0.9f),
                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                             )
                         }
@@ -736,7 +736,7 @@ private fun RowScope.RatingButtonSnapshot(label: String, interval: String, color
         modifier = Modifier
             .weight(1f)
             .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.2f))
+            .background(color.copy(alpha = 0.35f))
             .padding(vertical = 10.dp)
     ) {
         Text(
@@ -749,7 +749,7 @@ private fun RowScope.RatingButtonSnapshot(label: String, interval: String, color
         Text(
             interval,
             style = MaterialTheme.typography.bodySmall,
-            color = color.copy(alpha = 0.7f)
+            color = color.copy(alpha = 0.8f)
         )
     }
 }

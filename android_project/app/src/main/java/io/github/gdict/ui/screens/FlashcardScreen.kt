@@ -544,13 +544,13 @@ private fun FlashcardBack(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.10f))
+                        .background(Color.White.copy(alpha = 0.18f))
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Text(
                         text = parsed.wordForms.joinToString(" "),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.75f),
+                        color = Color.White.copy(alpha = 0.9f),
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
@@ -711,7 +711,7 @@ private fun RatingButton(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.2f))
+            .background(color.copy(alpha = 0.35f))
             .clickable { onClick(rating) }
             .padding(vertical = 10.dp, horizontal = 4.dp)
     ) {
@@ -724,7 +724,7 @@ private fun RatingButton(
         Text(
             text = daysText,
             style = MaterialTheme.typography.labelSmall,
-            color = color.copy(alpha = 0.85f)
+            color = color.copy(alpha = 0.8f)
         )
     }
 }
