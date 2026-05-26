@@ -3,8 +3,10 @@ package io.github.gdict.ui.screens
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,20 +19,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -63,10 +67,10 @@ import io.github.gdict.viewmodel.SettingsViewModel
 private fun stripHtml(html: String): String {
     return html
         .replace(Regex("<img[^>]*>"), "")
-        .replace(Regex("<br\\s*/?>"), " ")
-        .replace(Regex("<p\\s*/?>|</p>|<div[^>]*>|</div>"), " ")
-        .replace(Regex("<li\\s*>"), "")
-        .replace(Regex("</li>"), "; ")
+        .replace(Regex("<br\\s*/?>"), "\n")
+        .replace(Regex("<p\\s*/?>|</p>|<div[^>]*>|</div>"), "\n")
+        .replace(Regex("<li\\s*>"), "• ")
+        .replace(Regex("</li>"), "\n")
         .replace(Regex("<a[^>]*href=\"[^\"]*\"[^>]*>(.*?)</a>"), "$1")
         .replace(Regex("<font[^>]*>|</font>"), "")
         .replace(Regex("<b\\s*>|<strong\\s*>|</b>|</strong>"), "")
@@ -84,9 +88,26 @@ private fun stripHtml(html: String): String {
         .trim()
 }
 
-private fun simplifyDefinition(raw: String): String {
+private fun simplifyDictionaryName(raw: String): String {
+    if (raw.isBlank()) return ""
+    val cleaned = raw
+        .replace(Regex("\\.mdx$", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("\\.mdd$", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("[^\\w\\s\\u4e00-\\u9fff-]"), "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    return cleaned
+}
+
+private data class ParsedDefinition(
+    val wordForms: List<String> = emptyList(),
+    val posTags: List<String> = emptyList(),
+    val definitions: List<String> = emptyList()
+)
+
+private fun parseDefinition(raw: String): ParsedDefinition {
     val text = stripHtml(raw)
-    if (text.isBlank()) return "(No definition)"
+    if (text.isBlank()) return ParsedDefinition()
 
     val posPattern = Regex(
         "^\\s*(n\\.?|v\\.?|vt\\.?|vi\\.?|adj\\.?|adv\\.?|prep\\.?" +
@@ -95,31 +116,27 @@ private fun simplifyDefinition(raw: String): String {
         "|[A-Z]{1,4}\\.)\\s*$",
         RegexOption.IGNORE_CASE
     )
-    val examplePattern = Regex("^(e\\.?g\\.?|i\\.?e\\.?)[:\\.]", RegexOption.IGNORE_CASE)
+    val wordFormPattern = Regex(
+        "^\\s*([a-zA-Z]+(?:es|s|ing|ed|er|est|ly|tion|sion|ment|ness|ity|al|ful|less|ous|ive|able|ible|ous|y))\\s*$",
+        RegexOption.IGNORE_CASE
+    )
 
     val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
-    val filtered = lines.filter { line ->
-        !posPattern.matches(line) &&
-        !examplePattern.matches(line) &&
-        line.length > 1
+    val wordForms = mutableListOf<String>()
+    val posTags = mutableListOf<String>()
+    val definitions = mutableListOf<String>()
+
+    for (line in lines) {
+        if (posPattern.matches(line)) {
+            posTags.add(line.trim().removeSuffix(".").uppercase())
+        } else if (wordFormPattern.matches(line) && line.length < 30) {
+            wordForms.add(line)
+        } else if (line.length > 1) {
+            definitions.add(line)
+        }
     }
 
-    if (filtered.isEmpty()) return "(No definition)"
-
-    val result = StringBuilder()
-    var charCount = 0
-    val maxChars = 200
-
-    for (line in filtered) {
-        if (charCount >= maxChars) break
-        val remaining = maxChars - charCount
-        val chunk = if (line.length > remaining) line.take(remaining - 1).trimEnd() + "…" else line
-        if (result.isNotEmpty()) result.append(' ')
-        result.append(chunk)
-        charCount += chunk.length + 1
-    }
-
-    return result.toString()
+    return ParsedDefinition(wordForms, posTags, definitions)
 }
 
 @Composable
@@ -334,6 +351,9 @@ private fun FlashcardReviewView(
     )
     val showFront = rotation < 90f
 
+    val parsed = remember(item.definition) { parseDefinition(item.definition) }
+    val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -392,61 +412,21 @@ private fun FlashcardReviewView(
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     if (showFront) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = item.word,
-                                style = MaterialTheme.typography.headlineLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                textAlign = TextAlign.Center
-                            )
-                            if (item.dictionaryName.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.dictionaryName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = GdictColors.MediumGray
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text(
-                                "Tap to reveal",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = GdictColors.MediumGray.copy(alpha = 0.6f)
-                            )
-                        }
+                        FlashcardFront(
+                            word = item.word,
+                            dictName = dictName,
+                            textColor = textColor
+                        )
                     } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.graphicsLayer { scaleX = -1f }
-                        ) {
-                            Text(
-                                text = item.word,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = simplifyDefinition(item.definition),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
-                                textAlign = TextAlign.Center,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                                lineHeight = 24.sp
-                            )
-                        }
+                        FlashcardBack(
+                            word = item.word,
+                            dictName = dictName,
+                            parsed = parsed
+                        )
                     }
                 }
             }
@@ -469,44 +449,233 @@ private fun FlashcardReviewView(
 }
 
 @Composable
+private fun FlashcardFront(
+    word: String,
+    dictName: String,
+    textColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+    ) {
+        if (dictName.isNotBlank()) {
+            Text(
+                text = dictName,
+                style = MaterialTheme.typography.bodySmall,
+                color = GdictColors.MediumGray,
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Text(
+                text = word,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = textColor,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Tap to reveal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GdictColors.MediumGray.copy(alpha = 0.7f)
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = GdictColors.MediumGray.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlashcardBack(
+    word: String,
+    dictName: String,
+    parsed: ParsedDefinition
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState())
+            .graphicsLayer { scaleX = -1f }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            if (dictName.isNotBlank()) {
+                Text(
+                    text = dictName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.5f),
+                    textAlign = TextAlign.End
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (parsed.wordForms.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                parsed.wordForms.forEach { form ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = form,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (parsed.posTags.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                parsed.posTags.forEach { tag ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(
+                                width = 1.5.dp,
+                                color = GdictColors.TealAccent.copy(alpha = 0.7f),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "[$tag]",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = GdictColors.TealAccent
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (parsed.definitions.isNotEmpty()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                parsed.definitions.forEach { def ->
+                    Text(
+                        text = def,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White,
+                        lineHeight = 26.sp,
+                        textAlign = TextAlign.Start
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = "(No definition)",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.5f),
+                lineHeight = 26.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
 private fun RatingButtonsRow(
     scheduling: Map<Rating, SchedulingCard>,
     onRate: (Rating) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = if (scheduling.isNotEmpty()) {
+            GdictColors.NavyBlue.copy(alpha = 0.03f)
+        } else Color.Transparent,
+        shadowElevation = 8.dp
     ) {
-        RatingButton(
-            rating = Rating.Again,
-            scheduling = scheduling[Rating.Again],
-            color = GdictColors.CoralAccent,
-            modifier = Modifier.weight(1f),
-            onClick = onRate
-        )
-        RatingButton(
-            rating = Rating.Hard,
-            scheduling = scheduling[Rating.Hard],
-            color = GdictColors.AmberAccent,
-            modifier = Modifier.weight(1f),
-            onClick = onRate
-        )
-        RatingButton(
-            rating = Rating.Good,
-            scheduling = scheduling[Rating.Good],
-            color = GdictColors.TealAccent,
-            modifier = Modifier.weight(1f),
-            onClick = onRate
-        )
-        RatingButton(
-            rating = Rating.Easy,
-            scheduling = scheduling[Rating.Easy],
-            color = GdictColors.MintGreen,
-            modifier = Modifier.weight(1f),
-            onClick = onRate
-        )
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(GdictColors.MediumGray.copy(alpha = 0.15f))
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RatingButton(
+                    rating = Rating.Again,
+                    scheduling = scheduling[Rating.Again],
+                    color = GdictColors.CoralAccent,
+                    modifier = Modifier.weight(1f),
+                    onClick = onRate
+                )
+                RatingButton(
+                    rating = Rating.Hard,
+                    scheduling = scheduling[Rating.Hard],
+                    color = GdictColors.AmberAccent,
+                    modifier = Modifier.weight(1f),
+                    onClick = onRate
+                )
+                RatingButton(
+                    rating = Rating.Good,
+                    scheduling = scheduling[Rating.Good],
+                    color = GdictColors.TealAccent,
+                    modifier = Modifier.weight(1f),
+                    onClick = onRate
+                )
+                RatingButton(
+                    rating = Rating.Easy,
+                    scheduling = scheduling[Rating.Easy],
+                    color = GdictColors.MintGreen,
+                    modifier = Modifier.weight(1f),
+                    onClick = onRate
+                )
+            }
+        }
     }
 }
 
@@ -528,22 +697,23 @@ private fun RatingButton(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.1f))
+            .background(color.copy(alpha = 0.2f))
             .clickable { onClick(rating) }
-            .padding(vertical = 12.dp, horizontal = 4.dp)
+            .padding(vertical = 10.dp, horizontal = 4.dp)
     ) {
         Text(
             text = rating.name,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
             color = color
         )
         Text(
             text = daysText,
             style = MaterialTheme.typography.labelSmall,
-            color = color.copy(alpha = 0.7f)
+            color = color.copy(alpha = 0.85f)
         )
     }
 }
