@@ -83,6 +83,24 @@ class ScreenshotTest {
     }
 
     @Test
+    fun captureFlashcardFront() {
+        paparazzi.snapshot {
+            GdictTheme(darkTheme = false) {
+                FlashcardFrontSnapshot()
+            }
+        }
+    }
+
+    @Test
+    fun captureFlashcardBack() {
+        paparazzi.snapshot {
+            GdictTheme(darkTheme = true) {
+                FlashcardBackSnapshot()
+            }
+        }
+    }
+
+    @Test
     fun captureDictionariesScreen() {
         paparazzi.snapshot {
             GdictTheme(darkTheme = false) {
@@ -474,6 +492,262 @@ private fun FlashcardScreenSnapshot() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FlashcardFrontSnapshot() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .statusBarsPadding()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "blasphemy",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = GdictColors.DarkGray,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Text(
+                "Collins Advanced",
+                style = MaterialTheme.typography.bodySmall,
+                color = GdictColors.MediumGray,
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                Text(
+                    "Tap to reveal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GdictColors.MediumGray.copy(alpha = 0.7f)
+                )
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    null,
+                    tint = GdictColors.MediumGray.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlashcardBackSnapshot() {
+    val cardBg = Color(0xFF1A2332)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(GdictColors.LightGray)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+        ) {
+            Text(
+                "Flashcard",
+                fontWeight = FontWeight.Bold,
+                color = GdictColors.DarkGray,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(4.dp)
+                .background(GdictColors.NavyBlue.copy(alpha = 0.6f))
+                .clip(RoundedCornerShape(2.dp))
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("1 / 2", color = GdictColors.MediumGray, style = MaterialTheme.typography.bodyMedium)
+            Text("Skip", color = GdictColors.MediumGray, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                "blaspheme",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    "柯林斯第三版",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    "Collins 3rd",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.45f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.10f))
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                "blasphemes blaspheming\nblasphemed",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = GdictColors.TealAccent.copy(alpha = 0.65f),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                "[VB]",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GdictColors.TealAccent
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            "If someone blasphemes, they say or do something that is considered to be disrespectful to God or other sacred people or things.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White,
+                            lineHeight = 26.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            "如果某人对上帝或其他神圣的人或物说出或做出不敬的话或或事，那么他就犯了亵渎罪。",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.65f),
+                            lineHeight = 26.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowUp,
+                            null,
+                            tint = Color.White.copy(alpha = 0.25f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            null,
+                            tint = Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RatingButtonSnapshot("Again", "1d", GdictColors.CoralAccent)
+            RatingButtonSnapshot("Hard", "1d", GdictColors.AmberAccent)
+            RatingButtonSnapshot("Good", "1d", GdictColors.TealAccent)
+            RatingButtonSnapshot("Easy", "1d", GdictColors.MintGreen)
+        }
+    }
+}
+
+@Composable
+private fun RatingButtonSnapshot(label: String, interval: String, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.2f))
+            .padding(vertical = 10.dp)
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            interval,
+            style = MaterialTheme.typography.bodySmall,
+            color = color.copy(alpha = 0.7f)
+        )
     }
 }
 

@@ -26,6 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.Card
@@ -507,116 +509,125 @@ private fun FlashcardBack(
     dictName: String,
     parsed: ParsedDefinition
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState())
-            .graphicsLayer { scaleX = -1f }
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
+                .graphicsLayer { scaleX = -1f }
         ) {
-            Text(
-                text = word,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            if (dictName.isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
                 Text(
-                    text = dictName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.5f),
-                    textAlign = TextAlign.End
+                    text = word,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (parsed.wordForms.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                parsed.wordForms.forEach { form ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.12f))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = form,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (parsed.posTags.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                parsed.posTags.forEach { tag ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .border(
-                                width = 1.5.dp,
-                                color = GdictColors.TealAccent.copy(alpha = 0.7f),
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "[$tag]",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = GdictColors.TealAccent
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (parsed.definitions.isNotEmpty()) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                parsed.definitions.forEach { def ->
+                if (dictName.isNotBlank()) {
                     Text(
-                        text = def,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
-                        lineHeight = 26.sp,
-                        textAlign = TextAlign.Start
+                        text = dictName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.6f),
+                        textAlign = TextAlign.End
                     )
                 }
             }
-        } else {
-            Text(
-                text = "(No definition)",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.5f),
-                lineHeight = 26.sp
-            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (parsed.wordForms.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.10f))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = parsed.wordForms.joinToString(" "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (parsed.posTags.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    parsed.posTags.forEach { tag ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = GdictColors.TealAccent.copy(alpha = 0.65f),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "[$tag]",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GdictColors.TealAccent
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (parsed.definitions.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    parsed.definitions.forEachIndexed { index, def ->
+                        Text(
+                            text = def,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (index == 0) Color.White else Color.White.copy(alpha = 0.65f),
+                            lineHeight = 26.sp,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "(No definition)",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.5f),
+                    lineHeight = 26.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .graphicsLayer { scaleX = -1f },
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.25f),
+                modifier = Modifier.size(18.dp)
+            )
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.35f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
