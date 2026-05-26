@@ -1,0 +1,10 @@
+commit dc33ff2d96f15aaa37b72621276c62004272f755
+Author: Ergouf <fjl1107464507@gmail.com>
+Date:   Tue May 26 19:42:24 2026 +0800
+
+    fix: move stringResource out of non-composable context
+
+ .github/workflows/release.yml                                     | 4 +++-
+ .../main/java/io/github/gdict/ui/screens/DictionariesScreen.kt    | 3 ++-
+ .../app/src/main/java/io/github/gdict/ui/screens/SearchScreen.kt  | 8 ++++++--
+ 3 files changed, 11 insertions(+), 4 deletions(-)

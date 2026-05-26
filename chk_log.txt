@@ -1,0 +1,5 @@
+795a4db v1.3.3
+dc33ff2 fix: move stringResource out of non-composable context
+dcc8240 feat: 实现应用多语言切换功能，替换硬编码字符串为国际化资源
+b041f91 docs: update all screenshots and remove placeholder text from README
+6ba71c7 Delete collins_test_stderr.txt

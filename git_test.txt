@@ -1,0 +1,53 @@
+ D pap_err2.txt
+ D pap_err3.txt
+ D pap_err4.txt
+ D pap_out2.txt
+ D pap_out3.txt
+ D pap_out4.txt
+?? chk_log.txt
+?? chk_remote.txt
+?? chk_tags.txt
+?? git_add.txt
+?? git_add_wf.txt
+?? git_add_wf2.txt
+?? git_atag.txt
+?? git_atag2.txt
+?? git_atag3.txt
+?? git_commit.txt
+?? git_commit2.txt
+?? git_commit_wf.txt
+?? git_commit_wf2.txt
+?? git_commit_wf3.txt
+?? git_config.txt
+?? git_del32.txt
+?? git_del33.txt
+?? git_del_tag.txt
+?? git_deltag32.txt
+?? git_deltag33.txt
+?? git_deltag_local.txt
+?? git_diff.txt
+?? git_empty2.txt
+?? git_empty3.txt
+?? git_empty_commit.txt
+?? git_log.txt
+?? git_push.txt
+?? git_push33.txt
+?? git_push34.txt
+?? git_push_master2.txt
+?? git_push_tag.txt
+?? git_push_tag2.txt
+?? git_push_tag33.txt
+?? git_push_wf.txt
+?? git_push_wf2.txt
+?? git_show_stat.txt
+?? git_show_yml.txt
+?? git_status.txt
+?? git_status2.txt
+?? git_status3.txt
+?? git_tag.txt
+?? git_tag33.txt
+?? git_tag33b.txt
+?? git_tag34.txt
+?? git_tags_remote.txt
+?? git_test.txt
+?? java_version.txt

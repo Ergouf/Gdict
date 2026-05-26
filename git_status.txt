@@ -1,0 +1,24 @@
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .github/workflows/release.yml
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   android_project/app/src/main/java/io/github/gdict/ui/screens/DictionariesScreen.kt
+	modified:   android_project/app/src/main/java/io/github/gdict/ui/screens/SearchScreen.kt
+	deleted:    pap_err2.txt
+	deleted:    pap_err3.txt
+	deleted:    pap_err4.txt
+	deleted:    pap_out2.txt
+	deleted:    pap_out3.txt
+	deleted:    pap_out4.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	git_status.txt
+	java_version.txt
+

@@ -1,0 +1,30 @@
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	deleted:    pap_err2.txt
+	deleted:    pap_err3.txt
+	deleted:    pap_err4.txt
+	deleted:    pap_out2.txt
+	deleted:    pap_out3.txt
+	deleted:    pap_out4.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	git_add.txt
+	git_commit.txt
+	git_commit2.txt
+	git_diff.txt
+	git_log.txt
+	git_push.txt
+	git_push_tag.txt
+	git_show_yml.txt
+	git_status.txt
+	git_status2.txt
+	git_tag.txt
+	git_tags_remote.txt
+	java_version.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
