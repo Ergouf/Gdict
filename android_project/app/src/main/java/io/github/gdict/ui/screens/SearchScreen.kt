@@ -377,12 +377,16 @@ private fun WordOfTheDaySection(
             modifier = Modifier.padding(bottom = 12.dp)
         )
         if (words.isEmpty()) {
+            val welcomeWord = stringResource(R.string.word_of_the_day_welcome)
+            val welcomeDesc = stringResource(R.string.word_of_the_day_welcome_desc)
+            val dictWord = stringResource(R.string.word_of_the_day_dictionary)
+            val dictDesc = stringResource(R.string.word_of_the_day_dictionary_desc)
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(listOf(
-                    Pair(stringResource(R.string.word_of_the_day_welcome), stringResource(R.string.word_of_the_day_welcome_desc)),
-                    Pair(stringResource(R.string.word_of_the_day_dictionary), stringResource(R.string.word_of_the_day_dictionary_desc))
+                    Pair(welcomeWord, welcomeDesc),
+                    Pair(dictWord, dictDesc)
                 )) { (word, meaning) ->
                     WordOfDayCard(
                         word = word,
