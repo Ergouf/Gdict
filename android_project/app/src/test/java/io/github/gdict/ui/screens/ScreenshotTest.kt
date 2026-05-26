@@ -773,28 +773,20 @@ private fun FlashcardBackSnapshot() {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            color = GdictColors.NavyBlue.copy(alpha = 0.03f),
+            color = Color.White,
             shadowElevation = 8.dp
         ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(GdictColors.MediumGray.copy(alpha = 0.15f))
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                     RatingButtonSnapshot("Again", "1d", GdictColors.CoralAccent)
                     RatingButtonSnapshot("Hard", "1d", GdictColors.AmberAccent)
                     RatingButtonSnapshot("Good", "1d", GdictColors.TealAccent)
                     RatingButtonSnapshot("Easy", "1d", GdictColors.MintGreen)
                 }
-            }
         }
     }
 }
@@ -805,9 +797,9 @@ private fun RowScope.RatingButtonSnapshot(label: String, interval: String, color
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.35f))
-            .padding(vertical = 10.dp, horizontal = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(GdictColors.NavyBlue)
+            .padding(vertical = 12.dp, horizontal = 8.dp)
     ) {
         Text(
             label,

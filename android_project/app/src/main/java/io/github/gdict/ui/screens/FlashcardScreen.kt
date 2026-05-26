@@ -639,23 +639,15 @@ private fun RatingButtonsRow(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = if (scheduling.isNotEmpty()) {
-            GdictColors.NavyBlue.copy(alpha = 0.03f)
-        } else Color.Transparent,
+        color = Color.White,
         shadowElevation = 8.dp
     ) {
         Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(GdictColors.MediumGray.copy(alpha = 0.15f))
-            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 RatingButton(
                     rating = Rating.Again,
@@ -710,10 +702,10 @@ private fun RatingButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.35f))
+            .clip(RoundedCornerShape(16.dp))
+            .background(GdictColors.NavyBlue)
             .clickable { onClick(rating) }
-            .padding(vertical = 10.dp, horizontal = 4.dp)
+            .padding(vertical = 12.dp, horizontal = 8.dp)
     ) {
         Text(
             text = rating.name,
