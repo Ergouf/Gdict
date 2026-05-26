@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.core.Rating
 import io.github.gdict.core.SchedulingCard
 import io.github.gdict.core.model.BookmarkItem
@@ -178,7 +180,7 @@ fun FlashcardScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                "Flashcard",
+                stringResource(R.string.flashcard),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = textColor
@@ -262,13 +264,13 @@ private fun FlashcardStartView(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    StatChip(label = "New", count = reviewStats.new, color = GdictColors.TealAccent)
-                    StatChip(label = "Due", count = reviewStats.due, color = GdictColors.CoralAccent)
-                    StatChip(label = "Learned", count = reviewStats.learned, color = GdictColors.MintGreen)
+                    StatChip(label = stringResource(R.string.stat_new), count = reviewStats.new, color = GdictColors.TealAccent)
+                    StatChip(label = stringResource(R.string.stat_due), count = reviewStats.due, color = GdictColors.CoralAccent)
+                    StatChip(label = stringResource(R.string.stat_learned), count = reviewStats.learned, color = GdictColors.MintGreen)
                 }
             } else {
                 Text(
-                    "Add words to favorites first",
+                    stringResource(R.string.add_words_to_favorites_first),
                     style = MaterialTheme.typography.bodyMedium,
                     color = GdictColors.MediumGray
                 )
@@ -488,7 +490,7 @@ private fun FlashcardFront(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    "Tap to reveal",
+                    stringResource(R.string.tap_to_reveal),
                     style = MaterialTheme.typography.bodyMedium,
                     color = GdictColors.MediumGray.copy(alpha = 0.7f)
                 )

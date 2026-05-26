@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
+import io.github.gdict.R
 import io.github.gdict.data.BookmarkRepository
 import io.github.gdict.core.model.BookmarkItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,7 @@ class BookmarkViewModel(application: Application) : AndroidViewModel(application
                 bookmarkRepo.addBookmark(word, definition, dictionaryName)
             }
         } catch (e: Exception) {
-            _errorMessage.value = "收藏操作失败: ${e.message}"
+            _errorMessage.value = getApplication<GdictApplication>().getString(R.string.bookmark_failed, e.message)
         }
     }
 

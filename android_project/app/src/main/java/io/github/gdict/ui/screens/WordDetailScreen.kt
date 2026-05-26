@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.tts.EdgeTtsClient
 import io.github.gdict.ui.theme.GdictColors
@@ -72,7 +74,7 @@ fun WordDetailScreen(
     settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Origin", "Examples", "Synonyms")
+    val tabs = listOf(stringResource(R.string.tab_origin), stringResource(R.string.tab_examples), stringResource(R.string.tab_synonyms))
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.LightGray
@@ -122,7 +124,7 @@ fun WordDetailScreen(
                     IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Default.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.cd_back),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
@@ -135,7 +137,7 @@ fun WordDetailScreen(
                     IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Default.Share,
-                            contentDescription = "分享",
+                            contentDescription = stringResource(R.string.cd_share),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -215,7 +217,7 @@ fun WordDetailScreen(
                     ) {
                         Icon(
                             Icons.Default.VolumeUp,
-                            contentDescription = "发音",
+                            contentDescription = stringResource(R.string.cd_pronunciation),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
@@ -360,7 +362,7 @@ private fun ActionButtonsRow(
     ) {
         ActionButton(
             icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-            text = if (isBookmarked) "Saved" else "Add to Favorites",
+            text = if (isBookmarked) stringResource(R.string.saved) else stringResource(R.string.add_to_favorites),
             cardColor = cardColor,
             modifier = Modifier.weight(1f),
             onClick = onToggleBookmark

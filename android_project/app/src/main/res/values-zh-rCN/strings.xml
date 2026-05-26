@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gdict</string>
+
+    <string name="nav_search">搜索</string>
+    <string name="nav_favorites">收藏</string>
+    <string name="nav_learning">学习</string>
+    <string name="nav_profile">我的</string>
+
+    <string name="search_hint">搜索</string>
+    <string name="recent_searches">最近搜索</string>
+    <string name="word_of_the_day">每日一词</string>
+
+    <string name="my_vocabulary">我的词汇</string>
+    <string name="remove_bookmark">移除收藏</string>
+    <string name="remove_bookmark_confirm">确定要从词汇表中移除「%s」吗？</string>
+    <string name="remove">移除</string>
+    <string name="flashcard">闪卡</string>
+
+    <string name="add_words_to_favorites_first">请先将单词添加到收藏</string>
+    <string name="tap_to_reveal">点击翻转</string>
+
+    <string name="stat_new">新词</string>
+    <string name="stat_due">待复习</string>
+    <string name="stat_learned">已掌握</string>
+
+    <string name="profile">个人中心</string>
+    <string name="manage_your_settings">管理你的设置</string>
+    <string name="section_dictionaries">词典</string>
+    <string name="dictionary_management">词典管理</string>
+    <string name="dictionary_management_desc">添加、删除和管理词典</string>
+    <string name="section_appearance">外观</string>
+    <string name="dark_mode">深色模式</string>
+    <string name="dark_mode_desc">切换深色/浅色主题</string>
+    <string name="language">语言</string>
+    <string name="language_desc">更改应用显示语言</string>
+    <string name="section_features">功能</string>
+    <string name="scan_popup">扫描弹窗</string>
+    <string name="scan_popup_desc">启用扫描弹窗功能</string>
+    <string name="section_about">关于</string>
+    <string name="version_info">版本信息</string>
+    <string name="project_repository">项目仓库</string>
+    <string name="clear_data">清除数据</string>
+    <string name="clear_data_desc">清除所有搜索历史和收藏</string>
+    <string name="confirm_clear">确认清除</string>
+    <string name="confirm_clear_message">确定要清除所有搜索历史和收藏吗？</string>
+    <string name="clear">清除</string>
+    <string name="cancel">取消</string>
+    <string name="select_language">选择语言</string>
+    <string name="lang_english">English</string>
+    <string name="lang_simplified_chinese">简体中文</string>
+    <string name="lang_traditional_chinese">繁體中文</string>
+    <string name="lang_follow_system">跟随系统</string>
+
+    <string name="dictionaries">词典</string>
+    <string name="scan_import">扫描导入</string>
+    <string name="diagnostics">诊断</string>
+    <string name="no_dictionaries">暂无词典</string>
+    <string name="tap_to_add_dictionaries">点击按钮添加词典</string>
+    <string name="add_dictionary">添加词典</string>
+    <string name="dictionary_name">词典名称</string>
+    <string name="dictionary_path">词典路径</string>
+    <string name="dictionary_path_hint">选择文件或扫描文件夹…</string>
+    <string name="scan_folder_for_dictionaries">扫描文件夹查找词典</string>
+    <string name="select_file">选择文件</string>
+    <string name="scan_error_no_dict">未在此目录中发现支持的词典文件（.mdx/.dsl/.bgl等）</string>
+    <string name="select_dictionaries_to_import">选择要导入的词典</string>
+    <string name="import_count">导入 %d</string>
+
+    <string name="tab_origin">词源</string>
+    <string name="tab_examples">例句</string>
+    <string name="tab_synonyms">同义词</string>
+    <string name="saved">已收藏</string>
+    <string name="add_to_favorites">添加收藏</string>
+
+    <string name="clear_data_failed">清除数据失败：%s</string>
+    <string name="bookmark_failed">收藏操作失败：%s</string>
+    <string name="scan_dir_failed">扫描目录失败：%s</string>
+    <string name="add_dict_failed">添加词典失败：%s</string>
+    <string name="import_dict_failed">导入 %s 失败：%s</string>
+    <string name="import_result">导入完成：成功 %d，失败 %d</string>
+    <string name="import_exception">批量导入异常：%s</string>
+    <string name="remove_dict_failed">移除词典失败：%s</string>
+    <string name="toggle_dict_failed">切换词典状态失败：%s</string>
+    <string name="search_failed">搜索失败：%s</string>
+
+    <string name="word_of_the_day_welcome">欢迎</string>
+    <string name="word_of_the_day_welcome_desc">点击探索</string>
+    <string name="word_of_the_day_dictionary">词典</string>
+    <string name="word_of_the_day_dictionary_desc">添加词典开始使用</string>
+
+    <string name="cd_back">返回</string>
+    <string name="cd_share">分享</string>
+    <string name="cd_pronunciation">发音</string>
+    <string name="cd_more">更多</string>
+    <string name="cd_add_dictionary">添加词典</string>
+    <string name="cd_copy">复制</string>
+    <string name="cd_remove">移除</string>
+    <string name="cd_select_file">选择文件</string>
+    <string name="copy">复制</string>
+    <string name="close">关闭</string>
+    <string name="diagnostic_result">词典诊断结果</string>
+    <string name="diagnostic_clip_label">诊断结果</string>
+    <string name="add">添加</string>
+</resources>

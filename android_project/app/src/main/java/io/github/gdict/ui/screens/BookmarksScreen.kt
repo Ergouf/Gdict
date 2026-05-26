@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.core.model.BookmarkItem
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.BookmarkViewModel
@@ -77,7 +79,7 @@ fun BookmarksScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                "My Vocabulary",
+                stringResource(R.string.my_vocabulary),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = textColor
@@ -148,8 +150,8 @@ fun BookmarksScreen(
     bookmarkToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { bookmarkToDelete = null },
-            title = { Text("Remove Bookmark", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to remove \"${item.word}\" from your vocabulary?") },
+            title = { Text(stringResource(R.string.remove_bookmark), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.remove_bookmark_confirm, item.word)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -157,12 +159,12 @@ fun BookmarksScreen(
                         bookmarkToDelete = null
                     }
                 ) {
-                    Text("Remove", color = GdictColors.CoralAccent)
+                    Text(stringResource(R.string.remove), color = GdictColors.CoralAccent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { bookmarkToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -229,7 +231,7 @@ private fun BookmarkItemCard(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.cd_remove),
                     tint = GdictColors.MediumGray,
                     modifier = Modifier.size(16.dp)
                 )
@@ -273,7 +275,7 @@ private fun FlashcardPromoCard(onClick: () -> Unit = {}) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Flashcard",
+                    stringResource(R.string.flashcard),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White

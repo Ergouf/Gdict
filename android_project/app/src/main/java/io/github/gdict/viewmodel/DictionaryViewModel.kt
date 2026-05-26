@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gdict.GdictApplication
+import io.github.gdict.R
 import io.github.gdict.core.DictFileImporter
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.core.model.Dictionary
@@ -44,7 +45,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
         return try {
             dictionaryRepo.scanDirectory(uri)
         } catch (e: Exception) {
-            _errorMessage.value = "扫描目录失败: ${e.message}"
+            _errorMessage.value = getApplication<GdictApplication>().getString(R.string.scan_dir_failed, e.message)
             emptyList()
         }
     }
@@ -54,7 +55,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 dictionaryRepo.addDictionary(name, path, companionFiles)
             } catch (e: Throwable) {
-                _errorMessage.value = "添加词典失败: ${e.javaClass.simpleName} - ${e.message}"
+                _errorMessage.value = getApplication<GdictApplication>().getString(R.string.add_dict_failed, "${e.javaClass.simpleName} - ${e.message}")
                 android.util.Log.e("VM", "addDictionary failed", e)
             }
         }
@@ -77,15 +78,15 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
                             val errType = e.javaClass.simpleName
                             val errMsg = e.message ?: "(no message)"
                             android.util.Log.e("VM", "Import failed for ${candidate.name}: $errType - $errMsg", e)
-                            _errorMessage.value = "导入 ${candidate.name} 失败: $errType - $errMsg"
+                            _errorMessage.value = getApplication<GdictApplication>().getString(R.string.import_dict_failed, candidate.name, "$errType - $errMsg")
                         }
                     }
                 }
                 if (failCount > 0) {
-                    _errorMessage.value = "导入完成: 成功 $successCount, 失败 $failCount"
+                    _errorMessage.value = getApplication<GdictApplication>().getString(R.string.import_result, successCount, failCount)
                 }
             } catch (e: Throwable) {
-                _errorMessage.value = "批量导入异常: ${e.javaClass.simpleName} - ${e.message}"
+                _errorMessage.value = getApplication<GdictApplication>().getString(R.string.import_exception, "${e.javaClass.simpleName} - ${e.message}")
                 android.util.Log.e("VM", "batchImport crashed", e)
             } finally {
                 _importing.value = false
@@ -98,7 +99,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
         try {
             dictionaryRepo.removeDictionary(dictionary)
         } catch (e: Exception) {
-            _errorMessage.value = "移除词典失败: ${e.message}"
+            _errorMessage.value = getApplication<GdictApplication>().getString(R.string.remove_dict_failed, e.message)
         }
     }
 
@@ -106,7 +107,7 @@ class DictionaryViewModel(application: Application) : AndroidViewModel(applicati
         try {
             dictionaryRepo.toggleDictionary(dictionary)
         } catch (e: Exception) {
-            _errorMessage.value = "切换词典状态失败: ${e.message}"
+            _errorMessage.value = getApplication<GdictApplication>().getString(R.string.toggle_dict_failed, e.message)
         }
     }
 

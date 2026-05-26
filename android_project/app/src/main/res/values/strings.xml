@@ -1,8 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Gdict</string>
-    <string name="search">Search</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_search">Search</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="nav_learning">Learning</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Search screen -->
+    <string name="search_hint">Search</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="word_of_the_day">Word of the Day</string>
+
+    <!-- Bookmarks screen -->
+    <string name="my_vocabulary">My Vocabulary</string>
+    <string name="remove_bookmark">Remove Bookmark</string>
+    <string name="remove_bookmark_confirm">Are you sure you want to remove \"%s\" from your vocabulary?</string>
+    <string name="remove">Remove</string>
+    <string name="flashcard">Flashcard</string>
+
+    <!-- Flashcard screen -->
+    <string name="add_words_to_favorites_first">Add words to favorites first</string>
+    <string name="tap_to_reveal">Tap to reveal</string>
+
+    <!-- Stats -->
+    <string name="stat_new">New</string>
+    <string name="stat_due">Due</string>
+    <string name="stat_learned">Learned</string>
+
+    <!-- Settings screen -->
+    <string name="profile">Profile</string>
+    <string name="manage_your_settings">Manage your settings</string>
+    <string name="section_dictionaries">Dictionaries</string>
+    <string name="dictionary_management">Dictionary Management</string>
+    <string name="dictionary_management_desc">Add, remove and manage dictionaries</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="dark_mode_desc">Toggle dark/light theme</string>
+    <string name="language">Language</string>
+    <string name="language_desc">Change app display language</string>
+    <string name="section_features">Features</string>
+    <string name="scan_popup">Scan Popup</string>
+    <string name="scan_popup_desc">Enable scan popup feature</string>
+    <string name="section_about">About</string>
+    <string name="version_info">Version Info</string>
+    <string name="project_repository">Project Repository</string>
+    <string name="clear_data">Clear Data</string>
+    <string name="clear_data_desc">Clear all history and bookmarks</string>
+    <string name="confirm_clear">Confirm Clear</string>
+    <string name="confirm_clear_message">Are you sure you want to clear all history and bookmarks?</string>
+    <string name="clear">Clear</string>
+    <string name="cancel">Cancel</string>
+    <string name="select_language">Select Language</string>
+    <string name="lang_english">English</string>
+    <string name="lang_simplified_chinese">简体中文</string>
+    <string name="lang_traditional_chinese">繁體中文</string>
+    <string name="lang_follow_system">Follow System</string>
+
+    <!-- Dictionaries screen -->
     <string name="dictionaries">Dictionaries</string>
-    <string name="settings">Settings</string>
-    <string name="history">History</string>
-    <string name="bookmarks">Bookmarks</string>
+    <string name="scan_import">Scan Import</string>
+    <string name="diagnostics">Diagnostics</string>
+    <string name="no_dictionaries">No dictionaries</string>
+    <string name="tap_to_add_dictionaries">Tap the button to add dictionaries</string>
+    <string name="add_dictionary">Add Dictionary</string>
+    <string name="dictionary_name">Dictionary Name</string>
+    <string name="dictionary_path">Dictionary Path</string>
+    <string name="dictionary_path_hint">Select file or scan folder…</string>
+    <string name="scan_folder_for_dictionaries">Scan folder for dictionaries</string>
+    <string name="select_file">Select file</string>
+    <string name="scan_error_no_dict">No supported dictionary files (.mdx/.dsl/.bgl etc.) found in this directory</string>
+    <string name="select_dictionaries_to_import">Select dictionaries to import</string>
+    <string name="import_count">Import %d</string>
+
+    <!-- Word detail screen -->
+    <string name="tab_origin">Origin</string>
+    <string name="tab_examples">Examples</string>
+    <string name="tab_synonyms">Synonyms</string>
+    <string name="saved">Saved</string>
+    <string name="add_to_favorites">Add to Favorites</string>
+
+    <!-- Error messages -->
+    <string name="clear_data_failed">Failed to clear data: %s</string>
+    <string name="bookmark_failed">Bookmark operation failed: %s</string>
+    <string name="scan_dir_failed">Failed to scan directory: %s</string>
+    <string name="add_dict_failed">Failed to add dictionary: %s</string>
+    <string name="import_dict_failed">Failed to import %s: %s</string>
+    <string name="import_result">Import complete: %d succeeded, %d failed</string>
+    <string name="import_exception">Batch import exception: %s</string>
+    <string name="remove_dict_failed">Failed to remove dictionary: %s</string>
+    <string name="toggle_dict_failed">Failed to toggle dictionary: %s</string>
+    <string name="search_failed">Search failed: %s</string>
+
+    <!-- Word of the day -->
+    <string name="word_of_the_day_welcome">Welcome</string>
+    <string name="word_of_the_day_welcome_desc">Tap to explore</string>
+    <string name="word_of_the_day_dictionary">Dictionary</string>
+    <string name="word_of_the_day_dictionary_desc">Add dictionaries to start</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_pronunciation">Pronunciation</string>
+    <string name="cd_more">More</string>
+    <string name="cd_add_dictionary">Add dictionary</string>
+    <string name="cd_copy">Copy</string>
+    <string name="cd_remove">Remove</string>
+    <string name="cd_select_file">Select file</string>
+    <string name="copy">Copy</string>
+    <string name="close">Close</string>
+    <string name="diagnostic_result">Dictionary diagnostics</string>
+    <string name="diagnostic_clip_label">Diagnostics result</string>
+    <string name="add">Add</string>
 </resources>

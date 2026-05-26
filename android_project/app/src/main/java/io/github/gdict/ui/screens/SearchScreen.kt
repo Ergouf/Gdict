@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.stringResource
+import io.github.gdict.R
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
 import io.github.gdict.ui.theme.GdictColors
@@ -219,7 +221,7 @@ private fun SearchBar(
     ) {
         Icon(
             Icons.Default.Search,
-            contentDescription = "搜索",
+            contentDescription = stringResource(R.string.search_hint),
             tint = GdictColors.MediumGray,
             modifier = Modifier.size(20.dp)
         )
@@ -234,7 +236,7 @@ private fun SearchBar(
             decorationBox = { innerTextField ->
                 if (query.isEmpty()) {
                     Text(
-                        "Search",
+                        stringResource(R.string.search_hint),
                         color = GdictColors.MediumGray,
                         fontSize = 16.sp
                     )
@@ -246,7 +248,7 @@ private fun SearchBar(
             IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "清除",
+                    contentDescription = stringResource(R.string.cancel),
                     tint = GdictColors.MediumGray,
                     modifier = Modifier.size(16.dp)
                 )
@@ -324,7 +326,7 @@ private fun RecentSearchSection(
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
-            "Recent searches",
+            stringResource(R.string.recent_searches),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = textColor,
@@ -368,7 +370,7 @@ private fun WordOfTheDaySection(
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         Text(
-            "Word of the Day",
+            stringResource(R.string.word_of_the_day),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = textColor,
@@ -379,8 +381,8 @@ private fun WordOfTheDaySection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(listOf(
-                    Pair("Welcome", "Tap to explore"),
-                    Pair("Dictionary", "Add dictionaries to start")
+                    Pair(stringResource(R.string.word_of_the_day_welcome), stringResource(R.string.word_of_the_day_welcome_desc)),
+                    Pair(stringResource(R.string.word_of_the_day_dictionary), stringResource(R.string.word_of_the_day_dictionary_desc))
                 )) { (word, meaning) ->
                     WordOfDayCard(
                         word = word,

@@ -1,0 +1,16 @@
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> java.io.IOException: Unable to delete directory 'D:\workspace\Gdict\android_project\app\build\test-results\testDebugUnitTest\binary'
+    Failed to delete some children. This might happen because a process has files open or has its working directory set in the target directory.
+    - D:\workspace\Gdict\android_project\app\build\test-results\testDebugUnitTest\binary\output.bin
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 23s
