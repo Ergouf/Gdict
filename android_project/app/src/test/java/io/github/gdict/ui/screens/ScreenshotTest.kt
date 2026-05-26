@@ -7,6 +7,7 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -188,28 +190,24 @@ private fun SearchScreenSnapshot() {
         ) {
             item {
                 Text(
-                    "Recent Searches",
+                    "Recent searches",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = textColor,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
             items(sampleHistory.take(3)) { word ->
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Outlined.History, null, tint = GdictColors.MediumGray, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(word, color = textColor, fontWeight = FontWeight.Medium)
-                    }
+                    Icon(Icons.Outlined.History, null, tint = GdictColors.MediumGray, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(word, color = textColor, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -225,14 +223,21 @@ private fun SearchScreenSnapshot() {
             items(wordOfTheDay) { (word, def) ->
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = GdictColors.NavyBlue.copy(alpha = 0.08f)),
+                    colors = CardDefaults.cardColors(containerColor = GdictColors.NavyBlue),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(120.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(word, fontWeight = FontWeight.Bold, color = GdictColors.NavyBlue, style = MaterialTheme.typography.titleMedium)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Bottom
+                    ) {
+                        Text(word, fontWeight = FontWeight.Bold, color = Color.White, style = MaterialTheme.typography.titleLarge)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(def, color = textColor, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                        Text(def, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -295,6 +300,25 @@ private fun WordDetailScreenSnapshot() {
                     }
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val heights = listOf(8, 16, 24, 32, 20, 12, 28, 36, 16, 8, 20, 32, 24, 12, 28, 16, 8, 20, 32, 24, 12, 28, 16, 8)
+                    heights.forEach { h ->
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(h.dp)
+                                .clip(RoundedCornerShape(1.5.dp))
+                                .background(if (h > 20) GdictColors.TealAccent else Color.White.copy(alpha = 0.4f))
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -321,7 +345,7 @@ private fun WordDetailScreenSnapshot() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("Bookmark" to Icons.Filled.Bookmark, "Learning" to Icons.Outlined.School).forEach { (label, icon) ->
+                listOf("Bookmark" to Icons.Filled.Bookmark, "Share" to Icons.Filled.Share).forEach { (label, icon) ->
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = GdictColors.NavyBlue.copy(alpha = 0.06f),
@@ -425,6 +449,37 @@ private fun BookmarksScreenSnapshot() {
                             Text(word, fontWeight = FontWeight.SemiBold, color = textColor, style = MaterialTheme.typography.titleSmall)
                             Text(dict, color = GdictColors.MediumGray, style = MaterialTheme.typography.bodySmall)
                         }
+                        Icon(Icons.Default.Close, null, tint = GdictColors.MediumGray, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = GdictColors.NavyBlue),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.Bookmark, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Flashcard", fontWeight = FontWeight.SemiBold, color = Color.White, style = MaterialTheme.typography.titleSmall)
+                            Text("To practice and learn your word lists.", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -715,16 +770,31 @@ private fun FlashcardBackSnapshot() {
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            color = GdictColors.NavyBlue.copy(alpha = 0.03f),
+            shadowElevation = 8.dp
         ) {
-            RatingButtonSnapshot("Again", "1d", GdictColors.CoralAccent)
-            RatingButtonSnapshot("Hard", "1d", GdictColors.AmberAccent)
-            RatingButtonSnapshot("Good", "1d", GdictColors.TealAccent)
-            RatingButtonSnapshot("Easy", "1d", GdictColors.MintGreen)
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(GdictColors.MediumGray.copy(alpha = 0.15f))
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RatingButtonSnapshot("Again", "1d", GdictColors.CoralAccent)
+                    RatingButtonSnapshot("Hard", "1d", GdictColors.AmberAccent)
+                    RatingButtonSnapshot("Good", "1d", GdictColors.TealAccent)
+                    RatingButtonSnapshot("Easy", "1d", GdictColors.MintGreen)
+                }
+            }
         }
     }
 }
@@ -737,12 +807,12 @@ private fun RowScope.RatingButtonSnapshot(label: String, interval: String, color
             .weight(1f)
             .clip(RoundedCornerShape(12.dp))
             .background(color.copy(alpha = 0.35f))
-            .padding(vertical = 10.dp)
+            .padding(vertical = 10.dp, horizontal = 4.dp)
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = color
         )
         Spacer(modifier = Modifier.height(2.dp))
@@ -809,23 +879,29 @@ private fun DictionariesScreenSnapshot() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 5.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.InsertDriveFile, null, tint = GdictColors.NavyBlue, modifier = Modifier.size(20.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = GdictColors.NavyBlue.copy(alpha = 0.1f)
+                            ) {
+                                Icon(Icons.Filled.Book, null, tint = GdictColors.NavyBlue, modifier = Modifier.padding(8.dp).size(18.dp))
+                            }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(name, fontWeight = FontWeight.SemiBold, color = GdictColors.DarkGray)
-                                Text(count, color = GdictColors.MediumGray, style = MaterialTheme.typography.bodySmall)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("/storage/emulated/0/Download/${name.replace(" ", "")}.mdx", color = GdictColors.MediumGray, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                             }
                         }
                         Switch(checked = true, onCheckedChange = {})
@@ -887,8 +963,16 @@ private fun SettingsScreenSnapshot() {
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            SettingsSectionCard("Features", cardColor, textColor) {
+                SettingsRowSwitch(Icons.Outlined.QrCodeScanner, "Scan Popup", "Enable scan popup feature", checked = false, textColor)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             SettingsSectionCard("About", cardColor, textColor) {
-                SettingsRow(Icons.Outlined.Info, "Version Info", "Gdict v1.1.0", textColor)
+                SettingsRow(Icons.Outlined.Info, "Version Info", "Gdict v1.2.0", textColor)
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsRow(Icons.Filled.Person, "Project Repository", "github.com/iuroc/gdict", textColor)
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsRow(Icons.Outlined.DeleteOutline, "Clear Data", "Clear all history and bookmarks", textColor)
             }
@@ -929,7 +1013,7 @@ private fun SettingsRow(icon: androidx.compose.ui.graphics.vector.ImageVector, t
                 Text(desc, color = GdictColors.MediumGray, style = MaterialTheme.typography.bodySmall)
             }
         }
-        Icon(Icons.Outlined.ChevronRight, null, tint = GdictColors.MediumGray, modifier = Modifier.size(20.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = GdictColors.MediumGray, modifier = Modifier.size(20.dp))
     }
 }
 

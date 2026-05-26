@@ -25,28 +25,37 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
     <tr>
       <td align="center"><b>Search & Home</b></td>
       <td align="center"><b>Word Detail</b></td>
+      <td align="center"><b>Flashcard Start</b></td>
       <td align="center"><b>Flashcard Front</b></td>
-      <td align="center"><b>Flashcard Back</b></td>
     </tr>
     <tr>
       <td><img src="screenshots/search.png" width="200" alt="Search"></td>
       <td><img src="screenshots/detail.png" width="200" alt="Detail"></td>
+      <td><img src="screenshots/flashcard.png" width="200" alt="Flashcard"></td>
       <td><img src="screenshots/flashcard_front.png" width="200" alt="Flashcard Front"></td>
-      <td><img src="screenshots/flashcard_back.png" width="200" alt="Flashcard Back"></td>
     </tr>
   </table>
 
   <table>
     <tr>
+      <td align="center"><b>Flashcard Back</b></td>
       <td align="center"><b>Favorites</b></td>
       <td align="center"><b>Dictionaries</b></td>
       <td align="center"><b>Settings</b></td>
-      <td align="center"><b>Dark Mode</b></td>
     </tr>
     <tr>
+      <td><img src="screenshots/flashcard_back.png" width="200" alt="Flashcard Back"></td>
       <td><img src="screenshots/bookmarks.png" width="200" alt="Favorites"></td>
       <td><img src="screenshots/dictionaries.png" width="200" alt="Dictionaries"></td>
       <td><img src="screenshots/settings.png" width="200" alt="Settings"></td>
+    </tr>
+  </table>
+
+  <table>
+    <tr>
+      <td align="center"><b>Dark Mode</b></td>
+    </tr>
+    <tr>
       <td><img src="screenshots/dark_mode.png" width="200" alt="Dark Mode"></td>
     </tr>
   </table>

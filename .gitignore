@@ -56,3 +56,4 @@ _git_*.txt
 .idea/
 local.properties
 *.keystore
+keystore_base64.txt
