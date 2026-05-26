@@ -57,18 +57,24 @@ jobs:
       - name: Rename APK
         id: rename
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/v}
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/v}
+          else
+            TAG_NAME=${{ inputs.tag }}
+          fi
           APK_NAME="GDict-${TAG_NAME}.apk"
           mv android_project/app/build/outputs/apk/release/app-release-unsigned.apk "android_project/app/build/outputs/apk/release/${APK_NAME}" 2>/dev/null || \
           mv android_project/app/build/outputs/apk/release/app-release.apk "android_project/app/build/outputs/apk/release/${APK_NAME}" 2>/dev/null || \
           find android_project/app/build/outputs/apk/release/ -name "*.apk" -exec mv {} "android_project/app/build/outputs/apk/release/${APK_NAME}" \;
           echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
           echo "apk_path=android_project/app/build/outputs/apk/release/${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: GDict ${{ github.ref_name }}
+          tag_name: v${{ steps.rename.outputs.tag_name }}
+          name: GDict v${{ steps.rename.outputs.tag_name }}
           generate_release_notes: true
           files: |
             ${{ steps.rename.outputs.apk_path }}
