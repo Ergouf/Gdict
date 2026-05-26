@@ -356,7 +356,8 @@ fun DictionariesScreen(
                         TextButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText(stringResource(R.string.diagnostic_clip_label), vmDiagnosticResult)
+                                val clipLabel = context.getString(R.string.diagnostic_clip_label)
+                                val clip = ClipData.newPlainText(clipLabel, vmDiagnosticResult)
                                 clipboard.setPrimaryClip(clip)
                             }
                         ) {
