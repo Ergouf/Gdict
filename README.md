@@ -39,41 +39,6 @@ A modern dictionary app for Android & Desktop following Material Design 3, suppo
   <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict Mockup Preview">
 </div>
 
-<details>
-<summary>More Screenshots</summary>
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><b>Search</b></td>
-      <td align="center"><b>Word Detail</b></td>
-      <td align="center"><b>Bookmarks</b></td>
-      <td align="center"><b>Dictionaries</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/search.png" width="200" alt="Search"></td>
-      <td><img src="screenshots/detail.png" width="200" alt="Detail"></td>
-      <td><img src="screenshots/bookmarks.png" width="200" alt="Favorites"></td>
-      <td><img src="screenshots/dictionaries.png" width="200" alt="Dictionaries"></td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td align="center"><b>Flashcard</b></td>
-      <td align="center"><b>Settings</b></td>
-      <td align="center"><b>Dark Mode</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/flashcard_front.png" width="200" alt="Flashcard"></td>
-      <td><img src="screenshots/settings.png" width="200" alt="Settings"></td>
-      <td><img src="screenshots/dark_mode.png" width="200" alt="Dark Mode"></td>
-    </tr>
-  </table>
-</div>
-
-</details>
-
 ## Tech Stack
 
 | Category | Technology |

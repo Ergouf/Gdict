@@ -73,41 +73,6 @@
   <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict 界面预览">
 </div>
 
-<details>
-<summary>更多截图</summary>
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><b>搜索页</b></td>
-      <td align="center"><b>单词详情</b></td>
-      <td align="center"><b>生词本</b></td>
-      <td align="center"><b>词典管理</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/search.png" width="200" alt="搜索页"></td>
-      <td><img src="screenshots/detail.png" width="200" alt="详情页"></td>
-      <td><img src="screenshots/bookmarks.png" width="200" alt="生词本"></td>
-      <td><img src="screenshots/dictionaries.png" width="200" alt="词典管理"></td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td align="center"><b>闪卡复习</b></td>
-      <td align="center"><b>设置页</b></td>
-      <td align="center"><b>深色模式</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/flashcard_front.png" width="200" alt="闪卡复习"></td>
-      <td><img src="screenshots/settings.png" width="200" alt="设置页"></td>
-      <td><img src="screenshots/dark_mode.png" width="200" alt="深色模式"></td>
-    </tr>
-  </table>
-</div>
-
-</details>
-
 ## 技术栈
 
 | 类别 | 技术 | 说明 |
