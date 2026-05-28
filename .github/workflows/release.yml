@@ -57,7 +57,8 @@ jobs:
 
       - name: Build Release APK
         working-directory: android
-        run: ./gradlew clean assembleRelease --stacktrace --info
+        run: ./gradlew clean assembleRelease --stacktrace
+        timeout-minutes: 60
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -144,7 +145,8 @@ jobs:
       - name: Build Desktop EXE
         working-directory: desktop
         shell: bash
-        run: ./gradlew clean packageExe --stacktrace --info
+        run: ./gradlew clean packageExe --stacktrace
+        timeout-minutes: 60
 
       - name: Determine tag
         id: tag
