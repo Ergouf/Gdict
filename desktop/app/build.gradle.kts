@@ -21,40 +21,6 @@ dependencies {
     implementation("javazoom:jlayer:1.0.1")
 }
 
-val downloadJcef by tasks.registering(JavaExec::class) {
-    group = "gdict"
-    description = "Download JCEF bundle via jcefmaven if not present"
-    mainClass.set("io.github.gdict.JcefDownloaderKt")
-    classpath = sourceSets["main"].runtimeClasspath
-}
-
-val copyJcefToResources by tasks.registering(Copy::class) {
-    group = "gdict"
-    description = "Copy JCEF bundle from user dir to app resources directory"
-    dependsOn(downloadJcef)
-    from("${System.getProperty("user.home")}/.gdict/jcef-bundle")
-    into("resources/windows-x64/jcef-bundle")
-    onlyIf {
-        file("${System.getProperty("user.home")}/.gdict/jcef-bundle/install.lock").exists()
-    }
-}
-
-val copyJcefToAppImage by tasks.registering(Copy::class) {
-    group = "gdict"
-    description = "Copy JCEF bundle to packaged app image"
-    from("${System.getProperty("user.home")}/.gdict/jcef-bundle")
-    into("${layout.buildDirectory.get()}/compose/binaries/main/app/Gdict/jcef-bundle")
-    onlyIf {
-        file("${System.getProperty("user.home")}/.gdict/jcef-bundle/install.lock").exists()
-    }
-}
-
-afterEvaluate {
-    tasks.findByName("prepareAppResources")?.dependsOn(copyJcefToResources)
-    tasks.findByName("packageAppImage")?.finalizedBy(copyJcefToAppImage)
-    tasks.findByName("packageExe")?.dependsOn(copyJcefToResources)
-}
-
 compose.desktop {
     application {
         mainClass = "io.github.gdict.MainKt"

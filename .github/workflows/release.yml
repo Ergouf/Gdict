@@ -42,11 +42,14 @@ jobs:
           key: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
           restore-keys: gradle-android-
 
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
       - name: Verify environment
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          ./android/gradlew -v --project-dir android
+          android/gradlew -v --project-dir android
 
       - name: Create keystore
         run: |
@@ -54,9 +57,7 @@ jobs:
 
       - name: Build Release APK
         working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew clean assembleRelease --stacktrace --info
+        run: ./gradlew clean assembleRelease --stacktrace --info
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -117,19 +118,33 @@ jobs:
           key: gradle-desktop-${{ hashFiles('desktop/**/*.gradle.kts', 'desktop/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
           restore-keys: gradle-desktop-
 
+      - name: Make gradlew executable
+        shell: bash
+        run: chmod +x desktop/gradlew
+
+      - name: Download JCEF bundle
+        shell: bash
+        run: |
+          JCEF_DIR="desktop/app/resources/windows-x64/jcef-bundle"
+          mkdir -p "$JCEF_DIR"
+          curl -L -o jcef-bundle.tar.gz "https://github.com/jcefmaven/jcefbuild/releases/download/1.0.60/windows-amd64.tar.gz"
+          tar -xzf jcef-bundle.tar.gz -C "$JCEF_DIR" --strip-components=1
+          touch "$JCEF_DIR/install.lock"
+          rm jcef-bundle.tar.gz
+          echo "JCEF bundle downloaded to $JCEF_DIR"
+          ls -la "$JCEF_DIR"
+
       - name: Verify environment
         shell: bash
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          ./desktop/gradlew -v --project-dir desktop
+          desktop/gradlew -v --project-dir desktop
 
       - name: Build Desktop EXE
         working-directory: desktop
         shell: bash
-        run: |
-          chmod +x gradlew
-          ./gradlew clean packageExe --stacktrace --info
+        run: ./gradlew clean packageExe --stacktrace --info
 
       - name: Determine tag
         id: tag
