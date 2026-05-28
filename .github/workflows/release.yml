@@ -42,6 +42,12 @@ jobs:
           key: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
           restore-keys: gradle-android-
 
+      - name: Verify environment
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          ./android/gradlew -v --project-dir android
+
       - name: Create keystore
         run: |
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
@@ -50,7 +56,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleRelease --stacktrace
+          ./gradlew clean assembleRelease --stacktrace --info
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -111,13 +117,19 @@ jobs:
           key: gradle-desktop-${{ hashFiles('desktop/**/*.gradle.kts', 'desktop/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
           restore-keys: gradle-desktop-
 
+      - name: Verify environment
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          ./desktop/gradlew -v --project-dir desktop
+
       - name: Build Desktop EXE
         working-directory: desktop
         shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew downloadJcef --stacktrace
-          ./gradlew clean packageExe --stacktrace
+          ./gradlew clean packageExe --stacktrace --info
 
       - name: Determine tag
         id: tag
