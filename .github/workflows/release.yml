@@ -18,7 +18,6 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -50,15 +49,15 @@ jobs:
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          android/gradlew -v --project-dir android --no-daemon
+          android/gradlew -v --project-dir android
 
       - name: Create keystore
         run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
 
       - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew clean assembleRelease --stacktrace --info
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -98,7 +97,6 @@ jobs:
   build-desktop:
     name: Build Windows EXE
     runs-on: windows-latest
-    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -141,12 +139,12 @@ jobs:
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          desktop/gradlew -v --project-dir desktop --no-daemon
+          desktop/gradlew -v --project-dir desktop
 
       - name: Build Desktop EXE
         working-directory: desktop
         shell: bash
-        run: ./gradlew packageExe --stacktrace
+        run: ./gradlew clean packageExe --stacktrace --info
 
       - name: Determine tag
         id: tag

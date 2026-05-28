@@ -5,7 +5,7 @@ out/
 .kotlin/
 *.iml
 local.properties
-data/
+/data/
 
 *.zip
 jdk17/
