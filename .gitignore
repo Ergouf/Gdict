@@ -1,5 +1,7 @@
 /android_sdk/
 /jdk17/
+/jcef-bundle/
+**/jcef-bundle/
 
 *.mdx
 *.mdd
