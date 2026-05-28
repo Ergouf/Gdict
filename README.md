@@ -2,7 +2,7 @@
 
 [中文版 (Chinese)](./README.zh-CN.md)
 
-A modern Android dictionary app following Material Design 3, supporting MDX/MDD dictionary formats.
+A modern dictionary app for Android & Desktop following Material Design 3, supporting MDX/MDD dictionary formats.
 
 ## Features
 
@@ -18,98 +18,83 @@ A modern Android dictionary app following Material Design 3, supporting MDX/MDD 
 - **Edge-to-Edge** — Immersive status bar and navigation bar
 - **MD3 Bottom Nav** — Search / Favorites / Learning / Profile
 
+### Desktop-Specific Features (Compose Multiplatform)
+
+- **JCEF Browser Engine** — Chromium-based rendering for dictionary HTML content with custom scrollbar styling
+- **Card Drag & Drop** — Long-press drag to reorder search result cards on Android; click-and-drag on Desktop
+- **Pinch to Zoom** — Pinch-to-zoom on search results and word detail pages (Android)
+- **SAF File Scanning** — Scan folders for MDX dictionaries using Android Storage Access Framework
+- **Soft Brand Color** — PrimarySoft (`#82B274`) for selected states, switches, and interactive elements
+- **Custom Scrollbar** — Thin rounded scrollbar with hover effects across all scrollable pages
+- **Theme Color** — Green brand color (`#4A7C59`) for sidebar/buttons, neutral gray for main content areas
+- **i18n Support** — Full Chinese localization including dialogs, buttons, tooltips, and all UI text
+- **Zoom Memory** — Card scale and detail page zoom levels are persisted across sessions
+- **Full-Area Click** — Entire word card area is clickable to open detail view
+- **Performance** — Browser panel pre-created at startup; image URL preprocessing optimized with regex
+- **Afdian Donation** — Support the developer via 爱发电 (Afdian) sponsor page
+
 ## Screenshots
+
+<div align="center">
+  <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict Mockup Preview">
+</div>
+
+<details>
+<summary>More Screenshots</summary>
 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><b>Search & Home</b></td>
+      <td align="center"><b>Search</b></td>
       <td align="center"><b>Word Detail</b></td>
-      <td align="center"><b>Flashcard Start</b></td>
-      <td align="center"><b>Flashcard Front</b></td>
+      <td align="center"><b>Bookmarks</b></td>
+      <td align="center"><b>Dictionaries</b></td>
     </tr>
     <tr>
       <td><img src="screenshots/search.png" width="200" alt="Search"></td>
       <td><img src="screenshots/detail.png" width="200" alt="Detail"></td>
-      <td><img src="screenshots/flashcard.png" width="200" alt="Flashcard"></td>
-      <td><img src="screenshots/flashcard_front.png" width="200" alt="Flashcard Front"></td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td align="center"><b>Flashcard Back</b></td>
-      <td align="center"><b>Favorites</b></td>
-      <td align="center"><b>Dictionaries</b></td>
-      <td align="center"><b>Settings</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/flashcard_back.png" width="200" alt="Flashcard Back"></td>
       <td><img src="screenshots/bookmarks.png" width="200" alt="Favorites"></td>
       <td><img src="screenshots/dictionaries.png" width="200" alt="Dictionaries"></td>
-      <td><img src="screenshots/settings.png" width="200" alt="Settings"></td>
     </tr>
   </table>
 
   <table>
     <tr>
+      <td align="center"><b>Flashcard</b></td>
+      <td align="center"><b>Settings</b></td>
       <td align="center"><b>Dark Mode</b></td>
     </tr>
     <tr>
+      <td><img src="screenshots/flashcard_front.png" width="200" alt="Flashcard"></td>
+      <td><img src="screenshots/settings.png" width="200" alt="Settings"></td>
       <td><img src="screenshots/dark_mode.png" width="200" alt="Dark Mode"></td>
     </tr>
   </table>
 </div>
+
+</details>
 
 ## Tech Stack
 
 | Category | Technology |
 |------|------|
 | Language | Kotlin |
-| UI Framework | Jetpack Compose |
+| UI Framework | Jetpack Compose / Compose Multiplatform (Desktop) |
 | Design System | Material Design 3 |
 | Navigation | Navigation Compose |
 | State Management | ViewModel + StateFlow |
-| Data Persistence | SharedPreferences (JSON) |
+| Data Persistence | SharedPreferences (JSON) / JSON File Storage (Desktop) |
 | Audio | Edge TTS + MediaPlayer + TextToSpeech |
+| Desktop Browser | JCEF (Java Chromium Embedded Framework) |
 | Build | Gradle Kotlin DSL |
 
 ## Project Structure
 
 ```
 Gdict/
-├── android_project/                        # Android app (main project)
-│   ├── app/                                # App module
-│   │   ├── src/main/java/io/github/gdict/
-│   │   │   ├── MainActivity.kt             # Entry Activity
-│   │   │   ├── GdictApplication.kt         # Application
-│   │   │   ├── data/
-│   │   │   │   └── AppRepository.kt        # Data repository
-│   │   │   ├── viewmodel/
-│   │   │   │   ├── SettingsViewModel.kt     # Global settings (dark mode, etc.)
-│   │   │   │   ├── SearchViewModel.kt       # Search + history + WotD
-│   │   │   │   ├── BookmarkViewModel.kt     # Bookmark management
-│   │   │   │   ├── FlashcardViewModel.kt    # FSRS flashcard session
-│   │   │   │   └── DictionaryViewModel.kt   # Dict import/management
-│   │   │   └── ui/
-│   │   │       ├── GdictApp.kt            # Main UI + bottom nav
-│   │   │       ├── screens/
-│   │   │       │   ├── SearchScreen.kt     # Search + Word of the Day
-│   │   │       │   ├── WordDetailScreen.kt # Detail + pronunciation
-│   │   │       │   ├── BookmarksScreen.kt  # Bookmarks
-│   │   │       │   ├── FlashcardScreen.kt  # Spaced repetition (FSRS)
-│   │   │       │   ├── DictionariesScreen.kt # Dictionary management
-│   │   │       │   └── SettingsScreen.kt   # Settings
-│   │   │       ├── tts/
-│   │   │       │   └── EdgeTtsClient.kt    # Microsoft Edge TTS client
-│   │   │       └── theme/
-│   │   │           ├── Color.kt            # GdictColors palette
-│   │   │           ├── Theme.kt            # GdictTheme + Edge-to-Edge
-│   │   │           └── Type.kt             # GdictTypography
-│   │   ├── build.gradle.kts
-│   │   └── proguard-rules.pro
-│   ├── core/                               # Core library module
-│   │   ├── src/main/java/io/github/gdict/core/
+├── shared/                                 # Shared modules (cross-platform)
+│   ├── core/                               # Core library (pure JVM, no platform deps)
+│   │   ├── src/main/kotlin/io/github/gdict/core/
 │   │   │   ├── MdxParser.kt                # MDX/MDD parser (streaming lookup)
 │   │   │   ├── GdictLogger.kt              # Logging interface abstraction
 │   │   │   ├── Lzo1xDecompressor.kt        # LZO1X decompressor
@@ -118,24 +103,100 @@ Gdict/
 │   │   │   ├── DictPersistence.kt          # Dictionary persistence
 │   │   │   ├── DictFileImporter.kt         # Dictionary file importer
 │   │   │   ├── DictSearchEngine.kt         # Dictionary search engine
-│   │   │   └── FsrsAlgorithm.kt            # FSRS spaced repetition algorithm
-│   │   ├── src/test/java/io/github/gdict/core/
+│   │   │   ├── FsrsAlgorithm.kt            # FSRS spaced repetition algorithm
+│   │   │   └── model/                      # Data models
+│   │   │       ├── Dictionary.kt
+│   │   │       ├── BookmarkItem.kt
+│   │   │       ├── HistoryItem.kt
+│   │   │       ├── SearchResultItem.kt
+│   │   │       └── ReviewStats.kt
+│   │   ├── src/test/kotlin/io/github/gdict/core/
 │   │   │   └── MdxParserTest.kt            # Parser unit tests
+│   │   └── build.gradle.kts
+│   ├── shared-ui/                          # Shared UI logic (ViewModels, Repository interfaces, TTS)
+│   │   ├── src/main/kotlin/io/github/gdict/
+│   │   │   ├── data/
+│   │   │   │   ├── DictionaryRepository.kt # Dictionary repository interface
+│   │   │   │   ├── BookmarkRepository.kt   # Bookmark repository interface
+│   │   │   │   ├── HistoryRepository.kt    # History repository interface
+│   │   │   │   ├── SettingsRepository.kt   # Settings repository interface
+│   │   │   │   └── StorageBackend.kt       # Storage backend interface
+│   │   │   ├── viewmodel/
+│   │   │   │   ├── SearchViewModel.kt      # Search + history + WotD
+│   │   │   │   ├── BookmarkViewModel.kt    # Bookmark management
+│   │   │   │   ├── FlashcardViewModel.kt   # FSRS flashcard session
+│   │   │   │   ├── DictionaryViewModel.kt  # Dict import/management
+│   │   │   │   └── SettingsViewModel.kt    # Global settings
+│   │   │   └── tts/
+│   │   │       ├── EdgeTtsClient.kt        # Microsoft Edge TTS client
+│   │   │       └── TtsManager.kt           # TTS manager
+│   │   └── build.gradle.kts
+│   ├── build.gradle.kts
+│   └── settings.gradle.kts
+├── android/                                # Android app
+│   ├── app/
+│   │   ├── src/main/java/io/github/gdict/
+│   │   │   ├── MainActivity.kt             # Entry Activity
+│   │   │   ├── GdictApplication.kt         # Application (DI setup)
+│   │   │   ├── data/                       # Android-specific Repository implementations
+│   │   │   │   ├── AndroidDictionaryRepository.kt
+│   │   │   │   ├── AndroidBookmarkRepository.kt
+│   │   │   │   ├── AndroidHistoryRepository.kt
+│   │   │   │   └── AndroidSettingsRepository.kt
+│   │   │   ├── platform/                   # Android platform adapters
+│   │   │   │   ├── AndroidFileSystemAccess.kt
+│   │   │   │   ├── AndroidPersistenceBackend.kt
+│   │   │   │   └── AndroidLogger.kt
+│   │   │   ├── viewmodel/                  # Android-specific ViewModels
+│   │   │   ├── ui/
+│   │   │   │   ├── GdictApp.kt             # Main UI + bottom nav
+│   │   │   │   ├── screens/                # All screen composables
+│   │   │   │   ├── theme/                  # Color, Theme, Typography
+│   │   │   │   └── webview/                # WebView, HTML builder, audio, renderers
+│   │   │   ├── util/                       # LocaleHelper etc.
+│   │   │   └── tts/
+│   │   │       └── EdgeTtsClient.kt        # Android Edge TTS client
 │   │   ├── build.gradle.kts
 │   │   └── proguard-rules.pro
-│   ├── gradle/wrapper/
 │   ├── build.gradle.kts
-│   ├── settings.gradle.kts
-│   ├── gradle.properties
-│   ├── export.build.gradle.kts             # Export task build config
-│   └── play_store_512.png                  # Play Store icon
-├── export_project/                         # Standalone export tool
-│   └── build.gradle.kts
-├── export_words.kt                         # Standalone MDX export script
-├── BUILD.md                                # Local build setup guide
-├── .gitignore
-├── README.md                               # English README
-└── README.zh-CN.md                         # Chinese README
+│   └── settings.gradle.kts                 # includeBuild("../shared")
+├── desktop/                                # Desktop app (Compose Multiplatform)
+│   ├── app/
+│   │   ├── src/main/kotlin/io/github/gdict/
+│   │   │   ├── Main.kt                     # Desktop entry point
+│   │   │   ├── core/
+│   │   │   │   └── DesktopLogger.kt        # Desktop logger implementation
+│   │   │   ├── api/
+│   │   │   │   └── AfdianClient.kt         # Afdian donation API client
+│   │   │   ├── data/                       # Desktop-specific Repository implementations
+│   │   │   │   ├── DesktopDictionaryRepository.kt
+│   │   │   │   ├── DesktopBookmarkRepository.kt
+│   │   │   │   ├── DesktopHistoryRepository.kt
+│   │   │   │   ├── DesktopSettingsRepository.kt
+│   │   │   │   └── JsonFileStorageBackend.kt
+│   │   │   └── ui/
+│   │   │       ├── DesktopApp.kt           # Main desktop UI
+│   │   │       ├── LocalStrings.kt         # Localized string provider
+│   │   │       ├── components/
+│   │   │       │   └── CollapsibleSidebar.kt # Collapsible sidebar component
+│   │   │       ├── screens/                # All screen composables
+│   │   │       ├── strings/                # i18n string resources (EN/ZH-CN)
+│   │   │       ├── webview/                # JCEF, HTML builder, audio, renderers
+│   │   │       └── theme/
+│   │   │           ├── GdictTheme.kt       # Material theme with green/gray colors
+│   │   │           └── GdictColors.kt      # Color definitions
+│   │   ├── build.gradle.kts
+│   │   └── resources/
+│   ├── build.gradle.kts
+│   └── settings.gradle.kts                 # includeBuild("../shared")
+├── screenshots/
+├── mockups/                                # HTML/CSS UI mockups
+├── BUILD.md
+├── CONTRIBUTING.md
+├── CONTRIBUTING.zh-CN.md
+├── PRIVACY_POLICY.md
+├── README.md
+└── README.zh-CN.md
 ```
 
 ## Quick Start
@@ -143,29 +204,54 @@ Gdict/
 ### Prerequisites
 
 - Android Studio Hedgehog (2023.1.1) or later
-- JDK 17+
+- JDK 21 (shared/core) / JDK 17+ (Android & Desktop)
 - Android SDK API 34
 - Gradle 8.5 (included via wrapper)
 
 ### Build
 
+#### Android
+
 ```bash
-cd android_project
+cd android
 
 # Debug build
 ./gradlew assembleDebug
 
 # Release build (requires local.properties configuration)
 ./gradlew assembleRelease
-
-# APK output
-# app/build/outputs/apk/debug/app-debug.apk
-# app/build/outputs/apk/release/app-release.apk
 ```
+
+#### Desktop (Compose Multiplatform)
+
+```bash
+cd desktop
+
+# Run in development mode
+./gradlew run
+
+# Package as distributable app image
+./gradlew packageAppImage
+
+# Output location: app/build/compose/binaries/main/app/Gdict/
+```
+
+#### MSIX Package (Microsoft Store)
+
+```bash
+cd desktop
+
+# Package as MSIX for Microsoft Store submission
+./gradlew packageMsix
+
+# Output location: app/build/compose/binaries/main/msix/Gdict.msix
+```
+
+Before submitting to the Microsoft Store, update `desktop/msix/AppxManifest.xml` with your Partner Center identity values (`Identity/Name`, `Identity/Publisher`, `PublisherDisplayName`).
 
 ### Release Signing
 
-Create `local.properties` under `android_project/`:
+Create `local.properties` under `android/`:
 
 ```properties
 sdk.dir=D\\:\\path\\to\\android_sdk
@@ -188,7 +274,7 @@ keytool -genkeypair -v \
 
 ### Open in Android Studio
 
-1. Open the `android_project` directory
+1. Open the `android` directory
 2. Wait for Gradle sync
 3. Connect a device or start an emulator
 4. Click Run
@@ -196,7 +282,7 @@ keytool -genkeypair -v \
 ### Run Tests
 
 ```bash
-cd android_project
+cd android
 
 # Run MDX parser unit tests
 ./gradlew :core:testDebugUnitTest --rerun-tasks
@@ -248,7 +334,7 @@ cd android_project
 kotlinc -script export_words.kt -- /path/to/dict.mdx /path/to/output
 
 # Or via Gradle
-cd android_project
+cd android
 ./gradlew export -PmdxPath=/path/to/dict.mdx -PoutputDir=/path/to/output
 ```
 

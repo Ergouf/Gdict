@@ -12,6 +12,8 @@
 
 项目需要 JDK 17 或更高版本。
 
+> **注意**：`shared/core` 模块使用 `jvmToolchain(21)`，需要 JDK 21。Android 和 Desktop 模块使用 JDK 17。
+
 **使用项目捆绑的 JDK（推荐）**：
 
 项目 `android_sdk/jdk-17.0.12+7/` 已包含 JDK 17，构建时设置 `JAVA_HOME` 指向该目录即可：
@@ -69,7 +71,7 @@ cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-34" "build-tools;34.0
 
 ### local.properties
 
-在 `android_project/` 目录下创建 `local.properties` 文件（该文件已在 `.gitignore` 中排除）：
+在 `android/` 目录下创建 `local.properties` 文件（该文件已在 `.gitignore` 中排除）：
 
 ```properties
 # Android SDK 路径（注意 Windows 路径中的反斜杠需要转义）
@@ -109,13 +111,13 @@ keytool -genkeypair -v \
 # 设置环境变量并构建
 $env:JAVA_HOME = "D:\workspace\Gdict\android_sdk\jdk-17.0.12+7"
 $env:ANDROID_HOME = "D:\workspace\Gdict\android_sdk"
-& D:\workspace\Gdict\android_project\gradlew.bat -p D:\workspace\Gdict\android_project assembleDebug
+& D:\workspace\Gdict\android\gradlew.bat -p D:\workspace\Gdict\android assembleDebug
 ```
 
 ### 清理构建
 
 ```bash
-cd android_project
+cd android
 
 # 清理所有构建产物
 ./gradlew clean
@@ -124,7 +126,7 @@ cd android_project
 ### Debug 构建
 
 ```bash
-cd android_project
+cd android
 
 # 构建 Debug APK（不需要签名）
 ./gradlew assembleDebug
@@ -136,7 +138,7 @@ cd android_project
 ### Release 构建
 
 ```bash
-cd android_project
+cd android
 
 # 构建 Release APK（需要签名配置）
 ./gradlew assembleRelease
@@ -148,7 +150,7 @@ cd android_project
 ### 运行测试
 
 ```bash
-cd android_project
+cd android
 
 # 运行 core 模块单元测试（纯 JVM 测试，无需模拟器）
 ./gradlew :core:testDebugUnitTest --rerun-tasks
@@ -157,18 +159,64 @@ cd android_project
 ./gradlew :core:testDebugUnitTest -Dmdx.file.path=D:\path\to\dict.mdx
 ```
 
+## Desktop 构建
+
+### 前提条件
+
+- JDK 17+
+- Gradle 8.5+（项目自带 wrapper）
+
+### 构建 Desktop 应用
+
+```bash
+cd desktop
+
+# 构建 Desktop 应用
+./gradlew run
+
+# 打包分发
+./gradlew packageDistributable
+```
+
+### Desktop 构建说明
+
+Desktop 应用基于 Compose Multiplatform，使用 JCEF（Java Chromium Embedded Framework）渲染词典 HTML 内容。
+
+- 构建产物位于 `app/build/compose/binaries/`
+- 首次构建会自动下载 JCEF 运行时
+- 数据存储在用户主目录 `~/.gdict/` 下
+
 ## 项目依赖
 
 项目使用 Gradle 管理依赖，主要依赖项：
 
+### Android 依赖
+
 | 依赖 | 版本 | 用途 |
 |------|------|------|
-| Kotlin | 1.9.22 | 编程语言 |
+| Kotlin | 2.1.0 | 编程语言 |
 | AGP | 8.2.2 | Android Gradle 插件 |
 | Jetpack Compose | BOM 2024.02.02 | UI 框架 |
 | Navigation Compose | 2.7.7 | 页面导航 |
 | DataStore | 1.0.0 | 本地键值存储 |
 | Material Icons Extended | 1.6.3 | Material Design 图标库 |
+
+### Desktop 依赖
+
+| 依赖 | 版本 | 用途 |
+|------|------|------|
+| Kotlin | 2.1.0 | 编程语言 |
+| Compose Multiplatform | 1.7.3 | 桌面 UI 框架 |
+| JCEF | 126.2.0 | HTML 渲染引擎 |
+
+### 共享模块依赖
+
+| 依赖 | 版本 | 用途 |
+|------|------|------|
+| kotlinx-coroutines-core | 1.8.1 | 协程支持 |
+| org.json | 20231013 | JSON 解析 |
+| jcefmaven | 126.2.0 | JCEF 浏览器引擎 (Desktop) |
+| jlayer | 1.0.1 | MP3 音频播放 (Desktop) |
 
 首本次构建时 Gradle 会自动下载所有依赖。
 
@@ -188,7 +236,7 @@ cd android_project
 **原因**：Gradle 找不到 Android SDK。
 
 **解决**：
-1. 确认 `android_project/local.properties` 文件存在
+1. 确认 `android/local.properties` 文件存在
 2. 确认 `sdk.dir` 路径正确（Windows 路径反斜杠需双写：`sdk.dir=D\\:\\path\\to\\sdk`）
 3. 或设置 `$env:ANDROID_HOME` 环境变量
 
@@ -199,7 +247,7 @@ cd android_project
 **解决**：不使用管道，直接调用：
 
 ```powershell
-& D:\workspace\Gdict\android_project\gradlew.bat -p D:\workspace\Gdict\android_project assembleDebug
+& D:\workspace\Gdict\android\gradlew.bat -p D:\workspace\Gdict\android assembleDebug
 ```
 
 ### Q: `Unresolved reference: BuildConfig`

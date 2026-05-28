@@ -23,7 +23,7 @@
 ### 前提条件
 
 - Android Studio Hedgehog (2023.1.1) 或更高版本
-- JDK 17+（项目 `android_sdk/` 已捆绑 JDK 17）
+- JDK 21（shared/core）/ JDK 17+（Android & Desktop）（项目 `android_sdk/` 已捆绑 JDK 17）
 - Android SDK API 34（项目 `android_sdk/` 已包含）
 
 ### 克隆后的第一步
@@ -32,7 +32,7 @@
 
    ```bash
    git clone https://github.com/Ergouf/Gdict.git
-   cd Gdict/android_project
+   cd Gdict/android
    ```
 
 2. 创建 `local.properties`：
@@ -52,9 +52,10 @@
 
 ### 项目结构
 
-- `android_project/app/` — 界面和 ViewModel 层（Jetpack Compose）+ Edge TTS 客户端
-- `android_project/core/` — 核心引擎（MDX 解析器、FSRS 算法、搜索引擎、日志抽象）— 不依赖 Android UI
-- `export_project/` — 独立导出工具
+- `shared/core/` — 核心引擎（MDX 解析器、FSRS 算法、搜索引擎、日志抽象）— 纯 JVM，无平台依赖
+- `shared/shared-ui/` — 共享 UI 逻辑（ViewModel、Repository 接口、TTS）— Desktop 使用
+- `android/app/` — Android 界面和平台特定实现（Jetpack Compose）
+- `desktop/app/` — 桌面端界面和平台特定实现（Compose Multiplatform）
 
 ## 代码风格
 

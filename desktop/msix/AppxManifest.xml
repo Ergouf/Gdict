@@ -6,13 +6,13 @@
     IgnorableNamespaces="uap rescap">
 
     <Identity
-        Name="Gdict.Gdict"
-        Publisher="CN=Gdict"
+        Name="fengjl.Gdict"
+        Publisher="CN=50657E51-56D9-4927-822B-577C645CC7A0"
         Version="1.0.0.0" />
 
     <Properties>
         <DisplayName>Gdict</DisplayName>
-        <PublisherDisplayName>Gdict</PublisherDisplayName>
+        <PublisherDisplayName>fengjl</PublisherDisplayName>
         <Description>Gdict - Desktop Dictionary Application</Description>
         <Logo>Assets\StoreLogo.png</Logo>
     </Properties>

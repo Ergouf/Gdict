@@ -23,7 +23,7 @@ Please include the following information:
 ### Prerequisites
 
 - Android Studio Hedgehog (2023.1.1) or later
-- JDK 17+ (project bundles JDK in `android_sdk/jdk-17.0.12+7/`)
+- JDK 21 (shared/core) / JDK 17+ (Android & Desktop) (project bundles JDK in `android_sdk/jdk-17.0.12+7/`)
 - Android SDK API 34 (project bundles SDK in `android_sdk/`)
 
 ### First Steps After Cloning
@@ -32,7 +32,7 @@ Please include the following information:
 
    ```bash
    git clone https://github.com/Ergouf/Gdict.git
-   cd Gdict/android_project
+   cd Gdict/android
    ```
 
 2. Create `local.properties`:
@@ -52,9 +52,10 @@ Please include the following information:
 
 ### Project Structure
 
-- `android_project/app/` — UI & ViewModel layer (Jetpack Compose) + Edge TTS client
-- `android_project/core/` — Core engine (MDX parser, FSRS, search, logging abstraction) — no Android UI dependency
-- `export_project/` — Standalone export tool
+- `shared/core/` — Core engine (MDX parser, FSRS, search, logging abstraction) — pure JVM, no platform dependency
+- `shared/shared-ui/` — Shared UI logic (ViewModels, Repository interfaces, TTS) — used by Desktop
+- `android/app/` — Android UI & platform-specific implementations (Jetpack Compose)
+- `desktop/app/` — Desktop UI & platform-specific implementations (Compose Multiplatform)
 
 ## Code Style
 

@@ -2,7 +2,7 @@
 
 [English](./README.md)
 
-一款遵循 Material Design 3 设计规范的现代 Android 词典应用，支持 MDX/MDD 词典格式，内置 FSRS 间隔重复算法用于单词记忆。
+一款遵循 Material Design 3 设计规范的现代词典应用，支持 Android 和桌面端，兼容 MDX/MDD 词典格式，内置 FSRS 间隔重复算法用于单词记忆。
 
 ## 目录
 
@@ -52,98 +52,83 @@
 - **Edge-to-Edge 全面屏适配** — 沉浸式状态栏和导航栏
 - **Material Design 3** — Search / Favorites / Learning / Profile 四页底部导航
 
+### 桌面端专属功能（Compose Multiplatform）
+
+- **JCEF 浏览器引擎** — 基于 Chromium 渲染词典 HTML 内容，内置自定义滚动条样式
+- **卡片拖拽排序** — Android 长按拖拽排序搜索结果卡片；桌面端鼠标拖拽排序
+- **双指缩放** — 搜索结果和词条详情页支持双指缩放（Android）
+- **SAF 文件扫描** — 通过 Android Storage Access Framework 扫描文件夹中的 MDX 词典
+- **柔和品牌色** — PrimarySoft (`#82B274`) 用于选中态、开关和交互元素
+- **自定义滚动条** — 所有可滚动页面统一使用细圆角滚动条，带悬停高亮效果
+- **主题配色** — 品牌绿色 (`#4A7C59`) 用于侧边栏/按钮，主内容区保持中性灰
+- **国际化 (i18n)** — 全中文本地化，包括对话框、按钮、提示文字等所有 UI 文本
+- **缩放记忆** — 搜索结果卡片缩放比例和详情页缩放倍数跨会话持久化保存
+- **整卡点击** — 单词卡片整个区域均可点击打开详情页
+- **性能优化** — 启动时预创建浏览器面板；图片 URL 预处理改用正则表达式优化
+- **爱发电赞助** — 通过爱发电赞助页面支持开发者
+
 ## 应用截图
+
+<div align="center">
+  <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict 界面预览">
+</div>
+
+<details>
+<summary>更多截图</summary>
 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><b>搜索首页</b></td>
+      <td align="center"><b>搜索页</b></td>
       <td align="center"><b>单词详情</b></td>
-      <td align="center"><b>闪卡开始页</b></td>
-      <td align="center"><b>闪卡正面</b></td>
+      <td align="center"><b>生词本</b></td>
+      <td align="center"><b>词典管理</b></td>
     </tr>
     <tr>
       <td><img src="screenshots/search.png" width="200" alt="搜索页"></td>
       <td><img src="screenshots/detail.png" width="200" alt="详情页"></td>
-      <td><img src="screenshots/flashcard.png" width="200" alt="闪卡"></td>
-      <td><img src="screenshots/flashcard_front.png" width="200" alt="闪卡正面"></td>
-    </tr>
-  </table>
-
-  <table>
-    <tr>
-      <td align="center"><b>闪卡反面</b></td>
-      <td align="center"><b>生词本</b></td>
-      <td align="center"><b>词典管理</b></td>
-      <td align="center"><b>设置页</b></td>
-    </tr>
-    <tr>
-      <td><img src="screenshots/flashcard_back.png" width="200" alt="闪卡反面"></td>
       <td><img src="screenshots/bookmarks.png" width="200" alt="生词本"></td>
       <td><img src="screenshots/dictionaries.png" width="200" alt="词典管理"></td>
-      <td><img src="screenshots/settings.png" width="200" alt="设置"></td>
     </tr>
   </table>
 
   <table>
     <tr>
+      <td align="center"><b>闪卡复习</b></td>
+      <td align="center"><b>设置页</b></td>
       <td align="center"><b>深色模式</b></td>
     </tr>
     <tr>
+      <td><img src="screenshots/flashcard_front.png" width="200" alt="闪卡复习"></td>
+      <td><img src="screenshots/settings.png" width="200" alt="设置页"></td>
       <td><img src="screenshots/dark_mode.png" width="200" alt="深色模式"></td>
     </tr>
   </table>
 </div>
+
+</details>
 
 ## 技术栈
 
 | 类别 | 技术 | 说明 |
 |------|------|------|
 | 语言 | Kotlin | 100% Kotlin 代码 |
-| UI 框架 | Jetpack Compose | 声明式 UI + Material 3 |
+| UI 框架 | Jetpack Compose / Compose Multiplatform (Desktop) | 声明式 UI + Material 3 |
 | 设计系统 | Material Design 3 | 动态配色 + 暗色主题 |
 | 导航 | Navigation Compose | 类型安全导航 + 参数传递 |
 | 状态管理 | ViewModel + StateFlow | 5 个专用 ViewModel 分离关注点 |
-| 数据持久化 | SharedPreferences (JSON) | 轻量级数据存储 |
+| 数据持久化 | SharedPreferences (JSON) / JSON 文件存储 (Desktop) | 轻量级数据存储 |
 | 音频 | Edge TTS + MediaPlayer + TextToSpeech | 云端 + 本地发音引擎 |
+| 桌面浏览器 | JCEF (Java Chromium Embedded Framework) | Chromium 内核渲染词典 HTML |
 | 构建 | Gradle Kotlin DSL | 模块化构建配置 |
 
 ## 项目结构
 
 ```
 Gdict/
-├── android_project/                          # Android 应用（主项目）
-│   ├── app/                                  # 应用模块
-│   │   ├── src/main/java/io/github/gdict/
-│   │   │   ├── MainActivity.kt               # 入口 Activity
-│   │   │   ├── GdictApplication.kt           # Application（初始化数据仓库）
-│   │   │   ├── data/
-│   │   │   │   └── AppRepository.kt          # 数据仓库（单例）
-│   │   │   ├── viewmodel/
-│   │   │   │   ├── SettingsViewModel.kt      # 全局设置（深色模式等）
-│   │   │   │   ├── SearchViewModel.kt        # 搜索 + 历史 + 每日单词
-│   │   │   │   ├── BookmarkViewModel.kt      # 收藏管理
-│   │   │   │   ├── FlashcardViewModel.kt     # FSRS 闪卡复习会话
-│   │   │   │   └── DictionaryViewModel.kt    # 词典导入/管理/诊断
-│   │   │   └── ui/
-│   │   │       ├── GdictApp.kt               # 主 UI + 导航图 + 底部导航栏
-│   │   │       ├── screens/
-│   │   │       │   ├── SearchScreen.kt       # 搜索页 + Word of the Day
-│   │   │       │   ├── WordDetailScreen.kt   # 词条详情页 + 发音 + WebView
-│   │   │       │   ├── BookmarksScreen.kt    # 生词本页
-│   │   │       │   ├── FlashcardScreen.kt    # 闪卡复习页 (FSRS)
-│   │   │       │   ├── DictionariesScreen.kt # 词典管理页
-│   │   │       │   └── SettingsScreen.kt     # 设置页
-│   │   │       ├── tts/
-│   │   │       │   └── EdgeTtsClient.kt      # 微软 Edge TTS 客户端
-│   │   │       └── theme/
-│   │   │           ├── Color.kt              # GdictColors 色板
-│   │   │           ├── Theme.kt              # GdictTheme + Edge-to-Edge
-│   │   │           └── Type.kt               # GdictTypography 字体排版
-│   │   ├── build.gradle.kts
-│   │   └── proguard-rules.pro
-│   ├── core/                                 # 核心库模块（纯逻辑，无 UI 依赖）
-│   │   ├── src/main/java/io/github/gdict/core/
+├── shared/                                   # 共享模块（跨平台）
+│   ├── core/                                 # 核心库（纯 JVM，无平台依赖）
+│   │   ├── src/main/kotlin/io/github/gdict/core/
 │   │   │   ├── MdxParser.kt                  # MDX/MDD 解析器
 │   │   │   ├── GdictLogger.kt                # 日志接口抽象
 │   │   │   ├── Lzo1xDecompressor.kt          # LZO1X 解压
@@ -152,23 +137,100 @@ Gdict/
 │   │   │   ├── DictPersistence.kt            # 词典持久化
 │   │   │   ├── DictFileImporter.kt           # 词典文件导入
 │   │   │   ├── DictSearchEngine.kt           # 词典搜索引擎
-│   │   │   └── FsrsAlgorithm.kt              # FSRS 间隔重复算法
-│   │   ├── src/test/java/io/github/gdict/core/
+│   │   │   ├── FsrsAlgorithm.kt              # FSRS 间隔重复算法
+│   │   │   └── model/                        # 数据模型
+│   │   │       ├── Dictionary.kt
+│   │   │       ├── BookmarkItem.kt
+│   │   │       ├── HistoryItem.kt
+│   │   │       ├── SearchResultItem.kt
+│   │   │       └── ReviewStats.kt
+│   │   ├── src/test/kotlin/io/github/gdict/core/
 │   │   │   └── MdxParserTest.kt              # 解析器单元测试
+│   │   └── build.gradle.kts
+│   ├── shared-ui/                            # 共享 UI 逻辑（ViewModel、Repository 接口、TTS）
+│   │   ├── src/main/kotlin/io/github/gdict/
+│   │   │   ├── data/
+│   │   │   │   ├── DictionaryRepository.kt   # 词典仓库接口
+│   │   │   │   ├── BookmarkRepository.kt     # 收藏仓库接口
+│   │   │   │   ├── HistoryRepository.kt      # 历史仓库接口
+│   │   │   │   ├── SettingsRepository.kt     # 设置仓库接口
+│   │   │   │   └── StorageBackend.kt         # 存储后端接口
+│   │   │   ├── viewmodel/
+│   │   │   │   ├── SearchViewModel.kt        # 搜索 + 历史 + 每日单词
+│   │   │   │   ├── BookmarkViewModel.kt      # 收藏管理
+│   │   │   │   ├── FlashcardViewModel.kt     # FSRS 闪卡复习会话
+│   │   │   │   ├── DictionaryViewModel.kt    # 词典导入/管理/诊断
+│   │   │   │   └── SettingsViewModel.kt      # 全局设置
+│   │   │   └── tts/
+│   │   │       ├── EdgeTtsClient.kt          # 微软 Edge TTS 客户端
+│   │   │       └── TtsManager.kt             # TTS 管理器
+│   │   └── build.gradle.kts
+│   ├── build.gradle.kts
+│   └── settings.gradle.kts
+├── android/                                  # Android 应用
+│   ├── app/
+│   │   ├── src/main/java/io/github/gdict/
+│   │   │   ├── MainActivity.kt               # 入口 Activity
+│   │   │   ├── GdictApplication.kt           # Application（依赖注入配置）
+│   │   │   ├── data/                         # Android 平台 Repository 实现
+│   │   │   │   ├── AndroidDictionaryRepository.kt
+│   │   │   │   ├── AndroidBookmarkRepository.kt
+│   │   │   │   ├── AndroidHistoryRepository.kt
+│   │   │   │   └── AndroidSettingsRepository.kt
+│   │   │   ├── platform/                     # Android 平台适配器
+│   │   │   │   ├── AndroidFileSystemAccess.kt
+│   │   │   │   ├── AndroidPersistenceBackend.kt
+│   │   │   │   └── AndroidLogger.kt
+│   │   │   ├── viewmodel/                    # Android 专用 ViewModel
+│   │   │   ├── ui/
+│   │   │   │   ├── GdictApp.kt               # 主 UI + 导航图 + 底部导航栏
+│   │   │   │   ├── screens/                  # 所有页面 Composable
+│   │   │   │   ├── theme/                    # 颜色、主题、字体
+│   │   │   │   └── webview/                  # WebView、HTML 构建器、音频、渲染器
+│   │   │   ├── util/                         # LocaleHelper 等工具类
+│   │   │   └── tts/
+│   │   │       └── EdgeTtsClient.kt          # Android Edge TTS 客户端
 │   │   ├── build.gradle.kts
 │   │   └── proguard-rules.pro
-│   ├── gradle/wrapper/
 │   ├── build.gradle.kts
-│   ├── settings.gradle.kts
-│   ├── gradle.properties
-│   └── export.build.gradle.kts               # 导出任务构建配置
-├── export_project/                           # 独立导出工具项目
-│   └── build.gradle.kts
-├── export_words.kt                           # 独立 MDX 导出脚本
-├── BUILD.md                                  # 本地构建配置文档
-├── .gitignore
-├── README.md                                 # 英文 README
-└── README.zh-CN.md                           # 简体中文 README（本文件）
+│   └── settings.gradle.kts                   # includeBuild("../shared")
+├── desktop/                                  # 桌面应用（Compose Multiplatform）
+│   ├── app/
+│   │   ├── src/main/kotlin/io/github/gdict/
+│   │   │   ├── Main.kt                       # 桌面端入口
+│   │   │   ├── core/
+│   │   │   │   └── DesktopLogger.kt          # 桌面端日志实现
+│   │   │   ├── api/
+│   │   │   │   └── AfdianClient.kt           # 爱发电赞助 API 客户端
+│   │   │   ├── data/                         # 桌面端 Repository 实现
+│   │   │   │   ├── DesktopDictionaryRepository.kt
+│   │   │   │   ├── DesktopBookmarkRepository.kt
+│   │   │   │   ├── DesktopHistoryRepository.kt
+│   │   │   │   ├── DesktopSettingsRepository.kt
+│   │   │   │   └── JsonFileStorageBackend.kt
+│   │   │   └── ui/
+│   │   │       ├── DesktopApp.kt             # 桌面端主 UI
+│   │   │       ├── LocalStrings.kt           # 本地化字符串提供者
+│   │   │       ├── components/
+│   │   │       │   └── CollapsibleSidebar.kt # 可折叠侧边栏组件
+│   │   │       ├── screens/                  # 所有页面 Composable
+│   │   │       ├── strings/                  # 国际化字符串资源（EN/ZH-CN）
+│   │   │       ├── webview/                  # JCEF、HTML 构建器、音频、渲染器
+│   │   │       └── theme/
+│   │   │           ├── GdictTheme.kt          # Material 主题（绿灰配色）
+│   │   │           └── GdictColors.kt         # 颜色定义
+│   │   ├── build.gradle.kts
+│   │   └── resources/
+│   ├── build.gradle.kts
+│   └── settings.gradle.kts                   # includeBuild("../shared")
+├── screenshots/
+├── mockups/                                  # HTML/CSS UI 模型
+├── BUILD.md
+├── CONTRIBUTING.md
+├── CONTRIBUTING.zh-CN.md
+├── PRIVACY_POLICY.md
+├── README.md
+└── README.zh-CN.md
 ```
 
 ## 快速开始
@@ -179,14 +241,16 @@ Gdict/
 
 核心依赖：
 - Android Studio Hedgehog (2023.1.1) 或更高版本
-- JDK 17+（项目 `android_sdk/` 已捆绑 JDK 17，开箱即用）
+- JDK 21（shared/core）/ JDK 17+（Android & Desktop）
 - Android SDK API 34（项目 `android_sdk/` 已包含）
 - Gradle 8.5（项目自带 wrapper，无需手动安装）
 
 ### 构建调试版
 
+#### Android
+
 ```bash
-cd android_project
+cd android
 
 # 构建 Debug APK
 ./gradlew assembleDebug
@@ -195,9 +259,36 @@ cd android_project
 # app/build/outputs/apk/debug/app-debug.apk
 ```
 
+#### Desktop（桌面端）
+
+```bash
+cd desktop
+
+# 开发模式运行
+./gradlew run
+
+# 打包为可分发应用镜像
+./gradlew packageAppImage
+
+# 输出位置：app/build/compose/binaries/main/app/Gdict/
+```
+
+#### MSIX 打包（微软商店发布）
+
+```bash
+cd desktop
+
+# 打包为 MSIX 格式，用于提交微软商店
+./gradlew packageMsix
+
+# 输出位置：app/build/compose/binaries/main/msix/Gdict.msix
+```
+
+提交微软商店前，需要在 `desktop/msix/AppxManifest.xml` 中填写 Partner Center 的身份信息（`Identity/Name`、`Identity/Publisher`、`PublisherDisplayName`）。
+
 ### 构建正式版
 
-正式版需要签名配置。在 `android_project/` 下创建 `local.properties`：
+正式版需要签名配置。在 `android/` 下创建 `local.properties`：
 
 ```properties
 sdk.dir=D\\:\\workspace\\Gdict\\android_sdk
@@ -219,7 +310,7 @@ keytool -genkeypair -v \
 构建：
 
 ```bash
-cd android_project
+cd android
 
 # 构建 Release APK
 ./gradlew assembleRelease
@@ -230,7 +321,7 @@ cd android_project
 
 ### 在 Android Studio 中打开
 
-1. 打开 `android_project` 目录
+1. 打开 `android` 目录
 2. 等待 Gradle 同步完成
 3. 连接设备或启动模拟器（最低 API 30）
 4. 点击运行按钮
@@ -238,7 +329,7 @@ cd android_project
 ### 运行测试
 
 ```bash
-cd android_project
+cd android
 
 # 运行 MDX 解析器单元测试
 ./gradlew :core:testDebugUnitTest --rerun-tasks
@@ -313,7 +404,7 @@ cd android_project
 kotlinc -script export_words.kt -- /path/to/dict.mdx /path/to/output
 
 # 或通过 Gradle 任务运行
-cd android_project
+cd android
 ./gradlew export -PmdxPath=/path/to/dict.mdx -PoutputDir=/path/to/output
 ```
 
@@ -461,6 +552,14 @@ FSRS（Free Spaced Repetition Scheduler）是下一代间隔重复算法，相�
 目前该功能还在开发中。你可以通过 `export_words.kt` 脚本导出 MDX 中的全部词条。
 
 ## 更新日志
+
+### v1.2.0 (2026-05-28)
+
+- **新增**: 桌面端（Compose Multiplatform）— 基于 JCEF 浏览器引擎的桌面词典应用，支持 Windows
+- **新增**: MSIX 打包 — 支持打包为 MSIX 格式，可提交微软商店发布
+- **新增**: 爱发电赞助 — 在个人中心页面添加爱发电赞助入口
+- **新增**: 发音按钮恢复 — 修复桌面端词条详情页发音按钮显示
+- **优化**: 剑桥词典紧凑布局 — 优化 Cambridge EPD 等词典在桌面端的排版显示
 
 ### v1.1.02 (2026-05-25)
 

@@ -1,4 +1,5 @@
 /android_sdk/
+/jdk17/
 
 *.mdx
 *.mdd
@@ -20,28 +21,25 @@
 .DS_Store
 Thumbs.db
 
-android_project/.gradle/
-android_project/build/
-android_project/local.properties
-android_project/captures/
-android_project/.externalNativeBuild/
-android_project/.cxx/
-android_project/app/release.keystore
+.gradle/
+/build/
+*/build/
 
-android_project/app/src/test/snapshots/
+local.properties
+*.keystore
+keystore_base64.txt
 
 *.apk
 *.aar
 *.ap_
 *.aab
 *.dex
-
-/build/
-*/build/
+*.exe
+*.msi
+*.msix
 
 *.ps1
 
-# Build logs & temp files
 *_err.txt
 *_out.txt
 *_result.txt
@@ -51,9 +49,8 @@ adb_*.txt
 build_*.txt
 _git_*.txt
 
-# Android Studio generated files
-*.iml
-.idea/
-local.properties
-*.keystore
-keystore_base64.txt
+test_export/
+export_project/
+export_words.kt
+mockups/
+screenshots/
