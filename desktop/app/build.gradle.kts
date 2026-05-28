@@ -21,9 +21,32 @@ dependencies {
     implementation("javazoom:jlayer:1.0.1")
 }
 
+val downloadJcef by tasks.registering {
+    group = "gdict"
+    description = "Download JCEF bundle via jcefmaven if not present"
+    doLast {
+        val jcefDir = file("${System.getProperty("user.home")}/.gdict/jcef-bundle")
+        val lockFile = File(jcefDir, "install.lock")
+        if (lockFile.exists()) {
+            logger.lifecycle("JCEF bundle already exists at $jcefDir")
+            return@doLast
+        }
+        logger.lifecycle("Downloading JCEF bundle...")
+        jcefDir.mkdirs()
+        val builder = me.friwi.jcefmaven.CefAppBuilder()
+        builder.setInstallDir(jcefDir)
+        builder.setProgressHandler(me.friwi.jcefmaven.IProgressHandler { state, percent ->
+            logger.lifecycle("JCEF setup: $state ($percent%)")
+        })
+        builder.build().dispose()
+        logger.lifecycle("JCEF bundle downloaded successfully")
+    }
+}
+
 val copyJcefToResources by tasks.registering(Copy::class) {
     group = "gdict"
     description = "Copy JCEF bundle from user dir to app resources directory"
+    dependsOn(downloadJcef)
     from("${System.getProperty("user.home")}/.gdict/jcef-bundle")
     into("resources/windows-x64/jcef-bundle")
     onlyIf {

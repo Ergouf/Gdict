@@ -116,6 +116,7 @@ jobs:
         shell: bash
         run: |
           chmod +x gradlew
+          ./gradlew downloadJcef --stacktrace
           ./gradlew clean packageExe --stacktrace
 
       - name: Determine tag
