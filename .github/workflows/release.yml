@@ -54,11 +54,11 @@ jobs:
 
       - name: Create keystore
         run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
 
       - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleRelease --stacktrace --no-daemon
+        run: ./gradlew assembleRelease --stacktrace
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -146,7 +146,7 @@ jobs:
       - name: Build Desktop EXE
         working-directory: desktop
         shell: bash
-        run: ./gradlew packageExe --stacktrace --no-daemon
+        run: ./gradlew packageExe --stacktrace
 
       - name: Determine tag
         id: tag
