@@ -6,9 +6,9 @@ class CambridgeEpdRenderer : DictionaryRenderer {
     override fun transformHtml(html: String): String {
         var result = html
             .replace(Regex("""<img[^>]*src=["'][^"']*uk_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='uk-flag' role='img' aria-label='UK'>🇬🇧</span>")
+                "<span class='uk-flag' title='UK pronunciation'></span>")
             .replace(Regex("""<img[^>]*src=["'][^"']*us_sound\.png[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
-                "<span class='us-flag' role='img' aria-label='US'>🇺🇸</span>")
+                "<span class='us-flag' title='US pronunciation'></span>")
             .replace(Regex("""<img[^>]*class=["'][^"']*speaker[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
                 "")
             .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.(?:png|gif|svg)[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
@@ -46,8 +46,8 @@ class CambridgeEpdRenderer : DictionaryRenderer {
 
             result = beforeMain +
                     "<div class=\"cepd-main-entry\">" + mainEntryProcessed + "</div>" +
-                    "<div class=\"cepd-forms-section\"><div class=\"forms-header\">词形变化 (" + formsEntries.size + ")</div>" +
-                    "<table class=\"forms-table\"><thead><tr><th>单词</th><th>音标</th><th>发音</th></tr></thead><tbody>" +
+                    "<div class=\"cepd-forms-section\"><div class=\"forms-header\">Word Forms (" + formsEntries.size + ")</div>" +
+                    "<table class=\"forms-table\"><thead><tr><th>Word</th><th>IPA</th><th>Audio</th></tr></thead><tbody>" +
                     formsRows + "</tbody></table></div>" + afterMain
         } else if (arlMatches.size == 1) {
             val match = arlMatches[0]
@@ -64,10 +64,10 @@ class CambridgeEpdRenderer : DictionaryRenderer {
     private fun processMainEntry(content: String): String {
         return content
             .replace(Regex("""^\s*<hw[^>]*>(.*?)</hw>"""), "<h1 class=\"main-headword\">\$1</h1>")
-            .replace(Regex("""<inf[^>]*>(.*?)</inf>""), "<span class=\"main-ipa\">\$1</span>")
+            .replace(Regex("""<inf[^>]*>(.*?)</inf>"""), "<span class=\"main-ipa\">\$1</span>")
             .replace(Regex("""<div[^>]*class="prongrp"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-pronunciation\">\$1</div>")
             .replace(Regex("""<div[^>]*class="soundfile"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-audio-btns\">\$1</div>")
-            .replace(Regex("""<comment[^>]*>(.*?)</comment>""), "<span class=\"main-comment\">\$1</span>")
+            .replace(Regex("""<comment[^>]*>(.*?)</comment>"""), "<span class=\"main-comment\">\$1</span>")
     }
 
     override fun getCssBlock(): String = """
@@ -110,30 +110,101 @@ class CambridgeEpdRenderer : DictionaryRenderer {
   gap:12px;
   margin:10px 0 0;
 }
-.cpepd .main-audio-btns a[href^="sound://"],
-.cpepd .main-audio-btns .uk-flag,
-.cpepd .main-audio-btns .us-flag {
+.cpepd .main-audio-btns a[href^="sound://"] {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:44px;
+  width:auto;
+  min-width:44px;
   height:36px;
   border-radius:10px;
   cursor:pointer;
   text-decoration:none;
   transition:transform 0.15s, filter 0.15s;
-  font-size:22px;
-  line-height:1;
   background:var(--accent-bg);
   padding:4px 8px;
-  width:auto;
-  min-width:44px;
+  font-size:14px;
+  color:var(--link);
+  font-weight:500;
 }
-.cpepd .main-audio-btns a[href^="sound://"]:hover,
-.cpepd .main-audio-btns .uk-flag:hover,
-.cpepd .main-audio-btns .us-flag:hover {
+.cpepd .main-audio-btns a[href^="sound://"]:hover {
   transform:scale(1.1);
   filter:brightness(1.15);
+}
+.cpepd .uk-flag {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:22px;
+  border-radius:3px;
+  cursor:pointer;
+  vertical-align:middle;
+  background:#012169;
+  position:relative;
+  box-shadow:0 1px 2px rgba(0,0,0,0.2);
+  overflow:hidden;
+}
+.cpepd .uk-flag::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(to right,transparent 11px,#FFF 11px,#FFF 19px,transparent 19px),
+    linear-gradient(to bottom,transparent 8px,#FFF 8px,#FFF 14px,transparent 14px);
+}
+.cpepd .uk-flag::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(to right,transparent 13px,#C8102E 13px,#C8102E 17px,transparent 17px),
+    linear-gradient(to bottom,transparent 9.5px,#C8102E 9.5px,#C8102E 12.5px,transparent 12.5px);
+}
+.cpepd .us-flag {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:22px;
+  border-radius:3px;
+  cursor:pointer;
+  vertical-align:middle;
+  background:#FFF;
+  position:relative;
+  box-shadow:0 1px 2px rgba(0,0,0,0.2);
+  overflow:hidden;
+}
+.cpepd .us-flag::before {
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:
+    linear-gradient(to bottom,#B22234 0,#B22234 2.5px,transparent 2.5px,transparent 5px) repeat-y,
+    linear-gradient(to bottom,transparent 5px,transparent 5.5px,#B22234 5.5px,#B22234 8px,transparent 8px,transparent 10.5px) repeat-y,
+    linear-gradient(to bottom,transparent 10.5px,transparent 11px,#B22234 11px,#B22234 13.5px,transparent 13.5px,transparent 16px) repeat-y,
+    linear-gradient(to bottom,transparent 16px,transparent 16.5px,#B22234 16.5px,#B22234 19px,transparent 19px,transparent 22px) repeat-y;
+  background-color:#FFF;
+}
+.cpepd .us-flag::after {
+  content:"";
+  position:absolute;
+  top:0;left:0;
+  width:40%;
+  height:55%;
+  background:#3C3B6E;
+  border-right:1px solid rgba(255,255,255,0.2);
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
+.cpepd .uk-flag:hover,
+.cpepd .us-flag:hover {
+  filter:brightness(1.15);
+  transform:scale(1.1);
+}
+.cpepd .main-audio-btns .uk-flag,
+.cpepd .main-audio-btns .us-flag {
+  width:36px;
+  height:26px;
 }
 .cpepd .main-comment {
   display:block;
@@ -210,23 +281,34 @@ class CambridgeEpdRenderer : DictionaryRenderer {
   text-align:center;
 }
 .cpepd .form-audio .uk-flag,
-.cpepd .form-audio .us-flag,
+.cpepd .form-audio .us-flag {
+  display:inline-flex;
+  width:26px;
+  height:18px;
+  border-radius:2px;
+  cursor:pointer;
+  vertical-align:middle;
+  margin:0 2px;
+}
+.cpepd .form-audio .uk-flag:hover,
+.cpepd .form-audio .us-flag:hover {
+  transform:scale(1.15);
+}
 .cpepd .form-audio a[href^="sound://"] {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:32px;
-  height:28px;
-  border-radius:7px;
-  font-size:16px;
+  width:26px;
+  height:18px;
+  border-radius:4px;
   cursor:pointer;
   background:var(--accent-bg);
   text-decoration:none;
   margin:0 2px;
+  font-size:10px;
+  color:var(--link);
   transition:transform 0.15s;
 }
-.cpepd .form-audio .uk-flag:hover,
-.cpepd .form-audio .us-flag:hover,
 .cpepd .form-audio a[href^="sound://"]:hover {
   transform:scale(1.15);
 }
