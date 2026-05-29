@@ -195,20 +195,24 @@ class DictionaryManager(
     }
 
     fun getAudioResource(word: String): ByteArray? {
-        resourceCache[word]?.let { return it.value }
+        resourceCache[word]?.value?.let { return it }
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val mddsSnapshot = loadedMdds.toMap()
         val result = searchEngine.getAudioResource(word, snapshot, mddsSnapshot)
-        resourceCache[word] = OptionalByteArray.wrap(result)
+        if (result != null) {
+            resourceCache[word] = OptionalByteArray.wrap(result)
+        }
         return result
     }
 
     fun getAudioResourceByPath(path: String): ByteArray? {
-        resourceCache[path]?.let { return it.value }
+        resourceCache[path]?.value?.let { return it }
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val mddsSnapshot = loadedMdds.toMap()
         val result = searchEngine.getAudioResourceByPath(path, snapshot, mddsSnapshot)
-        resourceCache[path] = OptionalByteArray.wrap(result)
+        if (result != null) {
+            resourceCache[path] = OptionalByteArray.wrap(result)
+        }
         return result
     }
 

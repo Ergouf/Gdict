@@ -102,11 +102,13 @@ fun MdxWebView(
                                                 .substringAfterLast("/")
                                                 .substringAfterLast("\\")
                                         )
+                                    var played = false
                                     if (audioData != null) {
-                                        withContext(Dispatchers.IO) {
+                                        played = withContext(Dispatchers.IO) {
                                             AudioPlayer.play(context, audioData)
                                         }
-                                    } else {
+                                    }
+                                    if (!played) {
                                         currentOnPlayAudio(audioPath)
                                     }
                                 } catch (_: Exception) {}

@@ -189,26 +189,32 @@ fun WordDetailScreen(
                                     isPlaying = true
                                     coroutineScope.launch {
                                         try {
+                                            var played = false
+
                                             val mddAudio = withContext(Dispatchers.IO) {
                                                 dictionaryRepository.getAudioResource(word)
                                             }
                                             if (mddAudio != null) {
-                                                withContext(Dispatchers.IO) {
+                                                played = withContext(Dispatchers.IO) {
                                                     AudioPlayer.play(context, mddAudio)
                                                 }
-                                            } else {
+                                            }
+
+                                            if (!played) {
                                                 val edgeTtsData = withContext(Dispatchers.IO) {
                                                     EdgeTtsClient.synthesize(word)
                                                 }
                                                 if (edgeTtsData != null) {
-                                                    withContext(Dispatchers.IO) {
+                                                    played = withContext(Dispatchers.IO) {
                                                         AudioPlayer.play(context, edgeTtsData)
                                                     }
-                                                } else {
-                                                    val engine = tts
-                                                    if (engine != null && ttsReady) {
-                                                        engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
-                                                    }
+                                                }
+                                            }
+
+                                            if (!played) {
+                                                val engine = tts
+                                                if (engine != null && ttsReady) {
+                                                    engine.speak(word, TextToSpeech.QUEUE_FLUSH, null, "word_${System.currentTimeMillis()}")
                                                 }
                                             }
                                         } catch (_: Exception) {
@@ -296,27 +302,33 @@ fun WordDetailScreen(
                             .substringAfterLast("\\")
                         coroutineScope.launch {
                             try {
+                                var played = false
+
                                 val mddAudio = withContext(Dispatchers.IO) {
                                     dictionaryRepository.getAudioResourceByPath(audioPath)
                                         ?: dictionaryRepository.getAudioResource(fallbackWord)
                                 }
                                 if (mddAudio != null) {
-                                    withContext(Dispatchers.IO) {
+                                    played = withContext(Dispatchers.IO) {
                                         AudioPlayer.play(context, mddAudio)
                                     }
-                                } else {
+                                }
+
+                                if (!played) {
                                     val edgeTtsData = withContext(Dispatchers.IO) {
                                         EdgeTtsClient.synthesize(fallbackWord)
                                     }
                                     if (edgeTtsData != null) {
-                                        withContext(Dispatchers.IO) {
+                                        played = withContext(Dispatchers.IO) {
                                             AudioPlayer.play(context, edgeTtsData)
                                         }
-                                    } else {
-                                        val engine = tts
-                                        if (engine != null && ttsReady) {
-                                            engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
-                                        }
+                                    }
+                                }
+
+                                if (!played) {
+                                    val engine = tts
+                                    if (engine != null && ttsReady) {
+                                        engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
                                     }
                                 }
                             } catch (_: Exception) {
