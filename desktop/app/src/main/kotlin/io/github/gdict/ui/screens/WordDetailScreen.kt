@@ -74,6 +74,7 @@ fun WordDetailScreen(
     var isPlaying by remember { mutableStateOf(false) }
     val darkMode by settingsViewModel.darkMode.collectAsState()
     val detailZoom by settingsViewModel.detailZoom.collectAsState()
+    val isPronunciationDict = definition.contains("cepd18.css")
 
     log.i("WordDetailScreen", "Rendering: word='$word', defLength=${definition.length}, dictName='$dictionaryName', cssLength=${css.length}")
 
@@ -102,7 +103,7 @@ fun WordDetailScreen(
                 )
             }
             Text(
-                word,
+                if (isPronunciationDict) "发音" else word,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -115,47 +116,49 @@ fun WordDetailScreen(
                 .weight(1f)
                 .padding(16.dp)
         ) {
-            ActionButtonsRow(
-                isBookmarked = isBookmarked,
-                onToggleBookmark = onToggleBookmark,
-                onPronounce = {
-                    if (isPlaying) return@ActionButtonsRow
-                    isPlaying = true
-                    coroutineScope.launch {
-                        try {
-                            var played = false
-                            val audioData = withContext(Dispatchers.IO) {
-                                dictionaryRepository.getAudioResource(word)
-                            }
-                            if (audioData != null && audioData.isNotEmpty()) {
-                                withContext(Dispatchers.IO) {
-                                    DesktopAudioPlayer.play(audioData)
+            if (!isPronunciationDict) {
+                ActionButtonsRow(
+                    isBookmarked = isBookmarked,
+                    onToggleBookmark = onToggleBookmark,
+                    onPronounce = {
+                        if (isPlaying) return@ActionButtonsRow
+                        isPlaying = true
+                        coroutineScope.launch {
+                            try {
+                                var played = false
+                                val audioData = withContext(Dispatchers.IO) {
+                                    dictionaryRepository.getAudioResource(word)
                                 }
-                                played = true
-                            }
-                            if (!played) {
-                                val edgeTtsData = withContext(Dispatchers.IO) {
-                                    EdgeTtsClient.synthesize(word)
-                                }
-                                if (edgeTtsData != null) {
+                                if (audioData != null && audioData.isNotEmpty()) {
                                     withContext(Dispatchers.IO) {
-                                        DesktopAudioPlayer.play(edgeTtsData)
+                                        DesktopAudioPlayer.play(audioData)
                                     }
-                                } else {
-                                    log.w("WordDetailScreen", "No audio available for '$word'")
+                                    played = true
                                 }
+                                if (!played) {
+                                    val edgeTtsData = withContext(Dispatchers.IO) {
+                                        EdgeTtsClient.synthesize(word)
+                                    }
+                                    if (edgeTtsData != null) {
+                                        withContext(Dispatchers.IO) {
+                                            DesktopAudioPlayer.play(edgeTtsData)
+                                        }
+                                    } else {
+                                        log.w("WordDetailScreen", "No audio available for '$word'")
+                                    }
+                                }
+                            } catch (e: Throwable) {
+                                log.e("WordDetailScreen", "Pronunciation failed: ${e.message}")
+                            } finally {
+                                delay(500)
+                                isPlaying = false
                             }
-                        } catch (e: Throwable) {
-                            log.e("WordDetailScreen", "Pronunciation failed: ${e.message}")
-                        } finally {
-                            delay(500)
-                            isPlaying = false
                         }
                     }
-                }
-            )
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             DefinitionCard(
                 modifier = Modifier.fillMaxWidth().weight(1f),

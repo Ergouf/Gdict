@@ -78,6 +78,7 @@ fun WordDetailScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf(stringResource(R.string.tab_origin), stringResource(R.string.tab_examples), stringResource(R.string.tab_synonyms))
+    val isPronunciationDict = definition.contains("cepd18.css")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
@@ -132,7 +133,7 @@ fun WordDetailScreen(
                     )
                 }
                 Text(
-                    stringResource(R.string.tab_origin),
+                    if (isPronunciationDict) "发音" else stringResource(R.string.tab_origin),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = textColor
@@ -163,6 +164,7 @@ fun WordDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (!isPronunciationDict) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 word,
@@ -238,20 +240,23 @@ fun WordDetailScreen(
                             )
                         }
                     }
+                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    if (!isPronunciationDict) {
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        tabs.forEachIndexed { index, tab ->
-                            TabButton(
-                                text = tab,
-                                isSelected = selectedTab == index,
-                                darkMode = darkMode,
-                                onClick = { selectedTab = index }
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            tabs.forEachIndexed { index, tab ->
+                                TabButton(
+                                    text = tab,
+                                    isSelected = selectedTab == index,
+                                    darkMode = darkMode,
+                                    onClick = { selectedTab = index }
+                                )
+                            }
                         }
                     }
                 }
