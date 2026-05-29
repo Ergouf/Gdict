@@ -349,9 +349,20 @@ document.addEventListener('click', function(e) {
     while (el && el.tagName !== 'A') { el = el.parentElement; }
     if (!el) return;
     var href = el.getAttribute('href') || '';
+    if (href.indexOf('entry://') === 0) {
+        e.preventDefault(); e.stopPropagation();
+        var entry = decodeURIComponent(href.substring(7).split('#')[0]);
+        if (typeof window.cefQuery === 'function') {
+            window.cefQuery({request: 'entry:' + entry, persistent: false, onSuccess: function(){}, onFailure: function(e,c){}});
+        }
+        return false;
+    }
     if (href.indexOf('sound://') === 0) {
         e.preventDefault(); e.stopPropagation();
-        window.location.href = href;
+        var soundPath = decodeURIComponent(href.substring(7));
+        if (typeof window.cefQuery === 'function') {
+            window.cefQuery({request: 'sound:' + soundPath, persistent: false, onSuccess: function(){}, onFailure: function(e,c){}});
+        }
         return false;
     }
 }, true);
@@ -422,14 +433,11 @@ private object GlobalBrowserManager {
     if (!href || href.charAt(0) === '#') return;
     if (href.match(/^(https?:\/\/|data:|mailto:|javascript:|file:\/\/)/)) return;
     if (href.indexOf('sound://') === 0) { return; }
+    if (href.indexOf('entry://') === 0) { return; }
+    if (href.indexOf('bword://') === 0) { return; }
     e.preventDefault(); e.stopPropagation();
     var word;
-    if (href.indexOf('entry://') === 0 || href.indexOf('bword://') === 0) {
-      var proto = href.indexOf('entry://')===0 ? 'entry://' : 'bword://';
-      word = decodeURIComponent(href.substring(proto.length).split('#')[0]).split('?')[0];
-    } else {
-      word = decodeURIComponent(href.split('#')[0]).split('?')[0];
-    }
+    word = decodeURIComponent(href.split('#')[0]).split('?')[0];
     if (word) {
       window.__gdictClickedWord = word;
     }

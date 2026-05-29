@@ -187,8 +187,12 @@ class MdxParser(private val mdxFile: File) : Closeable {
         if (!isResourceMode && keywordIndex.isEmpty()) return null
         if (isResourceMode) return readResourceBytesStream(key)
         val normalizedKey = if (key.startsWith("\\")) key else "\\$key"
+        val altKey = if (key.startsWith("\\")) key.substring(1) else key
         val idx = findFirstKeywordIndex(normalizedKey)
             ?: findFirstKeywordIndex(key)
+            ?: run {
+                if (altKey != key && altKey != normalizedKey) findFirstKeywordIndex(altKey) else null
+            }
             ?: return null
         val entry = keywordIndex[idx]
         return readRecordBytes(entry.recordOffset, entry.recordSize)
@@ -242,8 +246,10 @@ class MdxParser(private val mdxFile: File) : Closeable {
 
     private fun readResourceBytesStream(key: String): ByteArray? {
         if (keywordSectionStart < 0 || recordBlockInfos.isEmpty()) return null
-        val targetKey = if (key.startsWith("\\")) key else "\\$key"
-        log().d(TAG, "Stream resource lookup: '$targetKey'")
+        val normalizedKey = if (key.startsWith("\\")) key else "\\$key"
+        val altKey = if (key.startsWith("\\")) key.substring(1) else key
+        val tryKeys = if (normalizedKey != altKey) listOf(normalizedKey, altKey) else listOf(normalizedKey)
+        log().d(TAG, "Stream resource lookup: tryKeys=$tryKeys")
         synchronized(raf) {
             val savedPosition = raf.filePointer
             try {
@@ -296,7 +302,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 } else keyIndexRaw
 
                 val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
-                log().d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for '$targetKey'")
+                log().d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for keys")
 
                 for ((blockIdx, meta) in blockMetas.withIndex()) {
                     if (meta.compSize <= 0 || meta.compSize > 50 * 1024 * 1024) {
@@ -313,13 +319,21 @@ class MdxParser(private val mdxFile: File) : Closeable {
                         if (stream.remaining == 0) break
                         val wordBytes = stream.readNullTerminated(bpu)
                         val word = String(wordBytes, charset(encoding))
-                        if (word.equals(targetKey, ignoreCase = true) || word.endsWith(targetKey, ignoreCase = true)) {
+                        val wordLower = word.lowercase()
+                        var matched = false
+                        for (tk in tryKeys) {
+                            if (word.equals(tk, ignoreCase = true) || word.endsWith(tk, ignoreCase = true) || wordLower.endsWith(tk.lowercase())) {
+                                matched = true
+                                break
+                            }
+                        }
+                        if (matched) {
                             log().i(TAG, "Stream found: '$word' at offset=$recordOffset")
                             return readRecordBytes(recordOffset, 0)
                         }
                     }
                 }
-                log().w(TAG, "Stream lookup not found: '$targetKey'")
+                log().w(TAG, "Stream lookup not found: keys=$tryKeys")
                 return null
             } catch (e: Exception) {
                 log().e(TAG, "Stream resource error: ${e.message}")

@@ -125,11 +125,60 @@ class AndroidDictionaryRepository(private val context: Context) {
     }
 
     suspend fun addDictionary(name: String, path: String, companionFiles: List<String> = emptyList()) = withContext(Dispatchers.IO) {
+        val allCompanionFiles = companionFiles.toMutableList()
+        if (path.startsWith("content://") && companionFiles.isEmpty()) {
+            try {
+                val mddUris = findCompanionMddUris(path)
+                if (mddUris.isNotEmpty()) {
+                    allCompanionFiles.addAll(mddUris)
+                    android.util.Log.i("DictRepo", "Auto-found ${mddUris.size} companion MDD files")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("DictRepo", "findCompanionMddUris failed: ${e.message}")
+            }
+        }
         val resolvedPath = resolveSafUriToFile(path)
-        val resolvedCompanions = companionFiles.map { resolveSafUriToFile(it) }
+        val resolvedCompanions = allCompanionFiles.map { resolveSafUriToFile(it) }
         val entry = dictionaryManager.addOrUpdateDictionary(name, resolvedPath, resolvedCompanions)
         val newDict = Dictionary(id = entry.id, name = entry.name, path = entry.path)
         _dictionaries.value = _dictionaries.value + newDict
+    }
+
+    private fun findCompanionMddUris(mdxUriString: String): List<String> {
+        val mdxUri = Uri.parse(mdxUriString)
+        val authority = mdxUri.authority ?: return emptyList()
+        val docId = try {
+            DocumentsContract.getDocumentId(mdxUri)
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        val lastSlash = docId.lastIndexOf('/')
+        if (lastSlash < 0) return emptyList()
+        val parentDocId = docId.substring(0, lastSlash)
+        val fileName = docId.substring(lastSlash + 1)
+        val baseName = fileName.substringBeforeLast(".")
+        val childrenUri = DocumentsContract.buildChildDocumentsUri(authority, parentDocId)
+        val results = mutableListOf<String>()
+        try {
+            context.contentResolver.query(
+                childrenUri,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val childDocId = cursor.getString(0) ?: continue
+                    val childName = cursor.getString(1) ?: continue
+                    if (childName.lowercase().endsWith(".mdd") && childName.startsWith(baseName)) {
+                        val childUri = DocumentsContract.buildDocumentUri(authority, childDocId)
+                        results.add(childUri.toString())
+                        android.util.Log.i("DictRepo", "Found companion MDD: $childName")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("DictRepo", "query companion MDD failed: ${e.message}")
+        }
+        return results
     }
 
     private fun resolveSafUriToFile(uriString: String): String {

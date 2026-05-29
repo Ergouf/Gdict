@@ -6,6 +6,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
@@ -13,10 +14,11 @@ import java.util.concurrent.TimeUnit
 
 object EdgeTtsClient {
 
-    private const val WSS_URL =
-        "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1" +
-        "?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4" +
-        "&ConnectionId="
+    private const val TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4"
+    private const val WSS_BASE_URL =
+        "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1"
+    private const val SEC_MS_GEC_VERSION = "1-143.0.3650.75"
+    private const val WIN_EPOCH = 11644473600L
 
     private const val OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
     private val VOICES = arrayOf(
@@ -27,12 +29,36 @@ object EdgeTtsClient {
 
     private val log = GdictLogger.get()
 
+    private fun generateSecMsGec(): String {
+        var ticks = System.currentTimeMillis() / 1000
+        ticks += WIN_EPOCH
+        ticks -= ticks % 300
+        val ticks100ns = ticks * 10000000L
+        val hashInput = "$ticks100ns$TRUSTED_CLIENT_TOKEN"
+        return runCatching {
+            val md = MessageDigest.getInstance("SHA-256")
+            val hashBytes = md.digest(hashInput.toByteArray(Charsets.US_ASCII))
+            hashBytes.joinToString("") { "%02X".format(it) }
+        }.onFailure {
+            log.w("EdgeTtsClient", "Failed to generate Sec-MS-GEC: ${it.message}")
+        }.getOrDefault("")
+    }
+
+    private fun buildWssUrl(connectionId: String): String {
+        val secMsGec = generateSecMsGec()
+        return "$WSS_BASE_URL?TrustedClientToken=$TRUSTED_CLIENT_TOKEN" +
+            "&Sec-MS-GEC=$secMsGec" +
+            "&Sec-MS-GEC-Version=$SEC_MS_GEC_VERSION" +
+            "&ConnectionId=$connectionId"
+    }
+
     fun synthesize(text: String): ByteArray? {
         if (text.isBlank()) return null
 
         val voice = VOICES[0]
         val requestId = UUID.randomUUID().toString().replace("-", "")
         val connectionId = UUID.randomUUID().toString()
+        val wssUrl = buildWssUrl(connectionId)
 
         val audioBuffer = ByteArrayOutputStream()
         val doneFuture = CompletableFuture<Void>()
@@ -44,9 +70,11 @@ object EdgeTtsClient {
         val webSocket: WebSocket
         try {
             webSocket = client.newWebSocketBuilder()
-                .header("Origin", "https://azure.microsoft.com")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .buildAsync(URI.create("$WSS_URL$connectionId"), object : WebSocket.Listener {
+                .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0")
+                .header("Pragma", "no-cache")
+                .header("Cache-Control", "no-cache")
+                .buildAsync(URI.create(wssUrl), object : WebSocket.Listener {
                     private val buffer = StringBuilder()
 
                     override fun onOpen(webSocket: WebSocket) {

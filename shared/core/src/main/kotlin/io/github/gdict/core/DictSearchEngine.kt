@@ -156,15 +156,20 @@ class DictSearchEngine {
     ): ByteArray? {
         val snapshot = dictionaries.filter { it.isEnabled }
         val extensions = listOf("mp3", "wav", "ogg", "spx")
+        val prefixes = listOf("uk", "us", "gb", "en", "audio", "sound", "pron")
         val audioPatterns = mutableListOf<String>()
         for (ext in extensions) {
             audioPatterns.add("\\$word.$ext")
             audioPatterns.add("\\${word.lowercase()}.$ext")
-            for (prefix in listOf("uk", "us", "gb", "en", "audio", "sound", "pron")) {
+            audioPatterns.add("$word.$ext")
+            audioPatterns.add("${word.lowercase()}.$ext")
+            for (prefix in prefixes) {
                 audioPatterns.add("\\$prefix\\$word.$ext")
                 audioPatterns.add("\\$prefix\\${word.lowercase()}.$ext")
                 audioPatterns.add("\\$prefix\\${word.lowercase()}_$ext.$ext")
                 audioPatterns.add("\\${word.lowercase()}_$prefix.$ext")
+                audioPatterns.add("$prefix/$word.$ext")
+                audioPatterns.add("$prefix/${word.lowercase()}.$ext")
             }
         }
         for (dict in snapshot) {
@@ -217,11 +222,16 @@ class DictSearchEngine {
         pathVariants.add(normalizedPath)
         pathVariants.add(path)
         pathVariants.add("\\$path")
+        pathVariants.add("/$path")
         val fileName = path.substringAfterLast("/").substringAfterLast("\\")
         if (fileName != path) {
             pathVariants.add("\\$fileName")
+            pathVariants.add("/$fileName")
+            pathVariants.add(fileName)
             for (prefix in listOf("uk", "us", "gb", "en", "audio", "sound", "pron")) {
                 pathVariants.add("\\$prefix\\$fileName")
+                pathVariants.add("$prefix/$fileName")
+                pathVariants.add("$prefix\\$fileName")
             }
         }
 

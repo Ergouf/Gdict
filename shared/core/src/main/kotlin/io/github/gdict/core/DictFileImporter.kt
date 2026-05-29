@@ -126,6 +126,20 @@ class DictFileImporter(private val fileSystemAccess: FileSystemAccess) {
                 val target = File(targetDir, file.name)
                 copied.add(target)
                 primaryFile = target
+
+                if (file.name.lowercase().endsWith(".mdx")) {
+                    val parentDir = file.parentFile
+                    if (parentDir != null && parentDir.isDirectory) {
+                        val baseName = file.nameWithoutExtension
+                        val companionMdd = File(parentDir, "$baseName.mdd")
+                        if (companionMdd.exists() && companionMdd.length() > 0 && companionMdd.absolutePath != file.absolutePath) {
+                            val mddTarget = File(targetDir, companionMdd.name)
+                            companionMdd.copyTo(mddTarget, overwrite = true)
+                            copied.add(mddTarget)
+                            log().i("DictFileImporter", "  Auto-copied companion MDD: ${companionMdd.name} (${companionMdd.length()} bytes)")
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             log().e("DictFileImporter", "copyDictionaryFiles FAILED: ${e.message}", e)
