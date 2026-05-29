@@ -1,0 +1,53 @@
+﻿2026-05-29T03:16:25.2119260Z ##[group]Run JCEF_DIR="desktop/app/resources/windows-x64/jcef-bundle"
+2026-05-29T03:16:25.2119868Z [36;1mJCEF_DIR="desktop/app/resources/windows-x64/jcef-bundle"[0m
+2026-05-29T03:16:25.2120232Z [36;1mmkdir -p "$JCEF_DIR"[0m
+2026-05-29T03:16:25.2121030Z [36;1mcurl -L -o jcef-bundle.tar.gz "https://github.com/jcefmaven/jcefbuild/releases/download/1.0.60/windows-amd64.tar.gz"[0m
+2026-05-29T03:16:25.2121731Z [36;1mtar -xzf jcef-bundle.tar.gz -C "$JCEF_DIR" --strip-components=1[0m
+2026-05-29T03:16:25.2122115Z [36;1mtouch "$JCEF_DIR/install.lock"[0m
+2026-05-29T03:16:25.2122393Z [36;1mrm jcef-bundle.tar.gz[0m
+2026-05-29T03:16:25.2122660Z [36;1mecho "JCEF bundle downloaded to $JCEF_DIR"[0m
+2026-05-29T03:16:25.2122941Z [36;1mls -la "$JCEF_DIR"[0m
+2026-05-29T03:16:25.2135565Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-05-29T03:16:25.2135966Z env:
+2026-05-29T03:16:25.2136278Z   JAVA_HOME: C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk\17.0.19-10\x64
+2026-05-29T03:16:25.2136866Z   JAVA_HOME_17_X64: C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk\17.0.19-10\x64
+2026-05-29T03:16:25.2137253Z ##[endgroup]
+2026-05-29T03:16:25.3042625Z   % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+2026-05-29T03:16:25.3043973Z                                  Dload  Upload  Total   Spent   Left   Speed
+2026-05-29T03:16:25.3044410Z 
+2026-05-29T03:16:25.5928117Z   0      0   0      0   0      0      0      0                              0
+2026-05-29T03:16:25.5929524Z   0      0   0      0   0      0      0      0                              0
+2026-05-29T03:16:25.5930622Z   0      0   0      0   0      0      0      0                              0
+2026-05-29T03:16:25.5938422Z 
+2026-05-29T03:16:26.5929619Z   0      0   0      0   0      0      0      0                              0
+2026-05-29T03:16:27.5506964Z  25 130.1M  25 33.68M   0      0 26.11M      0   00:04   00:01   00:03 33.71M
+2026-05-29T03:16:27.5508474Z 100 130.1M 100 130.1M   0      0 57.91M      0   00:02   00:02         33.71M
+2026-05-29T03:16:27.5509828Z 100 130.1M 100 130.1M   0      0 57.90M      0   00:02   00:02         33.71M
+2026-05-29T03:16:27.5510843Z 100 130.1M 100 130.1M   0      0 57.90M      0   00:02   00:02         33.71M
+2026-05-29T03:16:29.5457096Z JCEF bundle downloaded to desktop/app/resources/windows-x64/jcef-bundle
+2026-05-29T03:16:29.5665766Z total 4973
+2026-05-29T03:16:29.5666549Z drwxr-xr-x 1 runneradmin 197121       0 May 29 03:16 .
+2026-05-29T03:16:29.5667192Z drwxr-xr-x 1 runneradmin 197121       0 May 29 03:16 ..
+2026-05-29T03:16:29.5667955Z -rw-r--r-- 1 runneradmin 197121   19649 Jul 24  2024 allclasses-frame.html
+2026-05-29T03:16:29.5668840Z -rw-r--r-- 1 runneradmin 197121   17169 Jul 24  2024 allclasses-noframe.html
+2026-05-29T03:16:29.5669656Z -rw-r--r-- 1 runneradmin 197121   40858 Jul 24  2024 constant-values.html
+2026-05-29T03:16:29.5670542Z -rw-r--r-- 1 runneradmin 197121    8710 Jul 24  2024 gluegen-rt-natives-windows-amd64.jar
+2026-05-29T03:16:29.5671428Z -rw-r--r-- 1 runneradmin 197121  360957 Jul 24  2024 gluegen-rt.jar
+2026-05-29T03:16:29.5672113Z -rw-r--r-- 1 runneradmin 197121    8222 Jul 24  2024 help-doc.html
+2026-05-29T03:16:29.5673891Z -rw-r--r-- 1 runneradmin 197121  393842 Jul 24  2024 index-all.html
+2026-05-29T03:16:29.5674623Z -rw-r--r-- 1 runneradmin 197121    2982 Jul 24  2024 index.html
+2026-05-29T03:16:29.5675303Z -rw-r--r-- 1 runneradmin 197121       0 May 29 03:16 install.lock
+2026-05-29T03:16:29.5676000Z -rw-r--r-- 1 runneradmin 197121  145162 Jul 24  2024 jcef-tests.jar
+2026-05-29T03:16:29.5677017Z -rw-r--r-- 1 runneradmin 197121  185397 Jul 24  2024 jcef.jar
+2026-05-29T03:16:29.5677815Z -rw-r--r-- 1 runneradmin 197121  227092 Jul 24  2024 jogl-all-natives-windows-amd64.jar
+2026-05-29T03:16:29.5678687Z -rw-r--r-- 1 runneradmin 197121 3568302 Jul 24  2024 jogl-all.jar
+2026-05-29T03:16:29.5679523Z drwxr-xr-x 1 runneradmin 197121       0 May 29 03:16 lib
+2026-05-29T03:16:29.5680067Z drwxr-xr-x 1 runneradmin 197121       0 May 29 03:16 org
+2026-05-29T03:16:29.5683030Z -rw-r--r-- 1 runneradmin 197121    1391 Jul 24  2024 overview-frame.html
+2026-05-29T03:16:29.5683491Z -rw-r--r-- 1 runneradmin 197121    5089 Jul 24  2024 overview-summary.html
+2026-05-29T03:16:29.5683923Z -rw-r--r-- 1 runneradmin 197121   32815 Jul 24  2024 overview-tree.html
+2026-05-29T03:16:29.5684352Z -rw-r--r-- 1 runneradmin 197121     113 Jul 24  2024 package-list
+2026-05-29T03:16:29.5684730Z -rw-r--r-- 1 runneradmin 197121     857 Jul 24  2024 script.js
+2026-05-29T03:16:29.5685138Z -rw-r--r-- 1 runneradmin 197121    4565 Jul 24  2024 serialized-form.html
+2026-05-29T03:16:29.5685573Z -rw-r--r-- 1 runneradmin 197121   13416 Jul 24  2024 stylesheet.css
+2026-05-29T03:16:29.5685942Z drwxr-xr-x 1 runneradmin 197121       0 Jul 24  2024 tests

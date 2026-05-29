@@ -1,0 +1,93 @@
+﻿2026-05-29T03:16:19.1638524Z ##[group]Run actions/checkout@v4
+2026-05-29T03:16:19.1639828Z with:
+2026-05-29T03:16:19.1640604Z   fetch-depth: 0
+2026-05-29T03:16:19.1641366Z   repository: Ergouf/Gdict
+2026-05-29T03:16:19.1645539Z   token: ***
+2026-05-29T03:16:19.1646281Z   ssh-strict: true
+2026-05-29T03:16:19.1647007Z   ssh-user: git
+2026-05-29T03:16:19.1647789Z   persist-credentials: true
+2026-05-29T03:16:19.1648555Z   clean: true
+2026-05-29T03:16:19.1649304Z   sparse-checkout-cone-mode: true
+2026-05-29T03:16:19.1650118Z   fetch-tags: false
+2026-05-29T03:16:19.1650869Z   show-progress: true
+2026-05-29T03:16:19.1651611Z   lfs: false
+2026-05-29T03:16:19.1652321Z   submodules: false
+2026-05-29T03:16:19.1653046Z   set-safe-directory: true
+2026-05-29T03:16:19.1654034Z ##[endgroup]
+2026-05-29T03:16:19.3412058Z Syncing repository: Ergouf/Gdict
+2026-05-29T03:16:19.3414119Z ##[group]Getting Git version info
+2026-05-29T03:16:19.3414936Z Working directory is 'D:\a\Gdict\Gdict'
+2026-05-29T03:16:19.4319257Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-05-29T03:16:19.5722863Z git version 2.54.0.windows.1
+2026-05-29T03:16:19.5790893Z ##[endgroup]
+2026-05-29T03:16:19.5815333Z Temporarily overriding HOME='D:\a\_temp\1146e0fe-e72b-4f5a-8d75-370783957b59' before making global git config changes
+2026-05-29T03:16:19.5816687Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-29T03:16:19.5827643Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\Gdict\Gdict
+2026-05-29T03:16:19.6127510Z Deleting the contents of 'D:\a\Gdict\Gdict'
+2026-05-29T03:16:19.6134382Z ##[group]Initializing the repository
+2026-05-29T03:16:19.6144305Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\Gdict\Gdict
+2026-05-29T03:16:19.6554720Z Initialized empty Git repository in D:/a/Gdict/Gdict/.git/
+2026-05-29T03:16:19.6598862Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Ergouf/Gdict
+2026-05-29T03:16:19.6899487Z ##[endgroup]
+2026-05-29T03:16:19.6900732Z ##[group]Disabling automatic garbage collection
+2026-05-29T03:16:19.6909609Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-05-29T03:16:19.7192513Z ##[endgroup]
+2026-05-29T03:16:19.7193298Z ##[group]Setting up auth
+2026-05-29T03:16:19.7206209Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-05-29T03:16:19.7500279Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-05-29T03:16:20.8507795Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-29T03:16:20.8848992Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-05-29T03:16:21.4464028Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-29T03:16:21.4760580Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-05-29T03:16:22.0095241Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-05-29T03:16:22.0405384Z ##[endgroup]
+2026-05-29T03:16:22.0405943Z ##[group]Fetching the repository
+2026-05-29T03:16:22.0421356Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-05-29T03:16:23.5515649Z From https://github.com/Ergouf/Gdict
+2026-05-29T03:16:23.5516348Z  * [new branch]      master     -> origin/master
+2026-05-29T03:16:23.5517109Z  * [new tag]         v1.1.0     -> v1.1.0
+2026-05-29T03:16:23.5520072Z  * [new tag]         v1.1.01    -> v1.1.01
+2026-05-29T03:16:23.5520534Z  * [new tag]         v1.2.0     -> v1.2.0
+2026-05-29T03:16:23.5520997Z  * [new tag]         v1.2.1     -> v1.2.1
+2026-05-29T03:16:23.5521423Z  * [new tag]         v1.2.2     -> v1.2.2
+2026-05-29T03:16:23.5521889Z  * [new tag]         v1.3.1     -> v1.3.1
+2026-05-29T03:16:23.5522329Z  * [new tag]         v1.3.3     -> v1.3.3
+2026-05-29T03:16:23.5522670Z  * [new tag]         v1.3.5     -> v1.3.5
+2026-05-29T03:16:23.5522953Z  * [new tag]         v1.4.4     -> v1.4.4
+2026-05-29T03:16:23.5523213Z  * [new tag]         v1.4.5     -> v1.4.5
+2026-05-29T03:16:23.5523498Z  * [new tag]         v1.4.6     -> v1.4.6
+2026-05-29T03:16:23.5523739Z  * [new tag]         v1.4.7     -> v1.4.7
+2026-05-29T03:16:23.5524004Z  * [new tag]         v1.4.8     -> v1.4.8
+2026-05-29T03:16:23.5524276Z  * [new tag]         v1.4.9     -> v1.4.9
+2026-05-29T03:16:23.5891848Z [command]"C:\Program Files\Git\bin\git.exe" tag --list v1.2.2
+2026-05-29T03:16:23.6151546Z v1.2.2
+2026-05-29T03:16:23.6195042Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse refs/tags/v1.2.2
+2026-05-29T03:16:23.6445253Z 28d93819fccfb4b11c3f5f65978a16c9618de507
+2026-05-29T03:16:23.6478285Z ##[endgroup]
+2026-05-29T03:16:23.6479011Z ##[group]Determining the checkout info
+2026-05-29T03:16:23.6479956Z ##[endgroup]
+2026-05-29T03:16:23.6491067Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-05-29T03:16:23.6829414Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-05-29T03:16:23.7131579Z ##[group]Checking out the ref
+2026-05-29T03:16:23.7141481Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/tags/v1.2.2
+2026-05-29T03:16:23.8529152Z Note: switching to 'refs/tags/v1.2.2'.
+2026-05-29T03:16:23.8530084Z 
+2026-05-29T03:16:23.8530480Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-05-29T03:16:23.8531476Z changes and commit them, and you can discard any commits you make in this
+2026-05-29T03:16:23.8532058Z state without impacting any branches by switching back to a branch.
+2026-05-29T03:16:23.8532372Z 
+2026-05-29T03:16:23.8532571Z If you want to create a new branch to retain commits you create, you may
+2026-05-29T03:16:23.8533053Z do so (now or later) by using -c with the switch command. Example:
+2026-05-29T03:16:23.8533331Z 
+2026-05-29T03:16:23.8533446Z   git switch -c <new-branch-name>
+2026-05-29T03:16:23.8533632Z 
+2026-05-29T03:16:23.8533725Z Or undo this operation with:
+2026-05-29T03:16:23.8533893Z 
+2026-05-29T03:16:23.8533971Z   git switch -
+2026-05-29T03:16:23.8534094Z 
+2026-05-29T03:16:23.8534317Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-05-29T03:16:23.8534673Z 
+2026-05-29T03:16:23.8534944Z HEAD is now at 28d9381 fix: edge tts websocket protocol and desktop jvm launch params
+2026-05-29T03:16:23.8605995Z ##[endgroup]
+2026-05-29T03:16:23.8923681Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-05-29T03:16:23.9175662Z 28d93819fccfb4b11c3f5f65978a16c9618de507

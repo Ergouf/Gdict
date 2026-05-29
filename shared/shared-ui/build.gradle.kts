@@ -9,6 +9,13 @@ kotlin {
     jvmToolchain(17)
 }
 
+sourceSets {
+    main {
+        kotlin.srcDir("src/main/kotlin")
+        java.setSrcDirs(listOf())  // Explicitly exclude java directory
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
