@@ -201,7 +201,7 @@ fun MdxWebView(
             if (webView.settings.textZoom != textZoomPercent) {
                 webView.settings.textZoom = textZoomPercent
             }
-            val htmlContent = HtmlContentBuilder.build(currentDef, currentCss)
+            val htmlContent = HtmlContentBuilder.build(currentDef, currentCss, resourcePrefix = "")
             val tag = webView.getTag(R.id.tag_webview_content) as? String
             if (tag != htmlContent) {
                 webView.setTag(R.id.tag_webview_content, htmlContent)

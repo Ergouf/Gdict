@@ -17,7 +17,8 @@ object EdgeTtsClient {
 
     private const val TAG = "EdgeTtsClient"
     private const val TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4"
-    private const val CHROMIUM_MAJOR_VERSION = "143"
+    private const val SEC_MS_GEC_VERSION = "1-143.0.3650.75"
+    private const val WIN_EPOCH = 11644473600L
 
     private val WSS_URLS = listOf(
         "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
@@ -45,14 +46,17 @@ object EdgeTtsClient {
     private val lastWorkingUrlIndex = AtomicInteger(0)
 
     private fun generateSecMsGec(): String {
-        val ticks = System.currentTimeMillis() * 10000 + 116444736000000000
-        val hashInput = "$ticks$TRUSTED_CLIENT_TOKEN"
+        var ticks = System.currentTimeMillis() / 1000
+        ticks += WIN_EPOCH
+        ticks -= ticks % 300
+        val ticks100ns = ticks * 10000000L
+        val hashInput = "$ticks100ns$TRUSTED_CLIENT_TOKEN"
         return runCatching {
             val md = MessageDigest.getInstance("SHA-256")
             val hashBytes = md.digest(hashInput.toByteArray(Charsets.US_ASCII))
-            hashBytes.joinToString("") { "%02x".format(it) }
+            hashBytes.joinToString("") { "%02X".format(it) }
         }.onFailure {
-            Log.w(TAG, "Failed to generate Sec-MS-GEC token: ${it.message}")
+            Log.w(TAG, "Failed to generate Sec-MS-GEC: ${it.message}")
         }.getOrDefault("")
     }
 
@@ -60,7 +64,7 @@ object EdgeTtsClient {
         val secMsGec = generateSecMsGec()
         return "$baseUrl?TrustedClientToken=$TRUSTED_CLIENT_TOKEN" +
             "&Sec-MS-GEC=$secMsGec" +
-            "&Sec-MS-GEC-Version=1-$CHROMIUM_MAJOR_VERSION.0.0" +
+            "&Sec-MS-GEC-Version=$SEC_MS_GEC_VERSION" +
             "&ConnectionId=$connectionId"
     }
 
@@ -108,11 +112,13 @@ object EdgeTtsClient {
 
         val request = Request.Builder()
             .url(wssUrl)
-            .header("Origin", "https://azure.microsoft.com")
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$CHROMIUM_MAJOR_VERSION.0.0.0 Safari/537.36 Edg/$CHROMIUM_MAJOR_VERSION.0.0.0")
+            .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0")
+            .header("Pragma", "no-cache")
+            .header("Cache-Control", "no-cache")
             .header("Accept-Language", "en-US,en;q=0.9")
             .header("Accept", "*/*")
-            .header("Sec-CH-UA", "\"Chromium\";v=\"$CHROMIUM_MAJOR_VERSION\", \"Not:A-Brand\";v=\"99\"")
+            .header("Sec-CH-UA", "\"Chromium\";v=\"143\", \"Not:A-Brand\";v=\"99\"")
             .header("Sec-CH-UA-Mobile", "?0")
             .header("Sec-CH-UA-Platform", "\"Windows\"")
             .build()

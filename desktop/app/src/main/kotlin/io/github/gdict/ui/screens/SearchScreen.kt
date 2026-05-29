@@ -71,6 +71,7 @@ import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
+import io.github.gdict.util.HtmlUtils
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -554,7 +555,7 @@ private fun WordTranslationCard(
             if (definition.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(spacerHeight))
                 Text(
-                    text = stripHtmlForPreview(definition),
+                    text = HtmlUtils.stripHtmlForPreview(definition),
                     fontSize = bodyFontSize,
                     lineHeight = (14f * cardScale * 1.45f).coerceIn(10f, 28f).sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -564,24 +565,6 @@ private fun WordTranslationCard(
             }
         }
     }
-}
-
-private fun stripHtmlForPreview(html: String): String {
-    return html
-        .replace(Regex("<img[^>]*>"), "")
-        .replace(Regex("<br\\s*/?>"), "\n")
-        .replace(Regex("<p\\s*/?>|</p>|<div[^>]*>|</div>"), "\n")
-        .replace(Regex("<li\\s*>"), "• ")
-        .replace(Regex("</li>"), "\n")
-        .replace(Regex("<a[^>]*href=\"[^\"]*\"[^>]*>(.*?)</a>"), "$1")
-        .replace(Regex("<[^>]+>"), "")
-        .replace(Regex("&nbsp;"), " ")
-        .replace(Regex("&amp;"), "&")
-        .replace(Regex("&lt;"), "<")
-        .replace(Regex("&gt;"), ">")
-        .replace(Regex("\\s{2,}"), " ")
-        .trim()
-        .take(300)
 }
 
 @Composable

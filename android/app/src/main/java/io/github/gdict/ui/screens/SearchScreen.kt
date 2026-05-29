@@ -69,6 +69,7 @@ import io.github.gdict.core.model.SearchResultItem
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
+import io.github.gdict.util.HtmlUtils
 import kotlin.math.roundToInt
 
 @Composable
@@ -392,17 +393,20 @@ private fun DraggableSearchResultCard(
                     )
                 }
                 if (definition.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(scaledSpacing))
-                    Text(
-                        text = definition,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = scaledDefFontSize,
-                            lineHeight = scaledDefLineHeight
-                        ),
-                        color = textColor,
-                        maxLines = (3 * contentScale).roundToInt().coerceIn(2, 6),
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    val previewText = remember(definition) { HtmlUtils.stripHtmlForPreview(definition) }
+                    if (previewText.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(scaledSpacing))
+                        Text(
+                            text = previewText,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = scaledDefFontSize,
+                                lineHeight = scaledDefLineHeight
+                            ),
+                            color = textColor,
+                            maxLines = (3 * contentScale).roundToInt().coerceIn(2, 6),
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 

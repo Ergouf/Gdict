@@ -8,10 +8,10 @@ object HtmlContentBuilder {
 
     private val BASE_CSS = """
 :root {
-  --bg:#FFFFFF;--text:#424242;--header:#2C4A6E;--link:#4ECDC4;--phon:#1565C0;
+  --bg:#FFFFFF;--text:#424242;--header:#2C4A6E;--link:#63BD04;--phon:#1565C0;
   --border:rgba(128,128,128,0.15);--border-light:rgba(128,128,128,0.08);
-  --accent-bg:rgba(44,74,110,0.1);--speaker-bg:rgba(78,205,196,0.15);
-  --speaker-hover:rgba(78,205,196,0.3);--def-border:rgba(78,205,196,0.3);
+  --accent-bg:rgba(99,189,4,0.1);--speaker-bg:rgba(99,189,4,0.15);
+  --speaker-hover:rgba(99,189,4,0.3);--def-border:rgba(99,189,4,0.3);
   --example:#666;--subtle:#9E9E9E;
   --flag-uk:#012169;--flag-us:#B31942;
   --tag-bg:rgba(244,67,54,0.1);--tag-color:#D32F2F;
@@ -20,10 +20,10 @@ object HtmlContentBuilder {
   --di-head-border:var(--header);
 }
 body.dark {
-  --bg:#1A1C17;--text:#E1E4DA;--header:#8BB8E8;--link:#4ECDC4;--phon:#A8D8EA;
+  --bg:#1A1C17;--text:#E1E4DA;--header:#8BB8E8;--link:#7ED321;--phon:#A8D8EA;
   --border:rgba(255,255,255,0.1);--border-light:rgba(255,255,255,0.06);
-  --accent-bg:rgba(139,184,232,0.12);--speaker-bg:rgba(78,205,196,0.2);
-  --speaker-hover:rgba(78,205,196,0.35);--def-border:rgba(78,205,196,0.4);
+  --accent-bg:rgba(126,211,33,0.12);--speaker-bg:rgba(126,211,33,0.2);
+  --speaker-hover:rgba(126,211,33,0.35);--def-border:rgba(126,211,33,0.4);
   --example:#A0A0A0;--subtle:#888;
   --flag-uk:#1A3A8A;--flag-us:#8B1A2B;
   --tag-bg:rgba(244,67,54,0.15);--tag-color:#EF9A9A;
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
 </script>
 """
 
-    fun build(definition: String, css: String, darkMode: Boolean = false): String {
+    fun build(definition: String, css: String, darkMode: Boolean = false, resourcePrefix: String = "mdxres://"): String {
         val renderer = renderers.find { it.matches(definition) } ?: DefaultRenderer
 
         val cleanDefinition = definition.replace(Regex("[\\x00-\\x1f\\x7f]"), "")
@@ -123,11 +123,11 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
             result = result.replace(Regex("""(?i)(src|background|poster)=["']([^"']*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ico))["']""")) { match ->
                 val attr = match.groupValues[1]
                 val path = match.groupValues[2]
-                "$attr=\"mdxres://${path}\""
+                "$attr=\"${resourcePrefix}${path}\""
             }
             result = result.replace(Regex("""(?i)url\(\s*['"]?([^"')]*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ttf|\.woff|\.woff2|\.eot|\.otf)[^"']*)['"]?\s*\)""")) { match ->
                 val path = match.groupValues[1].trim()
-                "url(mdxres://${path})"
+                "url(${resourcePrefix}${path})"
             }
             result
         }

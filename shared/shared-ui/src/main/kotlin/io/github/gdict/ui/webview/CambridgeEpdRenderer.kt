@@ -91,10 +91,12 @@ class CambridgeEpdRenderer : DictionaryRenderer {
   display:block;
 }
 .cpepd .di-title .hw {
-  font-size:3em;
+  font-size:clamp(1.2em, 5vw, 3em);
   font-weight:700;
   color:var(--header);
   letter-spacing:-0.01em;
+  overflow-wrap:break-word;
+  word-break:break-word;
 }
 
 .cpepd .di-body { padding:0; }
@@ -121,12 +123,15 @@ class CambridgeEpdRenderer : DictionaryRenderer {
 .cpepd .prongrp {
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:8px;
   margin:6px 0;
   padding:10px 14px;
   border:1px solid var(--border);
   border-radius:12px;
   background:var(--card-bg, rgba(0,0,0,0.02));
+  max-width:100%;
+  overflow:hidden;
 }
 .cpepd .pron {
   display:inline-flex;
@@ -135,10 +140,12 @@ class CambridgeEpdRenderer : DictionaryRenderer {
 }
 .cpepd .ipa {
   font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
-  font-size:2.2em;
+  font-size:clamp(1em, 4vw, 2.2em);
   color:#2563EB;
   font-style:normal;
   font-weight:500;
+  overflow-wrap:break-word;
+  word-break:break-word;
 }
 .cpepd .ussymbol {
   display:none;
@@ -147,15 +154,18 @@ class CambridgeEpdRenderer : DictionaryRenderer {
 .cpepd .inflection {
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:6px;
   margin:4px 0;
   padding:8px 14px;
   border:1px solid var(--border);
   border-radius:12px;
-  font-size:2em;
+  font-size:clamp(0.9em, 3.5vw, 2em);
   color:var(--text);
   line-height:1.5;
   background:var(--card-bg, rgba(0,0,0,0.02));
+  overflow-wrap:break-word;
+  word-break:break-word;
 }
 .cpepd .inflection .inf {
   font-style:italic;
@@ -282,6 +292,66 @@ class CambridgeEpdRenderer : DictionaryRenderer {
 
 .cpepd .di-info { display:none; }
 .cpepd sp { font-style:normal; }
+
+.cpepd .cepd-main-entry { padding:0 20px; }
+.cpepd .main-headword {
+  font-size:clamp(1.2em, 5vw, 3em);
+  font-weight:700;
+  color:var(--header);
+  margin:0 0 4px;
+  overflow-wrap:break-word;
+  word-break:break-word;
+}
+.cpepd .main-ipa {
+  font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
+  font-size:clamp(1em, 4vw, 2.2em);
+  color:#2563EB;
+  font-style:normal;
+  font-weight:500;
+}
+.cpepd .main-pronunciation {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+}
+.cpepd .main-audio-btns {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.cpepd .cepd-forms-section {
+  margin:12px 0;
+  padding:0 20px;
+  overflow-x:auto;
+}
+.cpepd .forms-header {
+  font-size:0.9em;
+  font-weight:600;
+  color:var(--header);
+  margin-bottom:6px;
+}
+.cpepd .forms-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:clamp(0.85em, 3vw, 1.1em);
+}
+.cpepd .forms-table th,
+.cpepd .forms-table td {
+  padding:6px 8px;
+  border-bottom:1px solid var(--border);
+  text-align:left;
+}
+.cpepd .forms-table .form-ipa {
+  font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
+  color:#2563EB;
+  overflow-wrap:break-word;
+  word-break:break-word;
+}
+.cpepd .forms-table .current-word {
+  background:var(--accent-bg);
+}
 </style>
 """
 
