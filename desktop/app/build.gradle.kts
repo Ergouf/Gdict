@@ -67,11 +67,10 @@ compose.desktop {
             }
 
             jvmArgs += listOf(
-                "--add-opens", "java.base/java.net=ALL-UNNAMED",
-                "--add-opens", "java.desktop/sun.awt=ALL-UNNAMED",
-                "--add-opens", "java.desktop/java.awt=ALL-UNNAMED",
-                "--add-opens", "java.desktop/javax.swing=ALL-UNNAMED",
-                "--add-opens", "java.desktop/sun.lwawt.macosx=ALL-UNNAMED"
+                "--add-opens=java.base/java.net=ALL-UNNAMED",
+                "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+                "--add-opens=java.desktop/javax.swing=ALL-UNNAMED"
             )
         }
     }

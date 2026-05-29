@@ -189,18 +189,20 @@ fun WordDetailScreen(
                                     isPlaying = true
                                     coroutineScope.launch {
                                         try {
-                                            val edgeTtsData = withContext(Dispatchers.IO) {
-                                                EdgeTtsClient.synthesize(word)
+                                            val mddAudio = withContext(Dispatchers.IO) {
+                                                dictionaryRepository.getAudioResource(word)
                                             }
-                                            if (edgeTtsData != null) {
+                                            if (mddAudio != null) {
                                                 withContext(Dispatchers.IO) {
-                                                    AudioPlayer.play(context, edgeTtsData)
+                                                    AudioPlayer.play(context, mddAudio)
                                                 }
                                             } else {
-                                                val audioData = dictionaryRepository.getAudioResource(word)
-                                                if (audioData != null) {
+                                                val edgeTtsData = withContext(Dispatchers.IO) {
+                                                    EdgeTtsClient.synthesize(word)
+                                                }
+                                                if (edgeTtsData != null) {
                                                     withContext(Dispatchers.IO) {
-                                                        AudioPlayer.play(context, audioData)
+                                                        AudioPlayer.play(context, edgeTtsData)
                                                     }
                                                 } else {
                                                     val engine = tts
@@ -294,17 +296,27 @@ fun WordDetailScreen(
                             .substringAfterLast("\\")
                         coroutineScope.launch {
                             try {
-                                val edgeTtsData = withContext(Dispatchers.IO) {
-                                    EdgeTtsClient.synthesize(fallbackWord)
+                                val mddAudio = withContext(Dispatchers.IO) {
+                                    dictionaryRepository.getAudioResourceByPath(audioPath)
+                                        ?: dictionaryRepository.getAudioResource(fallbackWord)
                                 }
-                                if (edgeTtsData != null) {
+                                if (mddAudio != null) {
                                     withContext(Dispatchers.IO) {
-                                        AudioPlayer.play(context, edgeTtsData)
+                                        AudioPlayer.play(context, mddAudio)
                                     }
                                 } else {
-                                    val engine = tts
-                                    if (engine != null && ttsReady) {
-                                        engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
+                                    val edgeTtsData = withContext(Dispatchers.IO) {
+                                        EdgeTtsClient.synthesize(fallbackWord)
+                                    }
+                                    if (edgeTtsData != null) {
+                                        withContext(Dispatchers.IO) {
+                                            AudioPlayer.play(context, edgeTtsData)
+                                        }
+                                    } else {
+                                        val engine = tts
+                                        if (engine != null && ttsReady) {
+                                            engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "audio_${System.currentTimeMillis()}")
+                                        }
                                     }
                                 }
                             } catch (_: Exception) {

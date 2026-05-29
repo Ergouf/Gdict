@@ -150,16 +150,18 @@ class DictSearchEngine {
         loadedMdds: Map<Long, MdxParser>
     ): ByteArray? {
         val snapshot = dictionaries.filter { it.isEnabled }
-        val audioPatterns = listOf(
-            "\\$word.mp3",
-            "\\$word.wav",
-            "\\$word.ogg",
-            "\\$word.spx",
-            "\\${word.lowercase()}.mp3",
-            "\\${word.lowercase()}.wav",
-            "\\${word.lowercase()}.ogg",
-            "\\${word.lowercase()}.spx"
-        )
+        val extensions = listOf("mp3", "wav", "ogg", "spx")
+        val audioPatterns = mutableListOf<String>()
+        for (ext in extensions) {
+            audioPatterns.add("\\$word.$ext")
+            audioPatterns.add("\\${word.lowercase()}.$ext")
+            for (prefix in listOf("uk", "us", "gb", "en", "audio", "sound", "pron")) {
+                audioPatterns.add("\\$prefix\\$word.$ext")
+                audioPatterns.add("\\$prefix\\${word.lowercase()}.$ext")
+                audioPatterns.add("\\$prefix\\${word.lowercase()}_$ext.$ext")
+                audioPatterns.add("\\${word.lowercase()}_$prefix.$ext")
+            }
+        }
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
             for (pattern in audioPatterns) {
@@ -172,12 +174,22 @@ class DictSearchEngine {
         }
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
-            for (suffix in audioPatterns) {
+            for (ext in extensions) {
+                val suffix = "\\$word.$ext"
                 val matches = mddParser.findResourceKeys(suffix)
                 for (match in matches) {
                     val data = mddParser.readResourceBytesByKey(match)
                     if (data != null && data.isNotEmpty()) {
                         log().i("DictSearchEngine", "Audio found (fuzzy) for '$word' in '${dict.name}': key='$match' size=${data.size}")
+                        return data
+                    }
+                }
+                val lowerSuffix = "\\${word.lowercase()}.$ext"
+                val lowerMatches = mddParser.findResourceKeys(lowerSuffix)
+                for (match in lowerMatches) {
+                    val data = mddParser.readResourceBytesByKey(match)
+                    if (data != null && data.isNotEmpty()) {
+                        log().i("DictSearchEngine", "Audio found (fuzzy-lower) for '$word' in '${dict.name}': key='$match' size=${data.size}")
                         return data
                     }
                 }
@@ -194,7 +206,21 @@ class DictSearchEngine {
         val snapshot = dictionaries.filter { it.isEnabled }
         val normalizedPath = path.replace("/", "\\")
         val pathWithBackslash = if (normalizedPath.startsWith("\\")) normalizedPath else "\\$normalizedPath"
-        log().d("DictSearchEngine", "getAudioResourceByPath('$path') enabledDicts=${snapshot.size} loadedMdds=${loadedMdds.size}")
+
+        val pathVariants = mutableListOf<String>()
+        pathVariants.add(pathWithBackslash)
+        pathVariants.add(normalizedPath)
+        pathVariants.add(path)
+        pathVariants.add("\\$path")
+        val fileName = path.substringAfterLast("/").substringAfterLast("\\")
+        if (fileName != path) {
+            pathVariants.add("\\$fileName")
+            for (prefix in listOf("uk", "us", "gb", "en", "audio", "sound", "pron")) {
+                pathVariants.add("\\$prefix\\$fileName")
+            }
+        }
+
+        log().d("DictSearchEngine", "getAudioResourceByPath('$path') enabledDicts=${snapshot.size} loadedMdds=${loadedMdds.size} variants=${pathVariants.distinct().size}")
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id]
             if (mddParser == null) {
@@ -202,26 +228,24 @@ class DictSearchEngine {
                 continue
             }
             log().d("DictSearchEngine", "  Trying '${dict.name}' MDD (words=${mddParser.wordCount})")
-            val data = mddParser.readResourceBytes(pathWithBackslash)
-            if (data != null && data.isNotEmpty()) {
-                log().i("DictSearchEngine", "Audio found by path '$path' in '${dict.name}' size=${data.size}")
-                return data
-            }
-            val data2 = mddParser.readResourceBytes(normalizedPath)
-            if (data2 != null && data2.isNotEmpty()) {
-                log().i("DictSearchEngine", "Audio found by path '$path' in '${dict.name}' size=${data2.size}")
-                return data2
+            for (variant in pathVariants.distinct()) {
+                val data = mddParser.readResourceBytes(variant)
+                if (data != null && data.isNotEmpty()) {
+                    log().i("DictSearchEngine", "Audio found by path '$path' in '${dict.name}' variant='$variant' size=${data.size}")
+                    return data
+                }
             }
         }
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
-            val suffix = pathWithBackslash.lowercase()
-            val matches = mddParser.findResourceKeys(suffix)
-            for (match in matches) {
-                val data = mddParser.readResourceBytesByKey(match)
-                if (data != null && data.isNotEmpty()) {
-                    log().i("DictSearchEngine", "Audio found (fuzzy) by path '$path' in '${dict.name}': key='$match' size=${data.size}")
-                    return data
+            for (suffix in pathVariants.distinct().map { it.lowercase() }) {
+                val matches = mddParser.findResourceKeys(suffix)
+                for (match in matches) {
+                    val data = mddParser.readResourceBytesByKey(match)
+                    if (data != null && data.isNotEmpty()) {
+                        log().i("DictSearchEngine", "Audio found (fuzzy) by path '$path' in '${dict.name}': key='$match' size=${data.size}")
+                        return data
+                    }
                 }
             }
         }
