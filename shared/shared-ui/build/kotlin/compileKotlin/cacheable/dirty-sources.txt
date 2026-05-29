@@ -1,0 +1,12 @@
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\tts\EdgeTtsClient.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\viewmodel\DictionaryViewModel.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\viewmodel\FlashcardViewModel.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\data\BookmarkRepository.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\viewmodel\SettingsViewModel.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\data\DictionaryRepository.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\data\SettingsRepository.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\tts\TtsManager.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\data\HistoryRepository.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\viewmodel\BookmarkViewModel.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\viewmodel\SearchViewModel.kt
+D:\workspace\Gdict\shared\shared-ui\src\main\kotlin\io\github\gdict\data\StorageBackend.kt

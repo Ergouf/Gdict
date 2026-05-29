@@ -115,6 +115,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.6.3")
 
     implementation("androidx.documentfile:documentfile:1.0.1")
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // MDX 词典解析 (纯 Kotlin 实现，无外部依赖)
 

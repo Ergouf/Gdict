@@ -1,8 +1,27 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+fun runGitCommand(command: List<String>): String? = try {
+    val out = ByteArrayOutputStream()
+    project.exec {
+        commandLine(command)
+        workingDir = rootProject.projectDir
+        standardOutput = out
+        isIgnoreExitValue = true
+    }
+    val result = out.toString("UTF-8").trim()
+    result.ifEmpty { null }
+} catch (e: Exception) {
+    null
+}
+
+val gitVersionName = (runGitCommand(listOf("git", "describe", "--tags", "--always"))
+    ?.removePrefix("v") ?: "1.0.0")
 
 kotlin {
     jvmToolchain(17)
@@ -31,7 +50,7 @@ compose.desktop {
             )
 
             packageName = "Gdict"
-            packageVersion = "1.0.0"
+            packageVersion = gitVersionName
             description = "Gdict - Desktop Dictionary Application"
             vendor = "Gdict"
             copyright = "© 2024 Gdict. All rights reserved."
@@ -49,9 +68,10 @@ compose.desktop {
 
             jvmArgs += listOf(
                 "--add-opens", "java.base/java.net=ALL-UNNAMED",
-                "--add-opens", "java.desktop/jdk.swing.interop=ALL-UNNAMED",
+                "--add-opens", "java.desktop/sun.awt=ALL-UNNAMED",
                 "--add-opens", "java.desktop/java.awt=ALL-UNNAMED",
-                "--add-opens", "java.desktop/javax.swing=ALL-UNNAMED"
+                "--add-opens", "java.desktop/javax.swing=ALL-UNNAMED",
+                "--add-opens", "java.desktop/sun.lwawt.macosx=ALL-UNNAMED"
             )
         }
     }
