@@ -10,9 +10,8 @@ kotlin {
 }
 
 sourceSets {
-    main {
-        kotlin.srcDir("src/main/kotlin")
-        java.setSrcDirs(listOf())  // Explicitly exclude java directory
+    named("main") {
+        java.setSrcDirs(emptyList<File>())
     }
 }
 

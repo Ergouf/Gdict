@@ -36,7 +36,7 @@ object EdgeTtsClient {
 
         val audioBuffer = ByteArrayOutputStream()
         val doneFuture = CompletableFuture<Void>()
-        var error: Throwable? = null
+        var ttsError: Throwable? = null
 
         val client = HttpClient.newBuilder()
             .build()
@@ -71,7 +71,7 @@ object EdgeTtsClient {
                         )
                     }
 
-                    override fun onText(webSocket: WebSocket, data: CharSequence, last: Boolean): CompletionStage<*> {
+                    override fun onText(webSocket: WebSocket, data: CharSequence, last: Boolean): CompletionStage<*>? {
                         buffer.append(data)
                         if (last) {
                             val message = buffer.toString()
@@ -83,7 +83,7 @@ object EdgeTtsClient {
                         return null
                     }
 
-                    override fun onBinary(webSocket: WebSocket, data: ByteBuffer, last: Boolean): CompletionStage<*> {
+                    override fun onBinary(webSocket: WebSocket, data: ByteBuffer, last: Boolean): CompletionStage<*>? {
                         val bytes = ByteArray(data.remaining())
                         data.get(bytes)
                         if (bytes.size > 2) {
@@ -101,7 +101,7 @@ object EdgeTtsClient {
 
                     override fun onError(webSocket: WebSocket, error: Throwable) {
                         log.w("EdgeTtsClient", "WebSocket error: ${error.message}")
-                        this@EdgeTtsClient.error = error
+                        ttsError = error
                         doneFuture.complete(null)
                     }
                 }).get(8, TimeUnit.SECONDS)
@@ -121,8 +121,8 @@ object EdgeTtsClient {
         val result = audioBuffer.toByteArray()
         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "done")
 
-        if (error != null) {
-            log.w("EdgeTtsClient", "TTS failed: ${error!!.message}")
+        if (ttsError != null) {
+            log.w("EdgeTtsClient", "TTS failed: ${ttsError!!.message}")
             return null
         }
 
