@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 object GdictColors {
     val Primary = Color(0xFF5B6B7C)
-    val PrimarySoft = Color(0xFF82B274)
+    val PrimarySoft = Color(0xFF63BD04)
     val PrimaryLight = Color(0xFF8495A8)
     val OnPrimary = Color.White
 

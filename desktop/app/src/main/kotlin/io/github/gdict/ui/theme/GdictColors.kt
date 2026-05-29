@@ -28,8 +28,8 @@ object GdictColors {
     val OutlineVariant = Color(0xFFCED2D9)
 
     val SidebarBackground = Color(0xFFFFFFFF)
-    val SidebarSelected = Color(0xFFEDF4EE)
-    val SidebarIconActive = Color(0xFF4A7C59)
+    val SidebarSelected = Color(0xFFEFF8E6)
+    val SidebarIconActive = Color(0xFF63BD04)
     val SidebarIconInactive = Color(0xFF94A39C)
 
     val DarkBackground = Color(0xFF111316)
@@ -40,5 +40,5 @@ object GdictColors {
     val DarkOnSurfaceVariant = Color(0xFF969FAA)
     val DarkOutline = Color(0xFF2D333B)
     val DarkSidebarBackground = Color(0xFF1C1F24)
-    val DarkSidebarSelected = Color(0xFF1E3028)
+    val DarkSidebarSelected = Color(0xFF1E3020)
 }

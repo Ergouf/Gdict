@@ -26,6 +26,7 @@ Thumbs.db
 .gradle/
 /build/
 */build/
+**/build/
 
 local.properties
 *.keystore
@@ -49,6 +50,7 @@ keystore_base64.txt
 *_build*.txt
 adb_*.txt
 build_*.txt
+build_*.log
 _git_*.txt
 
 test_export/
