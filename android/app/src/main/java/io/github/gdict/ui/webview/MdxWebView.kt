@@ -89,6 +89,11 @@ fun MdxWebView(
                             currentOnEntryClick(entry)
                             return true
                         }
+                        if (url.startsWith("bword://")) {
+                            val entry = url.removePrefix("bword://")
+                            currentOnEntryClick(entry)
+                            return true
+                        }
                         if (url.startsWith("sound://")) {
                             val audioPath = url.removePrefix("sound://")
                             coroutineScope.launch {
@@ -128,6 +133,12 @@ fun MdxWebView(
                             return super.shouldInterceptRequest(view, request)
                         }
                         if (url.startsWith("entry://")) {
+                            return WebResourceResponse(
+                                "text/plain", "UTF-8",
+                                ByteArrayInputStream(ByteArray(0))
+                            )
+                        }
+                        if (url.startsWith("bword://")) {
                             return WebResourceResponse(
                                 "text/plain", "UTF-8",
                                 ByteArrayInputStream(ByteArray(0))

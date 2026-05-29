@@ -14,8 +14,12 @@ class CambridgeEpdRenderer : DictionaryRenderer {
             .replace(Regex("""<img[^>]*src=["'][^"']*(?:speaker|play|sound|volume|audio|pron)[^"']*\.(?:png|gif|svg)[^"']*["'][^>]*>""", RegexOption.IGNORE_CASE),
                 "")
             .replace(Regex("</img>", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""<SEP[^>]*>\s*,\s*</SEP>""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""<hw([^>]*)>(.*?)</hw>""", RegexOption.DOT_MATCHES_ALL)) { m ->
+                "<hw${m.groupValues[1]}>${m.groupValues[2].replace("|", "")}</hw>"
+            }
 
-        val arlPattern = Regex("""(<div[^>]*class="arl"[^>]*>)(.*?)(</div>)""", RegexOption.DOT_MATCHES_ALL)
+        val arlPattern = Regex("""(<arl[^>]*>)(.*?)(</arl>)""", RegexOption.DOT_MATCHES_ALL)
         val arlMatches = arlPattern.findAll(result).toList()
 
         if (arlMatches.size > 1) {
@@ -31,7 +35,7 @@ class CambridgeEpdRenderer : DictionaryRenderer {
                 val word = hwMatch?.groupValues?.get(1)?.trim() ?: ""
                 val infMatch = Regex("""<inf[^>]*>(.*?)</inf>""").find(content)
                 val ipa = infMatch?.groupValues?.get(1)?.trim() ?: ""
-                val soundfileMatch = Regex("""<div[^>]*class="soundfile"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL).find(content)
+                val soundfileMatch = Regex("""<soundfile[^>]*>(.*?)</soundfile>""", RegexOption.DOT_MATCHES_ALL).find(content)
                 val audioHtml = soundfileMatch?.groupValues?.get(1) ?: ""
 
                 """<tr class="form-row${if (index == 0) " current-word" else ""}">
@@ -65,125 +69,164 @@ class CambridgeEpdRenderer : DictionaryRenderer {
         return content
             .replace(Regex("""^\s*<hw[^>]*>(.*?)</hw>"""), "<h1 class=\"main-headword\">\$1</h1>")
             .replace(Regex("""<inf[^>]*>(.*?)</inf>"""), "<span class=\"main-ipa\">\$1</span>")
-            .replace(Regex("""<div[^>]*class="prongrp"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-pronunciation\">\$1</div>")
-            .replace(Regex("""<div[^>]*class="soundfile"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-audio-btns\">\$1</div>")
+            .replace(Regex("""<prongrp[^>]*>(.*?)</prongrp>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-pronunciation\">\$1</div>")
+            .replace(Regex("""<soundfile[^>]*>(.*?)</soundfile>""", RegexOption.DOT_MATCHES_ALL), "<div class=\"main-audio-btns\">\$1</div>")
             .replace(Regex("""<comment[^>]*>(.*?)</comment>"""), "<span class=\"main-comment\">\$1</span>")
     }
 
     override fun getCssBlock(): String = """
 <style>
 .cpepd { padding:0; }
-.cpepd-main-entry {
+
+.cpepd .arl { display:none !important; }
+
+.cpepd .di-head {
   display:block;
-  text-align:center;
-  padding:24px 16px 20px;
+  text-align:left;
+  padding:16px 20px 8px;
   margin-bottom:0;
-  border-bottom:2px solid var(--di-head-border);
+  border-bottom:1px solid #e0e0e0;
 }
-.cpepd .main-headword {
-  font-size:1.8em;
+.cpepd .di-title {
+  display:block;
+}
+.cpepd .di-title .hw {
+  font-size:3em;
   font-weight:700;
   color:var(--header);
-  margin:0 0 6px;
-  letter-spacing:-0.02em;
+  letter-spacing:-0.01em;
 }
-.cpepd .main-ipa {
-  font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
-  font-size:1.25em;
-  color:var(--phon);
-  font-style:normal;
+
+.cpepd .di-body { padding:0; }
+
+.cpepd .sense-block { margin:0; padding:0; }
+
+.cpepd .sense-head {
   display:block;
-  margin:4px 0 10px;
+  padding:4px 20px 0;
 }
-.cpepd .main-pronunciation {
+.cpepd .sense-info {
   display:flex;
-  justify-content:center;
   align-items:center;
-  gap:4px;
-  flex-wrap:wrap;
-  margin:8px 0 4px;
+  justify-content:flex-start;
+  gap:8px;
+  background:none !important;
 }
-.cpepd .main-audio-btns {
+
+.cpepd .sense-body {
+  display:block;
+  padding:4px 20px 8px;
+}
+
+.cpepd .prongrp {
   display:flex;
-  justify-content:center;
   align-items:center;
-  gap:12px;
-  margin:10px 0 0;
+  gap:8px;
+  margin:6px 0;
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--card-bg, rgba(0,0,0,0.02));
 }
-.cpepd .main-audio-btns a[href^="sound://"] {
+.cpepd .pron {
   display:inline-flex;
   align-items:center;
-  justify-content:center;
-  width:auto;
-  min-width:44px;
-  height:36px;
-  border-radius:10px;
-  cursor:pointer;
-  text-decoration:none;
-  transition:transform 0.15s, filter 0.15s;
-  background:var(--accent-bg);
-  padding:4px 8px;
-  font-size:14px;
-  color:var(--link);
+  gap:6px;
+}
+.cpepd .ipa {
+  font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
+  font-size:2.2em;
+  color:#2563EB;
+  font-style:normal;
   font-weight:500;
 }
-.cpepd .main-audio-btns a[href^="sound://"]:hover {
-  transform:scale(1.1);
-  filter:brightness(1.15);
+.cpepd .ussymbol {
+  display:none;
 }
+
+.cpepd .inflection {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin:4px 0;
+  padding:8px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  font-size:2em;
+  color:var(--text);
+  line-height:1.5;
+  background:var(--card-bg, rgba(0,0,0,0.02));
+}
+.cpepd .inflection .inf {
+  font-style:italic;
+}
+.cpepd .inflection .prongrp {
+  display:inline;
+  border:none;
+  padding:0;
+  margin:0;
+  background:none;
+}
+.cpepd .inflection .ipa {
+  font-size:1em;
+  color:#2563EB;
+}
+
 .cpepd .uk-flag {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:30px;
-  height:22px;
-  border-radius:3px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
   cursor:pointer;
   vertical-align:middle;
   background:#012169;
   position:relative;
-  box-shadow:0 1px 2px rgba(0,0,0,0.2);
+  box-shadow:0 1px 3px rgba(0,0,0,0.15);
   overflow:hidden;
+  flex-shrink:0;
 }
 .cpepd .uk-flag::before {
   content:"";
   position:absolute;
   inset:0;
   background:
-    linear-gradient(to right,transparent 11px,#FFF 11px,#FFF 19px,transparent 19px),
-    linear-gradient(to bottom,transparent 8px,#FFF 8px,#FFF 14px,transparent 14px);
+    linear-gradient(to right,transparent 10px,#FFF 10px,#FFF 22px,transparent 22px),
+    linear-gradient(to bottom,transparent 10px,#FFF 10px,#FFF 22px,transparent 22px);
 }
 .cpepd .uk-flag::after {
   content:"";
   position:absolute;
   inset:0;
   background:
-    linear-gradient(to right,transparent 13px,#C8102E 13px,#C8102E 17px,transparent 17px),
-    linear-gradient(to bottom,transparent 9.5px,#C8102E 9.5px,#C8102E 12.5px,transparent 12.5px);
+    linear-gradient(to right,transparent 12px,#C8102E 12px,#C8102E 20px,transparent 20px),
+    linear-gradient(to bottom,transparent 12px,#C8102E 12px,#C8102E 20px,transparent 20px);
 }
 .cpepd .us-flag {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:30px;
-  height:22px;
-  border-radius:3px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
   cursor:pointer;
   vertical-align:middle;
   background:#FFF;
   position:relative;
-  box-shadow:0 1px 2px rgba(0,0,0,0.2);
+  box-shadow:0 1px 3px rgba(0,0,0,0.15);
   overflow:hidden;
+  flex-shrink:0;
 }
 .cpepd .us-flag::before {
   content:"";
   position:absolute;
   top:0;left:0;right:0;bottom:0;
   background:
-    linear-gradient(to bottom,#B22234 0,#B22234 2.5px,transparent 2.5px,transparent 5px) repeat-y,
-    linear-gradient(to bottom,transparent 5px,transparent 5.5px,#B22234 5.5px,#B22234 8px,transparent 8px,transparent 10.5px) repeat-y,
-    linear-gradient(to bottom,transparent 10.5px,transparent 11px,#B22234 11px,#B22234 13.5px,transparent 13.5px,transparent 16px) repeat-y,
-    linear-gradient(to bottom,transparent 16px,transparent 16.5px,#B22234 16.5px,#B22234 19px,transparent 19px,transparent 22px) repeat-y;
+    linear-gradient(to bottom,#B22234 0,#B22234 3px,transparent 3px,transparent 6px) repeat-y,
+    linear-gradient(to bottom,transparent 6px,transparent 6.5px,#B22234 6.5px,#B22234 9.5px,transparent 9.5px,transparent 12.5px) repeat-y,
+    linear-gradient(to bottom,transparent 12.5px,transparent 13px,#B22234 13px,#B22234 16px,transparent 16px,transparent 19px) repeat-y,
+    linear-gradient(to bottom,transparent 19px,transparent 19.5px,#B22234 19.5px,#B22234 22.5px,transparent 22.5px,transparent 26px) repeat-y;
   background-color:#FFF;
 }
 .cpepd .us-flag::after {
@@ -196,139 +239,49 @@ class CambridgeEpdRenderer : DictionaryRenderer {
   border-right:1px solid rgba(255,255,255,0.2);
   border-bottom:1px solid rgba(255,255,255,0.2);
 }
-.cpepd .uk-flag:hover,
-.cpepd .us-flag:hover {
-  filter:brightness(1.15);
-  transform:scale(1.1);
-}
-.cpepd .main-audio-btns .uk-flag,
-.cpepd .main-audio-btns .us-flag {
-  width:36px;
-  height:26px;
-}
-.cpepd .main-comment {
-  display:block;
-  color:var(--subtle);
-  font-size:.88em;
-  font-style:italic;
-  margin-top:8px;
-}
 
-.cpepd-forms-section {
-  display:block;
-  padding:16px 4px 8px;
-}
-.cpepd .forms-header {
-  font-size:.9em;
-  font-weight:600;
-  color:var(--subtle);
-  text-transform:uppercase;
-  letter-spacing:0.05em;
-  margin:0 0 10px 8px;
-  padding-left:8px;
-  border-left:3px solid var(--header);
-}
-.cpepd .forms-table {
-  width:100%;
-  border-collapse:collapse;
-  font-size:.92em;
-}
-.cpepd .forms-table thead th {
-  background:var(--accent-bg);
-  color:var(--header);
-  font-weight:600;
-  font-size:.82em;
-  text-transform:uppercase;
-  letter-spacing:0.04em;
-  padding:8px 12px;
-  text-align:left;
-  border:none;
-}
-.cpepd .forms-table tbody tr {
-  border-bottom:1px solid var(--border-light);
-  transition:background 0.12s;
-}
-.cpepd .forms-table tbody tr:hover {
-  background:var(--accent-bg);
-}
-.cpepd .forms-table tbody tr.current-word {
-  background:rgba(78,205,196,0.08);
-}
-.cpepd .forms-table td {
-  padding:10px 12px;
-  vertical-align:middle;
-}
-.cpepd .form-word {
-  font-weight:600;
-  color:var(--header);
-  min-width:100px;
-}
-.cpepd .form-word a {
-  color:var(--link);
-  text-decoration:none;
-  font-weight:600;
-}
-.cpepd .form-word a:hover {
-  text-decoration:underline;
-}
-.cpepd .form-ipa {
-  font-family:'Lucida Sans Unicode','Arial Unicode MS','Noto Sans',sans-serif;
-  color:var(--phon);
-  font-size:.95em;
-}
-.cpepd .form-audio {
-  white-space:nowrap;
-  text-align:center;
-}
-.cpepd .form-audio .uk-flag,
-.cpepd .form-audio .us-flag {
+.cpepd .soundfile {
   display:inline-flex;
-  width:26px;
-  height:18px;
-  border-radius:2px;
-  cursor:pointer;
-  vertical-align:middle;
-  margin:0 2px;
+  align-items:center;
+  margin:0;
 }
-.cpepd .form-audio .uk-flag:hover,
-.cpepd .form-audio .us-flag:hover {
-  transform:scale(1.15);
-}
-.cpepd .form-audio a[href^="sound://"] {
+.cpepd .soundfile a {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:26px;
-  height:18px;
-  border-radius:4px;
-  cursor:pointer;
-  background:var(--accent-bg);
   text-decoration:none;
-  margin:0 2px;
-  font-size:10px;
-  color:var(--link);
-  transition:transform 0.15s;
+  cursor:pointer;
+  transition:transform 0.15s, filter 0.15s;
+  background:none !important;
+  border:none !important;
+  padding:0 !important;
 }
-.cpepd .form-audio a[href^="sound://"]:hover {
-  transform:scale(1.15);
+.cpepd .soundfile a::before {
+  content:"🔊";
+  font-size:13px;
+  margin-right:1px;
+}
+.cpepd .soundfile a:hover {
+  transform:scale(1.1);
+  filter:brightness(1.15);
 }
 
-.cpepd .arl,
-.cpepd .hit,
-.cpepd .results,
-.cpepd .base,
-.cpepd .hw,
-.cpepd .inf,
-.cpepd .comment,
-.cpepd .forms,
-.cpepd .inflections,
-.cpepd .pron,
-.cpepd .ipa,
-.cpepd .prongrp,
-.cpepd .ussymbol,
-.cpepd .soundfile,
-.cpepd .capvar,
-.cpepd .inflection { display:none !important; }
+.cpepd .panel {
+  display:block;
+  margin:6px 20px 10px;
+  padding:8px 12px;
+  border-radius:10px;
+  background:var(--accent-bg);
+  font-size:.88em;
+  color:var(--text);
+  line-height:1.5;
+}
+.cpepd .panel-body {
+  display:block;
+}
+
+.cpepd .di-info { display:none; }
+.cpepd sp { font-style:normal; }
 </style>
 """
 

@@ -224,7 +224,8 @@ private fun GdictAppContent(
                     onEntryClick = { entryWord ->
                         entryCoroutineScope.launch {
                             val results = searchViewModel.searchWordForResult(entryWord)
-                            val result = results.firstOrNull()
+                            val result = results.find { it.dictionaryName == dictionaryName }
+                                ?: results.firstOrNull()
                             if (result != null) {
                                 val encodedDef = Uri.encode(result.definition)
                                 val encodedDict = Uri.encode(result.dictionaryName)

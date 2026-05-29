@@ -47,6 +47,15 @@ fun main() = application {
 
     Runtime.getRuntime().addShutdownHook(Thread {
         try { io.github.gdict.ui.webview.shutdownBrowser() } catch (_: Throwable) {}
+        try {
+            val self = ProcessHandle.current()
+            self.children().forEach { child ->
+                val name = child.info().command().orElse("").lowercase()
+                if (name.contains("jcef") || name.contains("chromium") || name.contains("cef")) {
+                    child.destroyForcibly()
+                }
+            }
+        } catch (_: Throwable) {}
     })
 
     val dataDir = File(System.getProperty("user.home"), ".gdict")

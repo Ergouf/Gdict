@@ -147,12 +147,14 @@ fun DesktopApp(
                     },
                     onEntryClick = { entry ->
                         GdictLogger.get().i("DesktopApp", "onEntryClick: entry='$entry'")
+                        val currentDict = wordDetailState?.dictionaryName
                         coroutineScope.launch {
                             try {
                                 val searchResults = searchViewModel.searchWordForResult(entry)
-                                GdictLogger.get().i("DesktopApp", "onEntryClick: got ${searchResults.size} results for '$entry'")
+                                GdictLogger.get().i("DesktopApp", "onEntryClick: got ${searchResults.size} results for '$entry', currentDict='$currentDict'")
                                 if (searchResults.isNotEmpty()) {
-                                    val result = searchResults.first()
+                                    val result = searchResults.find { it.dictionaryName == currentDict }
+                                        ?: searchResults.first()
                                     wordDetailState = WordDetailNavState(
                                         result.word,
                                         result.definition,

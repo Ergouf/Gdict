@@ -35,6 +35,7 @@ import org.cef.callback.CefSchemeHandlerFactory
 import org.cef.callback.CefSchemeRegistrar
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
+import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceHandlerAdapter
 import org.cef.misc.IntRef
 import org.cef.misc.StringRef
@@ -234,15 +235,27 @@ private class MdxResourceHandler : CefResourceHandlerAdapter() {
 private class EntryResourceHandler : CefResourceHandlerAdapter() {
     override fun processRequest(request: CefRequest, callback: CefCallback): Boolean {
         val url = request.url ?: return false.also { callback.cancel() }
-        val entry = URLDecoder.decode(url.removePrefix("entry://"), "UTF-8")
-            .substringBefore("#")
+        val entry = URLDecoder.decode(
+            url.removePrefix("entry://").removePrefix("bword://"), "UTF-8"
+        ).substringBefore("#")
 
-        log.i("MdxWebView", "entry:// clicked: $entry")
+        log.i("MdxWebView", "entry:// fallback: $entry")
         SwingUtilities.invokeLater {
             currentOnEntryClick?.invoke(entry)
         }
+        callback.Continue()
+        return true
+    }
 
-        callback.cancel()
+    override fun getResponseHeaders(response: CefResponse, responseLength: IntRef, redirectUrl: StringRef) {
+        response.mimeType = "text/html"
+        response.status = 204
+        response.statusText = "No Content"
+        responseLength.set(0)
+    }
+
+    override fun readResponse(data: ByteArray, bytesToRead: Int, bytesRead: IntRef, callback: CefCallback): Boolean {
+        bytesRead.set(0)
         return false
     }
 }
@@ -252,12 +265,23 @@ private class SoundResourceHandler : CefResourceHandlerAdapter() {
         val url = request.url ?: return false.also { callback.cancel() }
         val path = URLDecoder.decode(url.removePrefix("sound://"), "UTF-8")
 
-        log.i("MdxWebView", "sound:// clicked: $path")
+        log.i("MdxWebView", "sound:// fallback: $path")
         SwingUtilities.invokeLater {
             currentOnPlayAudio?.invoke(path)
         }
+        callback.Continue()
+        return true
+    }
 
-        callback.cancel()
+    override fun getResponseHeaders(response: CefResponse, responseLength: IntRef, redirectUrl: StringRef) {
+        response.mimeType = "text/html"
+        response.status = 204
+        response.statusText = "No Content"
+        responseLength.set(0)
+    }
+
+    override fun readResponse(data: ByteArray, bytesToRead: Int, bytesRead: IntRef, callback: CefCallback): Boolean {
+        bytesRead.set(0)
         return false
     }
 }
@@ -319,38 +343,19 @@ private fun mimeTypeForPath(lowerPath: String): String = when {
 
 private val BRIDGE_JS = """
 <script>
+(function(){
 document.addEventListener('click', function(e) {
     var el = e.target;
-    while (el && el.tagName !== 'A') {
-        el = el.parentElement;
-    }
+    while (el && el.tagName !== 'A') { el = el.parentElement; }
     if (!el) return;
     var href = el.getAttribute('href') || '';
-    if (href.indexOf('entry://') === 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        var entry = decodeURIComponent(href.substring(7).split('#')[0]);
-        console.log('[Gdict] entry click:', entry);
-        if (typeof window.cefQuery === 'function') {
-            window.cefQuery({request: 'entry:' + entry, persistent: false, onSuccess: function(){}, onFailure: function(e,c){console.error('[Gdict] cefQuery failed:', e, c);}});
-        } else {
-            console.warn('[Gdict] cefQuery not available for entry');
-        }
-        return false;
-    }
     if (href.indexOf('sound://') === 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        var soundPath = decodeURIComponent(href.substring(7));
-        console.log('[Gdict] sound click:', soundPath);
-        if (typeof window.cefQuery === 'function') {
-            window.cefQuery({request: 'sound:' + soundPath, persistent: false, onSuccess: function(){console.log('[Gdict] sound sent OK');}, onFailure: function(e,c){console.error('[Gdict] sound cefQuery failed:', e, c);}});
-        } else {
-            console.warn('[Gdict] cefQuery not available for sound');
-        }
+        e.preventDefault(); e.stopPropagation();
+        window.location.href = href;
         return false;
     }
 }, true);
+})();
 </script>
 """
 
@@ -406,6 +411,70 @@ private object GlobalBrowserManager {
                     if (!browserReady) {
                         browserReady = true
                         log.i("MdxWebView", "Browser is ready (onLoadEnd, httpStatus=$httpStatusCode)")
+                    }
+                    val js = """
+(function(){
+  document.addEventListener('click', function(e) {
+    var el = e.target;
+    while (el && el.tagName !== 'A') { el = el.parentElement; }
+    if (!el) return;
+    var href = el.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+    if (href.match(/^(https?:\/\/|data:|mailto:|javascript:|file:\/\/)/)) return;
+    if (href.indexOf('sound://') === 0) { return; }
+    e.preventDefault(); e.stopPropagation();
+    var word;
+    if (href.indexOf('entry://') === 0 || href.indexOf('bword://') === 0) {
+      var proto = href.indexOf('entry://')===0 ? 'entry://' : 'bword://';
+      word = decodeURIComponent(href.substring(proto.length).split('#')[0]).split('?')[0];
+    } else {
+      word = decodeURIComponent(href.split('#')[0]).split('?')[0];
+    }
+    if (word) {
+      window.__gdictClickedWord = word;
+    }
+    return false;
+  }, true);
+  setInterval(function() {
+    try {
+      if (window.__gdictClickedWord) {
+        var w = window.__gdictClickedWord;
+        window.__gdictClickedWord = '';
+        document.title = 'GDICT_ENTRY:' + w;
+      }
+    } catch(e) {}
+  }, 150);
+})();
+"""
+                    frame.executeJavaScript(js, "gdict_link_handler", 0)
+                }
+            })
+
+            client.addRequestHandler(object : CefRequestHandlerAdapter() {
+                override fun onBeforeBrowse(
+                    browser: CefBrowser, frame: CefFrame,
+                    request: CefRequest, userGesture: Boolean, isRedirect: Boolean
+                ): Boolean {
+                    val url = request.url ?: return false
+                    if (url.startsWith("entry://") || url.startsWith("bword://")) {
+                        val entry = java.net.URLDecoder.decode(
+                            url.removePrefix("entry://").removePrefix("bword://"), "UTF-8"
+                        ).substringBefore("#")
+                        log.i("MdxWebView", "onBeforeBrowse: intercepted '$entry'")
+                        SwingUtilities.invokeLater { currentOnEntryClick?.invoke(entry) }
+                        return true
+                    }
+                    return false
+                }
+            })
+
+            client.addDisplayHandler(object : org.cef.handler.CefDisplayHandlerAdapter() {
+                override fun onTitleChange(browser: CefBrowser, title: String) {
+                    if (title.startsWith("GDICT_ENTRY:")) {
+                        val entry = title.removePrefix("GDICT_ENTRY:")
+                        log.i("MdxWebView", "Polled entry click: '$entry'")
+                        browser.executeJavaScript("document.title='Gdict';", "", 0)
+                        SwingUtilities.invokeLater { currentOnEntryClick?.invoke(entry) }
                     }
                 }
             })

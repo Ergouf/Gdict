@@ -94,10 +94,16 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
     fun build(definition: String, css: String): String {
         val renderer = renderers.find { it.matches(definition) } ?: DefaultRenderer
 
-        val transformedDef = MdxParser.transformHtmlStatic(definition).let { def ->
-            var result = renderer.transformHtml(def)
+        val transformedDef = renderer.transformHtml(definition).let { def ->
+            var result = MdxParser.transformHtmlStatic(def)
             result = result.replace(Regex("""href=["']entry://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
-                "href=\"entry://${match.groupValues[1]}\" onclick=\"event.preventDefault();\""
+                "href=\"entry://${match.groupValues[1]}\""
+            }
+            result = result.replace(Regex("""href=["']bword://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+                "href=\"bword://${match.groupValues[1]}\""
+            }
+            result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+                "href=\"sound://${match.groupValues[1]}\""
             }
             if (css.isNotEmpty()) {
                 result = result.replace(Regex("""<link[^>]*rel=["']stylesheet["'][^>]*>""", RegexOption.IGNORE_CASE), "")

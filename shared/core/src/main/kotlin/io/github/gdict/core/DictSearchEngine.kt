@@ -11,6 +11,11 @@ class DictSearchEngine {
         val css: String = ""
     )
 
+    companion object {
+        private val PIPE_PATTERN = Regex("\\|")
+        fun cleanWord(word: String?): String = word?.replace(PIPE_PATTERN, "") ?: ""
+    }
+
     fun searchWord(
         query: String,
         dictionaries: List<DictionaryManager.DictEntry>,
@@ -62,7 +67,7 @@ class DictSearchEngine {
                 val defHash = def?.hashCode() ?: 0
                 val preview = def?.take(60)?.replace("\n", "\\n") ?: "(null)"
                 log().d("DictSearchEngine", "      ['$word'] defHash=$defHash preview='$preview'")
-                results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name, css = css))
+                results.add(SearchResult(word = cleanWord(word), definition = def ?: "", dictionaryName = dict.name, css = css))
             }
 
             if (results.isEmpty()) {
@@ -71,7 +76,7 @@ class DictSearchEngine {
                 for ((word, def) in predictive) {
                     val defHash = def?.hashCode() ?: 0
                     log().d("DictSearchEngine", "      ['$word'] defHash=$defHash")
-                    results.add(SearchResult(word = word ?: query, definition = def ?: "", dictionaryName = dict.name, css = css))
+                    results.add(SearchResult(word = cleanWord(word), definition = def ?: "", dictionaryName = dict.name, css = css))
                 }
             }
 

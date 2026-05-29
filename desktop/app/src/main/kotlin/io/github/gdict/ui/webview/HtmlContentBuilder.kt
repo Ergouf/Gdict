@@ -103,15 +103,19 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
 
         val cleanDefinition = definition.replace(Regex("[\\x00-\\x1f\\x7f]"), "")
 
-        val transformedDef = MdxParser.transformHtmlStatic(cleanDefinition).let { def ->
-            var result = renderer.transformHtml(def)
+        val transformedDef = renderer.transformHtml(cleanDefinition).let { def ->
+            var result = MdxParser.transformHtmlStatic(def)
             result = result.replace(Regex("""href=["']entry://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
                 val entry = match.groupValues[1]
-                "href=\"entry://$entry\" onclick=\"event.preventDefault();if(window.gdictBridge)window.gdictBridge.onEntryClick('$entry');\""
+                "href=\"entry://$entry\""
+            }
+            result = result.replace(Regex("""href=["']bword://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+                val entry = match.groupValues[1]
+                "href=\"bword://$entry\""
             }
             result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
                 val soundPath = match.groupValues[1]
-                "href=\"sound://$soundPath\" onclick=\"event.preventDefault();if(window.gdictBridge)window.gdictBridge.onSoundClick('$soundPath');\""
+                "href=\"sound://$soundPath\""
             }
             if (css.isNotEmpty()) {
                 result = result.replace(Regex("""<link[^>]*rel=["']stylesheet["'][^>]*>""", RegexOption.IGNORE_CASE), "")
