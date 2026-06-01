@@ -8,7 +8,7 @@
     <Identity
         Name="fengjl.Gdict"
         Publisher="CN=50657E51-56D9-4927-822B-577C645CC7A0"
-        Version="1.0.0.0" />
+        Version="1.0.1.0" />
 
     <Properties>
         <DisplayName>Gdict</DisplayName>

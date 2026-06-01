@@ -158,18 +158,23 @@ class DictSearchEngine {
         val extensions = listOf("mp3", "wav", "ogg", "spx")
         val prefixes = listOf("uk", "us", "gb", "en", "audio", "sound", "pron")
         val audioPatterns = mutableListOf<String>()
+        val upperWord = word.uppercase()
         for (ext in extensions) {
             audioPatterns.add("\\$word.$ext")
             audioPatterns.add("\\${word.lowercase()}.$ext")
+            audioPatterns.add("\\$upperWord.$ext")
             audioPatterns.add("$word.$ext")
             audioPatterns.add("${word.lowercase()}.$ext")
+            audioPatterns.add("$upperWord.$ext")
             for (prefix in prefixes) {
                 audioPatterns.add("\\$prefix\\$word.$ext")
                 audioPatterns.add("\\$prefix\\${word.lowercase()}.$ext")
+                audioPatterns.add("\\$prefix\\$upperWord.$ext")
                 audioPatterns.add("\\$prefix\\${word.lowercase()}_$ext.$ext")
                 audioPatterns.add("\\${word.lowercase()}_$prefix.$ext")
                 audioPatterns.add("$prefix/$word.$ext")
                 audioPatterns.add("$prefix/${word.lowercase()}.$ext")
+                audioPatterns.add("$prefix/$upperWord.$ext")
             }
         }
         for (dict in snapshot) {
@@ -223,15 +228,21 @@ class DictSearchEngine {
         pathVariants.add(path)
         pathVariants.add("\\$path")
         pathVariants.add("/$path")
+        pathVariants.add(path.uppercase())
+        pathVariants.add("\\${path.uppercase()}")
         val fileName = path.substringAfterLast("/").substringAfterLast("\\")
         if (fileName != path) {
             pathVariants.add("\\$fileName")
             pathVariants.add("/$fileName")
             pathVariants.add(fileName)
+            pathVariants.add("\\${fileName.uppercase()}")
+            pathVariants.add(fileName.uppercase())
             for (prefix in listOf("uk", "us", "gb", "en", "audio", "sound", "pron")) {
                 pathVariants.add("\\$prefix\\$fileName")
                 pathVariants.add("$prefix/$fileName")
                 pathVariants.add("$prefix\\$fileName")
+                pathVariants.add("\\$prefix\\${fileName.uppercase()}")
+                pathVariants.add("$prefix/${fileName.uppercase()}")
             }
         }
 

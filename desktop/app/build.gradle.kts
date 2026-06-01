@@ -20,8 +20,16 @@ fun runGitCommand(command: List<String>): String? = try {
     null
 }
 
-val gitVersionName = (runGitCommand(listOf("git", "describe", "--tags", "--always"))
-    ?.removePrefix("v") ?: "1.0.0")
+val gitVersionName = run {
+    val raw = runGitCommand(listOf("git", "describe", "--tags", "--always"))
+        ?.removePrefix("v") ?: "1.0.0"
+    val parts = raw.split("-", ".")
+    if (parts.size >= 3 && parts.take(3).all { it.toIntOrNull() != null }) {
+        parts.take(3).joinToString(".")
+    } else {
+        "1.0.0"
+    }
+}
 
 kotlin {
     jvmToolchain(17)

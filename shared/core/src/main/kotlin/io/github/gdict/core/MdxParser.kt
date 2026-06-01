@@ -180,6 +180,17 @@ class MdxParser(private val mdxFile: File) : Closeable {
         return if (found >= 0) found else null
     }
 
+    private val lowercaseResourceMap = mutableMapOf<String, Int>()
+
+    private fun findFirstKeywordIndexCaseInsensitive(word: String): Int? {
+        if (lowercaseResourceMap.isEmpty() && keywordIndex.isNotEmpty()) {
+            for (i in keywordIndex.indices) {
+                lowercaseResourceMap.putIfAbsent(keywordIndex[i].word.lowercase(), i)
+            }
+        }
+        return lowercaseResourceMap[word.lowercase()]
+    }
+
     fun getAllKeywords(): List<String> = keywordIndex.map { it.word }
 
     fun readResourceBytes(key: String): ByteArray? {
@@ -192,6 +203,10 @@ class MdxParser(private val mdxFile: File) : Closeable {
             ?: findFirstKeywordIndex(key)
             ?: run {
                 if (altKey != key && altKey != normalizedKey) findFirstKeywordIndex(altKey) else null
+            }
+            ?: findFirstKeywordIndexCaseInsensitive(normalizedKey)
+            ?: run {
+                if (altKey != normalizedKey) findFirstKeywordIndexCaseInsensitive(altKey) else null
             }
             ?: return null
         val entry = keywordIndex[idx]
