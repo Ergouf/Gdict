@@ -1,6 +1,11 @@
 package io.github.gdict.core
 
 import io.github.gdict.core.GdictLogger.Companion.get as log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 class DictionaryManager(
@@ -33,6 +38,10 @@ class DictionaryManager(
     private val resourceCache = java.util.concurrent.ConcurrentHashMap<String, OptionalByteArray>()
     private val cssKeysCache = java.util.concurrent.ConcurrentHashMap<Long, List<String>>()
 
+    private val loadLock = Mutex()
+    @Volatile private var loadStarted = false
+    @Volatile private var loadCompleted = false
+
     class OptionalByteArray(val value: ByteArray?) {
         companion object {
             private val NULL = OptionalByteArray(null)
@@ -45,12 +54,41 @@ class DictionaryManager(
         synchronized(this) {
             dictionaries.addAll(persisted)
         }
-        for (entry in persisted) {
-            if (entry.isEnabled) {
-                loadDictionary(entry)
+    }
+
+    /**
+     * Lazily loads MDX/MDD parsers for all enabled dictionaries on a background
+     * dispatcher. Safe to call multiple times; subsequent calls are no-ops.
+     *
+     * Synchronous callers that need to wait for parsing to finish can pass a
+     * CoroutineScope and check [isLoadCompleted] afterwards.
+     */
+    fun loadAllAsync(scope: CoroutineScope) {
+        if (loadStarted) return
+        loadStarted = true
+        scope.launch(Dispatchers.IO) {
+            val started = System.nanoTime()
+            loadLock.withLock {
+                val snapshot = synchronized(this@DictionaryManager) {
+                    dictionaries.filter { it.isEnabled }.toList()
+                }
+                for (entry in snapshot) {
+                    if (Thread.currentThread().isInterrupted) break
+                    loadDictionary(entry)
+                }
+                loadCompleted = true
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                log().i(
+                    "DictMgr",
+                    "loadAllAsync: loaded ${loadedDicts.size}/${snapshot.size} dictionary parsers in ${elapsedMs}ms"
+                )
             }
         }
     }
+
+    fun isLoadCompleted(): Boolean = loadCompleted
+
+    fun isDictLoaded(id: Long): Boolean = loadedDicts.containsKey(id)
 
     fun addOrUpdateDictionary(name: String, sourcePath: String, companionPaths: List<String> = emptyList()): DictEntry {
         try {

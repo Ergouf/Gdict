@@ -2,6 +2,7 @@ package io.github.gdict.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -60,10 +61,10 @@ fun CollapsibleSidebar(
     onToggleCollapse: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val targetWidth = if (isCollapsed) 64.dp else 220.dp
+    val targetWidth = if (isCollapsed) 56.dp else 180.dp
     val animatedWidth by animateDpAsState(
         targetValue = targetWidth,
-        animationSpec = tween(durationMillis = 250),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 280f),
         label = "sidebarWidth"
     )
 
@@ -71,7 +72,7 @@ fun CollapsibleSidebar(
         modifier = modifier
             .width(animatedWidth)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier

@@ -1,14 +1,35 @@
 package io.github.gdict.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -16,7 +37,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.ui.components.CollapsibleSidebar
@@ -40,7 +71,13 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CropSquare
+import androidx.compose.material.icons.outlined.Minimize
 import io.github.gdict.core.GdictLogger
+import java.awt.Frame
+import java.awt.Window
+import java.awt.event.WindowEvent
 
 data class WordDetailNavState(
     val word: String,
@@ -57,7 +94,8 @@ fun DesktopApp(
     flashcardViewModel: FlashcardViewModel,
     settingsViewModel: SettingsViewModel,
     dictionaryRepository: DictionaryRepository,
-    strings: StringResources
+    strings: StringResources,
+    awtWindow: Window
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showDictionaries by remember { mutableIntStateOf(0) }
@@ -85,11 +123,16 @@ fun DesktopApp(
         wordDetailState = WordDetailNavState(word, definition, dictName, css)
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
         CollapsibleSidebar(
             items = sidebarItems,
             selectedIndex = effectiveSelectedIndex,
@@ -119,73 +162,105 @@ fun DesktopApp(
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            val bookmarks by bookmarkViewModel.bookmarks.collectAsState()
-            val detailShown = wordDetailState != null
+            // We deliberately avoid AnimatedContent because the transition would
+            // have to render BOTH the old screen and the new screen at the same
+            // time. The detail screen hosts a JCEF Chromium view, which is too
+            // expensive to keep alive during a transition. Instead we render
+            // exactly one screen and animate it via graphicsLayer.
+            val showingDetail = wordDetailState != null
+            // Detect direction (search->detail or detail->search) for slide.
+            var previousShowDetail by remember { mutableStateOf(false) }
+            var slideDirection by remember { mutableStateOf(1f) }
+            if (previousShowDetail != showingDetail) {
+                slideDirection = if (showingDetail) 1f else -1f
+                previousShowDetail = showingDetail
+            }
+            // Drive a 0->1 progress with animateFloatAsState (composable-native).
+            var transitionProgress by remember { mutableStateOf(1f) }
+            val animatedProgress by animateFloatAsState(
+                targetValue = 1f,
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "pageSlide"
+            )
+            // Reset progress to 0 right after the screen flip so the animation
+            // actually plays from 0 -> 1.
+            val transitionKey = showingDetail
+            LaunchedEffect(transitionKey) {
+                transitionProgress = 0f
+                // Animate manually using withFrameNanos for frame-accurate updates.
+                val startFrame = withFrameNanos { it }
+                while (true) {
+                    val now = withFrameNanos { it }
+                    val elapsedMs = (now - startFrame) / 1_000_000
+                    val raw = (elapsedMs / 200f).coerceIn(0f, 1f)
+                    // FastOutSlowInEasing approximation (smoothstep)
+                    val eased = raw * raw * (3f - 2f * raw)
+                    transitionProgress = eased
+                    if (raw >= 1f) break
+                }
+            }
+            val slideOffset = (1f - transitionProgress) * slideDirection
+            val slideAlpha = 0.7f + 0.3f * transitionProgress
 
-            if (detailShown) {
-                WordDetailScreen(
-                    word = wordDetailState?.word ?: "",
-                    definition = wordDetailState?.definition ?: "",
-                    dictionaryName = wordDetailState?.dictionaryName ?: "",
-                    css = wordDetailState?.css ?: "",
-                    isBookmarked = wordDetailState?.let { s -> bookmarks.any { it.word == s.word } } ?: false,
-                    onBack = { wordDetailState = null },
-                    onToggleBookmark = {
-                        val state = wordDetailState
-                        if (state != null) {
-                            if (bookmarks.any { it.word == state.word }) {
-                                val bookmarkItem = bookmarks.first { it.word == state.word }
-                                bookmarkViewModel.removeBookmark(bookmarkItem)
-                            } else {
-                                bookmarkViewModel.addBookmark(
-                                    state.word,
-                                    state.definition,
-                                    state.dictionaryName
-                                )
-                            }
-                        }
-                    },
-                    onEntryClick = { entry ->
-                        GdictLogger.get().i("DesktopApp", "onEntryClick: entry='$entry'")
-                        val currentDict = wordDetailState?.dictionaryName
-                        coroutineScope.launch {
-                            try {
-                                val searchResults = searchViewModel.searchWordForResult(entry)
-                                GdictLogger.get().i("DesktopApp", "onEntryClick: got ${searchResults.size} results for '$entry', currentDict='$currentDict'")
-                                if (searchResults.isNotEmpty()) {
-                                    val result = searchResults.find { it.dictionaryName == currentDict }
-                                        ?: searchResults.first()
-                                    wordDetailState = WordDetailNavState(
-                                        result.word,
-                                        result.definition,
-                                        result.dictionaryName,
-                                        result.css
-                                    )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                if (showingDetail) {
+                    WordDetailScreen(
+                        word = wordDetailState?.word ?: "",
+                        definition = wordDetailState?.definition ?: "",
+                        dictionaryName = wordDetailState?.dictionaryName ?: "",
+                        css = wordDetailState?.css ?: "",
+                        onBack = { wordDetailState = null },
+                        onEntryClick = { entry ->
+                            GdictLogger.get().i("DesktopApp", "onEntryClick: entry='$entry'")
+                            val currentDict = wordDetailState?.dictionaryName
+                            coroutineScope.launch {
+                                try {
+                                    val searchResults = searchViewModel.searchWordForResult(entry)
+                                    GdictLogger.get().i("DesktopApp", "onEntryClick: got ${searchResults.size} results for '$entry', currentDict='$currentDict'")
+                                    if (searchResults.isNotEmpty()) {
+                                        val result = searchResults.find { it.dictionaryName == currentDict }
+                                            ?: searchResults.first()
+                                        wordDetailState = WordDetailNavState(
+                                            result.word,
+                                            result.definition,
+                                            result.dictionaryName,
+                                            result.css
+                                        )
+                                    }
+                                } catch (e: Throwable) {
+                                    GdictLogger.get().e("DesktopApp", "onEntryClick failed: ${e.javaClass.simpleName}: ${e.message}")
                                 }
-                            } catch (e: Throwable) {
-                                GdictLogger.get().e("DesktopApp", "onEntryClick failed: ${e.javaClass.simpleName}: ${e.message}")
                             }
-                        }
-                    },
-                    dictionaryRepository = dictionaryRepository,
-                    settingsViewModel = settingsViewModel,
-                    webViewVisible = true,
-                    modifier = Modifier.fillMaxSize()
-                )
+                        },
+                        dictionaryRepository = dictionaryRepository,
+                        settingsViewModel = settingsViewModel,
+                        bookmarkViewModel = bookmarkViewModel,
+                        webViewVisible = true,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                translationX = slideOffset * size.width * 0.08f
+                                alpha = slideAlpha
+                            }
+                    )
             } else if (showFlashcard) {
-                FlashcardScreen(
-                    flashcardViewModel = flashcardViewModel,
-                    settingsViewModel = settingsViewModel,
-                    bookmarkViewModel = bookmarkViewModel,
-                    onBack = { showFlashcard = false }
-                )
-            } else if (showDictionaries == 1) {
-                DictionariesScreen(
-                    dictionaryViewModel = dictionaryViewModel,
-                    settingsViewModel = settingsViewModel,
-                    strings = strings,
-                    onBack = { showDictionaries = 0 },
-                    modifier = Modifier.fillMaxSize()
+                    FlashcardScreen(
+                        flashcardViewModel = flashcardViewModel,
+                        settingsViewModel = settingsViewModel,
+                        bookmarkViewModel = bookmarkViewModel,
+                        onBack = { showFlashcard = false }
+                    )
+                } else if (showDictionaries == 1) {
+                    DictionariesScreen(
+                        dictionaryViewModel = dictionaryViewModel,
+                        settingsViewModel = settingsViewModel,
+                        strings = strings,
+                        onBack = { showDictionaries = 0 },
+                        modifier = Modifier.fillMaxSize()
                 )
             } else {
                 when (selectedTab) {
@@ -216,6 +291,51 @@ fun DesktopApp(
                     )
                 }
             }
+            } // AnimatedContent
         }
+        } // Row
+    } // Column
+}
+
+@Composable
+fun AnimatedTitleBarButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+    iconSize: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.92f
+            isHovered -> 1.04f
+            else -> 1f
+        },
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+        label = "titleBtnScale"
+    )
+    val bgAlpha by animateFloatAsState(
+        targetValue = if (isHovered) 0.08f else 0f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "titleBtnBg"
+    )
+
+    Box(
+        modifier = modifier
+            .size(32.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = bgAlpha))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }

@@ -1,9 +1,12 @@
 package io.github.gdict.data
 
 import io.github.gdict.core.model.HistoryItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -12,8 +15,18 @@ class DesktopHistoryRepository(private val storage: StorageBackend) : HistoryRep
     private val _history = MutableStateFlow<List<HistoryItem>>(emptyList())
     override val history: StateFlow<List<HistoryItem>> = _history.asStateFlow()
 
-    init {
-        _history.value = loadHistory()
+    @Volatile private var diskLoaded = false
+
+    /**
+     * Loads search history from disk on a background dispatcher. StateFlow
+     * starts empty so the UI can render instantly. Safe to call multiple times.
+     */
+    fun loadAsync(scope: CoroutineScope) {
+        if (diskLoaded) return
+        diskLoaded = true
+        scope.launch(Dispatchers.IO) {
+            _history.value = loadHistory()
+        }
     }
 
     private fun loadHistory(): List<HistoryItem> {

@@ -7,7 +7,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.runtime.LaunchedEffect
 import io.github.gdict.core.DesktopLogger
+import io.github.gdict.platform.WindowsBackdrop
 import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictPersistence
 import io.github.gdict.core.DictionaryManager
@@ -38,6 +40,7 @@ import java.awt.Dimension
 import java.io.File
 
 fun main() = application {
+    val processStartNanos = System.nanoTime()
     GdictLogger.setLogger(DesktopLogger())
     val log = GdictLogger.get()
 
@@ -45,8 +48,14 @@ fun main() = application {
         log.e("UncaughtException", "Uncaught exception in thread '${thread.name}'", throwable)
     }
 
+    val dataDir = File(System.getProperty("user.home"), ".gdict")
+    dataDir.mkdirs()
+
+    val storage = JsonFileStorageBackend(dataDir)
+
     Runtime.getRuntime().addShutdownHook(Thread {
         try { io.github.gdict.ui.webview.shutdownBrowser() } catch (_: Throwable) {}
+        try { storage.flush() } catch (_: Throwable) {}
         try {
             val self = ProcessHandle.current()
             self.children().forEach { child ->
@@ -57,11 +66,6 @@ fun main() = application {
             }
         } catch (_: Throwable) {}
     })
-
-    val dataDir = File(System.getProperty("user.home"), ".gdict")
-    dataDir.mkdirs()
-
-    val storage = JsonFileStorageBackend(dataDir)
 
     val persistenceBackend = object : io.github.gdict.core.PersistenceBackend {
         private val dictFile = File(dataDir, "dictionaries.json")
@@ -103,12 +107,15 @@ fun main() = application {
     val fileImporter = DictFileImporter(fileSystemAccess)
     val persistence = DictPersistence(dataDir, persistenceBackend)
 
+    val tMetadataEnd = System.nanoTime()
+
     val dictionaryManager = try {
         DictionaryManager(dataDir, persistence, fileImporter)
     } catch (e: Throwable) {
         log.e("Main", "DictionaryManager init failed: ${e.javaClass.simpleName}: ${e.message}", e)
         DictionaryManager(dataDir, persistence, fileImporter)
     }
+    val tDictMgrEnd = System.nanoTime()
 
     val dictionaryRepo = DesktopDictionaryRepository(dictionaryManager)
     val bookmarkRepo = DesktopBookmarkRepository(storage)
@@ -117,17 +124,26 @@ fun main() = application {
 
     val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    // P0 S1: dictionary parser loading is now async on IO.
+    dictionaryManager.loadAllAsync(coroutineScope)
+    // P0 S2: bookmark/history JSON deserialization is now async on IO.
+    bookmarkRepo.loadAsync(coroutineScope)
+    historyRepo.loadAsync(coroutineScope)
+
     val searchViewModel = SearchViewModel(dictionaryRepo, historyRepo, coroutineScope)
     val bookmarkViewModel = BookmarkViewModel(bookmarkRepo, coroutineScope)
     val dictionaryViewModel = DictionaryViewModel(dictionaryRepo, coroutineScope)
     val flashcardViewModel = FlashcardViewModel(bookmarkRepo)
     val settingsViewModel = SettingsViewModel(settingsRepo, historyRepo, bookmarkRepo)
 
+    val tReposAndVmsEnd = System.nanoTime()
+
     TtsManager.setAudioPlayer { audioData ->
         io.github.gdict.ui.webview.DesktopAudioPlayer.play(audioData)
     }
 
     preInitCef()
+    val tCefEnd = System.nanoTime()
     coroutineScope.launch(Dispatchers.IO) {
         preCreateBrowserPanel()
     }
@@ -136,9 +152,53 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "Gdict Desktop",
         icon = painterResource("icon.png"),
-        state = rememberWindowState(width = 1200.dp, height = 800.dp)
+        state = rememberWindowState(width = 1200.dp, height = 800.dp),
+        undecorated = false
     ) {
         window.minimumSize = Dimension(800, 600)
+
+        LaunchedEffect(Unit) {
+            val nowNs = System.nanoTime()
+            log.i(
+                "Startup",
+                "Phase timings (ms): " +
+                    "metadata=${(tMetadataEnd - processStartNanos) / 1_000_000} " +
+                    "dictMgr=${(tDictMgrEnd - tMetadataEnd) / 1_000_000} " +
+                    "reposAndVms=${(tReposAndVmsEnd - tDictMgrEnd) / 1_000_000} " +
+                    "cef=${(tCefEnd - tReposAndVmsEnd) / 1_000_000} " +
+                    "firstFrame=${(nowNs - processStartNanos) / 1_000_000}"
+            )
+            WindowsBackdrop.applyMica(window, darkMode = false)
+            // Enable window dragging from any point on the window (when over
+            // non-interactive areas we still want to be able to drag the frame).
+            val dragHandler = object : java.awt.event.MouseAdapter() {
+                var dragStartX = 0
+                var dragStartY = 0
+                var winStartX = 0
+                var winStartY = 0
+
+                override fun mousePressed(e: java.awt.event.MouseEvent) {
+                    // Only drag from top 32px (title bar area)
+                    if (e.y <= 32) {
+                        dragStartX = e.xOnScreen
+                        dragStartY = e.yOnScreen
+                        winStartX = window.x
+                        winStartY = window.y
+                    }
+                }
+
+                override fun mouseDragged(e: java.awt.event.MouseEvent) {
+                    if (e.y <= 48) { // Allow slight margin during drag
+                        val dx = e.xOnScreen - dragStartX
+                        val dy = e.yOnScreen - dragStartY
+                        window.location = java.awt.Point(winStartX + dx, winStartY + dy)
+                    }
+                }
+            }
+            window.addMouseListener(dragHandler)
+            window.addMouseMotionListener(dragHandler)
+        }
+
         val languageCode by settingsViewModel.language.collectAsState()
         val effectiveLanguage = resolveEffectiveLanguage(AppLanguage.fromCode(languageCode))
         val strings = getStringResourcesForLanguage(effectiveLanguage)
@@ -151,7 +211,8 @@ fun main() = application {
                 flashcardViewModel = flashcardViewModel,
                 settingsViewModel = settingsViewModel,
                 dictionaryRepository = dictionaryRepo,
-                strings = strings
+                strings = strings,
+                awtWindow = window
             )
         }
     }

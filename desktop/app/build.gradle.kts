@@ -46,6 +46,8 @@ dependencies {
     implementation("org.json:json:20231013")
     implementation("me.friwi:jcefmaven:126.2.0")
     implementation("javazoom:jlayer:1.0.1")
+    implementation("net.java.dev.jna:jna:5.14.0")
+    implementation("net.java.dev.jna:jna-platform:5.14.0")
 }
 
 compose.desktop {
@@ -95,4 +97,40 @@ tasks.register<Exec>("packageMsix") {
         "-File", "package.ps1",
         "-Version", "${compose.desktop.application.nativeDistributions.packageVersion}.0"
     )
+}
+
+// Workaround for Compose Desktop stripping java.exe from bundled JDK runtime
+// See: https://github.com/JetBrains/compose-multiplatform/issues/2004
+// The Compose Desktop jpackage step uses jlink with --strip-native-commands,
+// which removes java.exe, javaw.exe and jli.dll from the bundled runtime.
+// jpackage's Windows launcher (Gdict.exe) requires java.exe to exist to
+// launch the JVM, otherwise the user sees a "Failed to launch JVM" error.
+tasks.register<Copy>("fixBundledJavaExe") {
+    group = "gdict"
+    description = "Restore java.exe / javaw.exe / jli.dll in bundled JDK runtime"
+    dependsOn("packageAppImage")
+
+    val jdkHome = File(System.getProperty("java.home"))
+    val javaBinDir = if (jdkHome.name == "jre") File(jdkHome, "../bin") else File(jdkHome, "bin")
+
+    from(file("${javaBinDir.absolutePath}/java.exe"))
+    from(file("${javaBinDir.absolutePath}/javaw.exe"))
+    from(file("${javaBinDir.absolutePath}/jli.dll"))
+
+    // Resolve the actual app dir, which follows Compose Desktop's layout:
+    //   compose/binaries/main/app/<packageName>/
+    val packageName = (project.findProperty("compose.desktop.packageName") as? String)
+        ?: "Gdict"
+    val outputDir = layout.buildDirectory.dir("compose/binaries/main/app/$packageName/runtime/bin")
+    into(outputDir)
+}
+
+tasks.named("build") {
+    dependsOn("fixBundledJavaExe")
+}
+
+// Both packageAppImage and packageExe emit the same runtime/bin layout,
+// so both need the java.exe workaround applied.
+tasks.matching { it.name == "packageExe" || it.name == "packageMsi" || it.name == "packageDeb" || it.name == "packageDmg" }.configureEach {
+    dependsOn("fixBundledJavaExe")
 }

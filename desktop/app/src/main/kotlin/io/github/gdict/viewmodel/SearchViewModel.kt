@@ -2,6 +2,7 @@ package io.github.gdict.viewmodel
 
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.data.HistoryRepository
+import io.github.gdict.core.GdictLogger
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ class SearchViewModel(
     private val historyRepo: HistoryRepository,
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 ) {
+    private val log = GdictLogger.get()
     val history: StateFlow<List<HistoryItem>> = historyRepo.history
         .stateIn(coroutineScope, SharingStarted.Lazily, emptyList())
 
@@ -82,9 +84,16 @@ class SearchViewModel(
 
     private fun performSearch(word: String) {
         val currentVersion = ++searchVersion
+        val started = System.nanoTime()
         coroutineScope.launch {
             try {
                 val results = dictionaryRepo.searchWord(word)
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                log.i(
+                    "Search",
+                    "performSearch word='$word' took ${elapsedMs}ms, " +
+                        "results=${results.size}, current=$currentVersion"
+                )
                 if (currentVersion == searchVersion) {
                     _searchResults.value = results
                     for (result in results) {
@@ -97,6 +106,8 @@ class SearchViewModel(
                     }
                 }
             } catch (e: Exception) {
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                log.e("Search", "performSearch word='$word' failed after ${elapsedMs}ms: ${e.message}", e)
                 if (currentVersion == searchVersion) {
                     _errorMessage.value = "Search failed: ${e.message}"
                 }
@@ -105,9 +116,12 @@ class SearchViewModel(
     }
 
     private fun loadSuggestions(query: String) {
+        val started = System.nanoTime()
         coroutineScope.launch {
             try {
                 _suggestions.value = dictionaryRepo.searchSuggestions(query, 10)
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                log.i("Search", "loadSuggestions query='$query' took ${elapsedMs}ms")
             } catch (_: Exception) {
             }
         }

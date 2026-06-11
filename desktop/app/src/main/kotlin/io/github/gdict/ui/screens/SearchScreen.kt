@@ -2,7 +2,15 @@ package io.github.gdict.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -61,6 +69,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -287,8 +296,16 @@ private fun DraggableGrid(
     val gridState = rememberLazyGridState()
     var dragIndex by remember { mutableStateOf(-1) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    // Only run the staggered entrance animation on the very first non-empty render
+    // of the grid, not on every recomposition or list mutation.
+    var hasAnimatedIn by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // After the first non-empty items render, mark the entrance as done so
+        // subsequent item insertions / reorderings don't re-run the stagger.
+        androidx.compose.runtime.LaunchedEffect(items.size) {
+            if (items.isNotEmpty()) hasAnimatedIn = true
+        }
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(minSize = minCardSize),
@@ -313,6 +330,28 @@ private fun DraggableGrid(
                     label = "cardElevation"
                 )
 
+                // Staggered entrance animation only on the first render
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(
+                        animationSpec = tween(
+                            durationMillis = 380,
+                            delayMillis = if (hasAnimatedIn) 0 else (index * 30).coerceAtMost(300),
+                            easing = FastOutSlowInEasing
+                        )
+                    ) + scaleIn(
+                        initialScale = 0.94f,
+                        animationSpec = tween(
+                            durationMillis = 380,
+                            delayMillis = if (hasAnimatedIn) 0 else (index * 30).coerceAtMost(300),
+                            easing = FastOutSlowInEasing
+                        )
+                    ) + slideInVertically(
+                        initialOffsetY = { it / 4 },
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 280f)
+                    ),
+                    exit = fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+                ) {
                 Box(
                     modifier = Modifier
                         .then(
@@ -387,6 +426,7 @@ private fun DraggableGrid(
                         }
                     )
                 }
+                } // AnimatedVisibility
             }
         }
 
@@ -515,6 +555,28 @@ private fun WordTranslationCard(
     cardScale: Float = 1.0f,
     onClick: () -> Unit = {}
 ) {
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val isPressed by cardInteractionSource.collectIsPressedAsState()
+    val isHovered by cardInteractionSource.collectIsHoveredAsState()
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.97f
+            isHovered -> 1.015f
+            else -> 1f
+        },
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "cardPressScale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = when {
+            isPressed -> 2.dp
+            isHovered -> 4.dp
+            else -> 0.dp
+        },
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "cardElevation"
+    )
+
     val titleFontSize = (16f * cardScale).coerceIn(12f, 24f).sp
     val bodyFontSize = (14f * cardScale).coerceIn(10f, 20f).sp
     val labelFontSize = (11f * cardScale).coerceIn(8f, 16f).sp
@@ -525,7 +587,16 @@ private fun WordTranslationCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .shadow(elevation, RoundedCornerShape(12.dp))
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = cardInteractionSource,
+                indication = null,
+                onClick = onClick
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface BookmarkRepository {
     val bookmarks: StateFlow<List<BookmarkItem>>
+    val bookmarksByWord: StateFlow<Map<String, BookmarkItem>>
     fun addBookmark(word: String, definition: String, dictionaryName: String = "")
     fun removeBookmark(item: BookmarkItem)
     fun clearBookmarks()

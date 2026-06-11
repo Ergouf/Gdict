@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,7 @@ import io.github.gdict.core.GdictLogger
 import io.github.gdict.tts.EdgeTtsClient
 import io.github.gdict.ui.webview.DesktopAudioPlayer
 import io.github.gdict.ui.webview.MdxWebView
+import io.github.gdict.viewmodel.BookmarkViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -61,12 +63,11 @@ fun WordDetailScreen(
     definition: String,
     dictionaryName: String,
     css: String = "",
-    isBookmarked: Boolean,
     onBack: () -> Unit,
-    onToggleBookmark: () -> Unit,
     onEntryClick: (String) -> Unit = {},
     dictionaryRepository: DictionaryRepository,
     settingsViewModel: SettingsViewModel,
+    bookmarkViewModel: BookmarkViewModel,
     webViewVisible: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -75,6 +76,11 @@ fun WordDetailScreen(
     val darkMode by settingsViewModel.darkMode.collectAsState()
     val detailZoom by settingsViewModel.detailZoom.collectAsState()
     val isPronunciationDict = definition.contains("cepd18.css")
+
+    val bookmarksByWord by bookmarkViewModel.bookmarksByWord.collectAsState()
+    val isBookmarked by remember(word) {
+        derivedStateOf { bookmarksByWord.containsKey(word) }
+    }
 
     log.i("WordDetailScreen", "Rendering: word='$word', defLength=${definition.length}, dictName='$dictionaryName', cssLength=${css.length}")
 
@@ -119,7 +125,14 @@ fun WordDetailScreen(
             if (!isPronunciationDict) {
                 ActionButtonsRow(
                     isBookmarked = isBookmarked,
-                    onToggleBookmark = onToggleBookmark,
+                    onToggleBookmark = {
+                        val existing = bookmarksByWord[word]
+                        if (existing != null) {
+                            bookmarkViewModel.removeBookmark(existing)
+                        } else {
+                            bookmarkViewModel.addBookmark(word, definition, dictionaryName)
+                        }
+                    },
                     onPronounce = {
                         if (isPlaying) return@ActionButtonsRow
                         isPlaying = true

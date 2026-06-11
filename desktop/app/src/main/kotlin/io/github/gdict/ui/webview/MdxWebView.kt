@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.core.GdictLogger
 import kotlinx.coroutines.delay
@@ -409,6 +411,7 @@ private object GlobalBrowserManager {
             if (!ensureCefInitialized()) {
                 log.e("MdxWebView", "GlobalBrowserManager: JCEF init failed")
                 val errorPanel = JPanel(BorderLayout())
+                errorPanel.background = java.awt.Color.WHITE
                 val errorLabel = JLabel("Browser engine failed to initialize.")
                 errorLabel.horizontalAlignment = SwingConstants.CENTER
                 errorPanel.add(errorLabel, BorderLayout.CENTER)
@@ -520,7 +523,10 @@ private object GlobalBrowserManager {
             messageRouter = router
 
             val p = JPanel(BorderLayout())
-            p.add(cefBrowser.uiComponent, BorderLayout.CENTER)
+            p.background = java.awt.Color.WHITE
+            val browserComponent = cefBrowser.uiComponent
+            browserComponent.background = java.awt.Color.WHITE
+            p.add(browserComponent, BorderLayout.CENTER)
             panel = p
 
             log.i("MdxWebView", "GlobalBrowserManager: Panel created successfully")
@@ -659,7 +665,13 @@ fun MdxWebView(
     SwingPanel(
         factory = { cachedPanel },
         update = { _ -> },
-        modifier = Modifier.fillMaxWidth().fillMaxHeight()
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            // Cache the Chromium surface in an offscreen layer so that the
+            // AnimatedContent page transition doesn't have to re-rasterize the
+            // JCEF texture on every animation frame.
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     )
 }
 

@@ -5,9 +5,12 @@ import io.github.gdict.core.Rating
 import io.github.gdict.core.SchedulingCard
 import io.github.gdict.core.model.BookmarkItem
 import io.github.gdict.core.model.ReviewStats
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,8 +19,24 @@ class DesktopBookmarkRepository(private val storage: StorageBackend) : BookmarkR
     private val _bookmarks = MutableStateFlow<List<BookmarkItem>>(emptyList())
     override val bookmarks: StateFlow<List<BookmarkItem>> = _bookmarks.asStateFlow()
 
-    init {
-        _bookmarks.value = loadBookmarks()
+    private val _bookmarksByWord = MutableStateFlow<Map<String, BookmarkItem>>(emptyMap())
+    override val bookmarksByWord: StateFlow<Map<String, BookmarkItem>> = _bookmarksByWord.asStateFlow()
+
+    @Volatile private var diskLoaded = false
+
+    /**
+     * Loads bookmarks from disk on a background dispatcher. The in-memory
+     * StateFlow starts empty so the UI can render instantly; results land
+     * here once parsing completes. Safe to call multiple times.
+     */
+    fun loadAsync(scope: CoroutineScope) {
+        if (diskLoaded) return
+        diskLoaded = true
+        scope.launch(Dispatchers.IO) {
+            val items = loadBookmarks()
+            _bookmarks.value = items
+            _bookmarksByWord.value = items.associateBy { it.word }
+        }
     }
 
     private fun loadBookmarks(): List<BookmarkItem> {
@@ -62,19 +81,24 @@ class DesktopBookmarkRepository(private val storage: StorageBackend) : BookmarkR
         storage.putString("bookmarks", arr.toString())
     }
 
+    private fun updateBookmarks(newList: List<BookmarkItem>) {
+        _bookmarks.value = newList
+        _bookmarksByWord.value = newList.associateBy { it.word }
+    }
+
     override fun addBookmark(word: String, definition: String, dictionaryName: String) {
         val item = BookmarkItem(word = word, definition = definition, dictionaryName = dictionaryName)
-        _bookmarks.value = _bookmarks.value.filter { !(it.word == word && it.dictionaryName == dictionaryName) } + item
+        updateBookmarks(_bookmarks.value.filter { !(it.word == word && it.dictionaryName == dictionaryName) } + item)
         saveBookmarks()
     }
 
     override fun removeBookmark(item: BookmarkItem) {
-        _bookmarks.value = _bookmarks.value.filter { it.id != item.id }
+        updateBookmarks(_bookmarks.value.filter { it.id != item.id })
         saveBookmarks()
     }
 
     override fun clearBookmarks() {
-        _bookmarks.value = emptyList()
+        updateBookmarks(emptyList())
         saveBookmarks()
     }
 
@@ -115,7 +139,7 @@ class DesktopBookmarkRepository(private val storage: StorageBackend) : BookmarkR
             nextReview = card.nextReview,
             reviewCount = item.reviewCount + 1
         )
-        _bookmarks.value = _bookmarks.value.map { if (it.id == item.id) updated else it }
+        updateBookmarks(_bookmarks.value.map { if (it.id == item.id) updated else it })
         saveBookmarks()
     }
 }

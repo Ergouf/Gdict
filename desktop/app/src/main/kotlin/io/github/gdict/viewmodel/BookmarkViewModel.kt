@@ -18,6 +18,9 @@ class BookmarkViewModel(
     val bookmarks: StateFlow<List<BookmarkItem>> = bookmarkRepo.bookmarks
         .stateIn(coroutineScope, SharingStarted.Lazily, emptyList())
 
+    val bookmarksByWord: StateFlow<Map<String, BookmarkItem>> = bookmarkRepo.bookmarksByWord
+        .stateIn(coroutineScope, SharingStarted.Lazily, emptyMap())
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
