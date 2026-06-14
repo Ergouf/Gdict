@@ -16,6 +16,7 @@ class DesktopHistoryRepository(private val storage: StorageBackend) : HistoryRep
     override val history: StateFlow<List<HistoryItem>> = _history.asStateFlow()
 
     @Volatile private var diskLoaded = false
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     /**
      * Loads search history from disk on a background dispatcher. StateFlow
@@ -61,16 +62,20 @@ class DesktopHistoryRepository(private val storage: StorageBackend) : HistoryRep
         val now = System.currentTimeMillis()
         val item = HistoryItem(word = word, timestamp = now)
         _history.value = (listOf(item) + _history.value.filter { it.word != word }).take(500)
-        saveHistory()
+        saveHistoryAsync()
     }
 
     override fun removeFromHistory(item: HistoryItem) {
         _history.value = _history.value.filter { it.word != item.word }
-        saveHistory()
+        saveHistoryAsync()
     }
 
     override fun clearHistory() {
         _history.value = emptyList()
-        saveHistory()
+        saveHistoryAsync()
+    }
+
+    private fun saveHistoryAsync() {
+        scope.launch { saveHistory() }
     }
 }

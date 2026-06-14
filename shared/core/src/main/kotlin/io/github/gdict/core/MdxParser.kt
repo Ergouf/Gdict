@@ -51,10 +51,20 @@ class MdxParser(private val mdxFile: File) : Closeable {
     @Volatile
     private var parseFailed = false
 
+    // 记录块解压缓存，避免重复解压同一块
+    private val recordBlockCache = java.util.concurrent.ConcurrentHashMap<Int, ByteArray>()
+    private val recordBlockCacheSize = java.util.concurrent.atomic.AtomicLong(0)
+    private val maxRecordBlockCacheSize = 32 * 1024 * 1024 // 32MB max cache
+
     var isResourceMode = false
         private set
     private var keywordSectionStart: Long = -1
     private var keywordSectionEnd: Long = -1
+
+    // 流式模式关键词缓存：key -> recordOffset
+    @Volatile
+    private var streamKeywordIndex: Map<String, Long>? = null
+    private val streamKeywordIndexLock = Any()
 
     init {
         try {
@@ -180,7 +190,7 @@ class MdxParser(private val mdxFile: File) : Closeable {
         return if (found >= 0) found else null
     }
 
-    private val lowercaseResourceMap = mutableMapOf<String, Int>()
+    private val lowercaseResourceMap = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     private fun findFirstKeywordIndexCaseInsensitive(word: String): Int? {
         if (lowercaseResourceMap.isEmpty() && keywordIndex.isNotEmpty()) {
@@ -265,6 +275,27 @@ class MdxParser(private val mdxFile: File) : Closeable {
         val altKey = if (key.startsWith("\\")) key.substring(1) else key
         val tryKeys = if (normalizedKey != altKey) listOf(normalizedKey, altKey) else listOf(normalizedKey)
         log().d(TAG, "Stream resource lookup: tryKeys=$tryKeys")
+
+        // 确保流式关键词索引已构建
+        val index = streamKeywordIndex ?: synchronized(streamKeywordIndexLock) {
+            streamKeywordIndex ?: buildStreamKeywordIndex().also { streamKeywordIndex = it }
+        }
+
+        // 从缓存索引中查找
+        for (tk in tryKeys) {
+            val recordOffset = index[tk.lowercase()]
+            if (recordOffset != null) {
+                log().i(TAG, "Stream found in cache: '$tk' at offset=$recordOffset")
+                return readRecordBytes(recordOffset, 0)
+            }
+        }
+
+        log().w(TAG, "Stream lookup not found in cache: keys=$tryKeys")
+        return null
+    }
+
+    private fun buildStreamKeywordIndex(): Map<String, Long> {
+        val index = mutableMapOf<String, Long>()
         synchronized(raf) {
             val savedPosition = raf.filePointer
             try {
@@ -289,16 +320,14 @@ class MdxParser(private val mdxFile: File) : Closeable {
                     keyIndexDecompLen = 0
                 }
 
-                log().d(TAG, "Stream header: numKeyBlocks=$numKeyBlocks idxComp=$keyIndexCompLen idxDecomp=$keyIndexDecompLen")
-
                 if (numKeyBlocks <= 0 || numKeyBlocks > 10000000 || keyIndexCompLen <= 0) {
-                    log().w(TAG, "Stream: invalid header values")
-                    return null
+                    log().w(TAG, "buildStreamKeywordIndex: invalid header values")
+                    return index
                 }
 
                 if (keyIndexCompLen > 100 * 1024 * 1024) {
-                    log().w(TAG, "Stream: keyIndexCompLen too large ($keyIndexCompLen), cannot stream")
-                    return null
+                    log().w(TAG, "buildStreamKeywordIndex: keyIndexCompLen too large ($keyIndexCompLen)")
+                    return index
                 }
 
                 val keyIndexRaw = ByteArray(keyIndexCompLen.toInt())
@@ -309,7 +338,6 @@ class MdxParser(private val mdxFile: File) : Closeable {
                     val keyInput = checksumBytes + byteArrayOf(0x95.toByte(), 0x36.toByte(), 0x00.toByte(), 0x00.toByte())
                     val decryptKey = RipeMD128.digest(keyInput)
                     fastDecrypt(keyIndexRaw, 8, decryptKey)
-                    log().d(TAG, "Stream: key index decrypted")
                 }
 
                 val keyIndexData = if (engineVersion >= 2.0 && keyIndexDecompLen > 0) {
@@ -317,11 +345,11 @@ class MdxParser(private val mdxFile: File) : Closeable {
                 } else keyIndexRaw
 
                 val blockMetas = decodeKeyBlockInfo(keyIndexData, numKeyBlocks.toInt())
-                log().d(TAG, "Stream mode: ${blockMetas.size} blocks, searching for keys")
+                log().i(TAG, "buildStreamKeywordIndex: ${blockMetas.size} blocks")
 
                 for ((blockIdx, meta) in blockMetas.withIndex()) {
                     if (meta.compSize <= 0 || meta.compSize > 50 * 1024 * 1024) {
-                        log().w(TAG, "Stream: skip block $blockIdx compSize=${meta.compSize}")
+                        log().w(TAG, "buildStreamKeywordIndex: skip block $blockIdx compSize=${meta.compSize}")
                         continue
                     }
                     val compData = ByteArray(meta.compSize.toInt())
@@ -334,29 +362,17 @@ class MdxParser(private val mdxFile: File) : Closeable {
                         if (stream.remaining == 0) break
                         val wordBytes = stream.readNullTerminated(bpu)
                         val word = String(wordBytes, charset(encoding))
-                        val wordLower = word.lowercase()
-                        var matched = false
-                        for (tk in tryKeys) {
-                            if (word.equals(tk, ignoreCase = true) || word.endsWith(tk, ignoreCase = true) || wordLower.endsWith(tk.lowercase())) {
-                                matched = true
-                                break
-                            }
-                        }
-                        if (matched) {
-                            log().i(TAG, "Stream found: '$word' at offset=$recordOffset")
-                            return readRecordBytes(recordOffset, 0)
-                        }
+                        index[word.lowercase()] = recordOffset
                     }
                 }
-                log().w(TAG, "Stream lookup not found: keys=$tryKeys")
-                return null
+                log().i(TAG, "buildStreamKeywordIndex: built ${index.size} entries")
             } catch (e: Exception) {
-                log().e(TAG, "Stream resource error: ${e.message}")
-                return null
+                log().e(TAG, "buildStreamKeywordIndex error: ${e.message}", e)
             } finally {
                 raf.seek(savedPosition)
             }
         }
+        return index
     }
 
     private fun findResourceKeysStream(suffix: String): List<String> {
@@ -552,28 +568,46 @@ class MdxParser(private val mdxFile: File) : Closeable {
             log().e(TAG, "readRecord: block size exceeds Int.MAX_VALUE")
             return null
         }
-        synchronized(raf) {
-            try {
-                raf.seek(rbInfo.compressedOffset)
-                val data = ByteArray(rbInfo.compressedSize.toInt())
-                raf.readFully(data)
-                val decompressed = decompressBlock(data, rbInfo.decompressedSize.toInt())
-                val recordStart = (offset - rbInfo.recordStartOffset).toInt()
-                if (recordStart < 0 || recordStart >= decompressed.size) return null
 
-                val actualSize = if (size > 0) {
-                    size.coerceAtMost(decompressed.size - recordStart)
-                } else {
-                    findNullLength(decompressed, recordStart, bpu)
+        // 从缓存获取解压后的块，或解压并缓存
+        val decompressed = recordBlockCache.getOrPut(idx) {
+            synchronized(raf) {
+                try {
+                    raf.seek(rbInfo.compressedOffset)
+                    val data = ByteArray(rbInfo.compressedSize.toInt())
+                    raf.readFully(data)
+                    val decompressed = decompressBlock(data, rbInfo.decompressedSize.toInt())
+
+                    // 限制缓存大小
+                    val newSize = recordBlockCacheSize.addAndGet(decompressed.size.toLong())
+                    if (newSize > maxRecordBlockCacheSize) {
+                        recordBlockCache.clear()
+                        recordBlockCacheSize.set(0)
+                    } else {
+                        recordBlockCacheSize.addAndGet(decompressed.size.toLong())
+                    }
+
+                    decompressed
+                } catch (e: Exception) {
+                    log().e(TAG, "readRecord decompress error at $offset: ${e.message}")
+                    ByteArray(0)
                 }
-                if (actualSize <= 0) return null
-                val bytes = decompressed.copyOfRange(recordStart, recordStart + actualSize)
-                return decodeRecordString(bytes)
-            } catch (e: Exception) {
-                log().e(TAG, "readRecord error at $offset: ${e.message}")
-                return null
             }
         }
+
+        if (decompressed.isEmpty()) return null
+
+        val recordStart = (offset - rbInfo.recordStartOffset).toInt()
+        if (recordStart < 0 || recordStart >= decompressed.size) return null
+
+        val actualSize = if (size > 0) {
+            size.coerceAtMost(decompressed.size - recordStart)
+        } else {
+            findNullLength(decompressed, recordStart, bpu)
+        }
+        if (actualSize <= 0) return null
+        val bytes = decompressed.copyOfRange(recordStart, recordStart + actualSize)
+        return decodeRecordString(bytes)
     }
 
     private fun findNullLength(data: ByteArray, start: Int, bpu: Int): Int {
@@ -1118,72 +1152,131 @@ class MdxParser(private val mdxFile: File) : Closeable {
     }
 
     private fun extractAttr(xml: String, attrName: String): String? {
-        val pattern = "$attrName=\"([^\"]*)\"".toRegex(RegexOption.IGNORE_CASE)
+        val pattern = ATTR_REGEX_CACHE.getOrPut(attrName) {
+            "$attrName=\"([^\"]*)\"".toRegex(RegexOption.IGNORE_CASE)
+        }
         return pattern.find(xml)?.groupValues?.get(1)
     }
 
     companion object {
         private const val TAG = "MdxParser"
+        private val ATTR_REGEX_CACHE = mutableMapOf<String, Regex>()
+
+        // 缓存所有正则表达式，避免每次调用 transformHtmlStatic 时重复创建
+        private val SEP_CONTENT_REGEX = Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)
+        private val SEP_SELF_CLOSE_REGEX = Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE)
+        private val SEP_CLOSE_REGEX = Regex("</SEP>", RegexOption.IGNORE_CASE)
+        private val HW_OPEN_REGEX = Regex("<hw>", RegexOption.IGNORE_CASE)
+        private val HW_CLOSE_REGEX = Regex("</hw>", RegexOption.IGNORE_CASE)
+        private val INF_OPEN_REGEX = Regex("<inf>", RegexOption.IGNORE_CASE)
+        private val INF_CLOSE_REGEX = Regex("</inf>", RegexOption.IGNORE_CASE)
+        private val EX_OPEN_REGEX = Regex("<ex>", RegexOption.IGNORE_CASE)
+        private val EX_CLOSE_REGEX = Regex("</ex>", RegexOption.IGNORE_CASE)
+        private val HIT_OPEN_REGEX = Regex("<hit[^>]*>", RegexOption.IGNORE_CASE)
+        private val HIT_CLOSE_REGEX = Regex("</hit>", RegexOption.IGNORE_CASE)
+        private val LINK_STYLESHEET_REGEX = Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE)
+        private val META_REGEX = Regex("<meta[^>]*>", RegexOption.IGNORE_CASE)
+        private val SOUNDFILE_OPEN_REGEX = Regex("<soundfile>", RegexOption.IGNORE_CASE)
+        private val SOUNDFILE_CLOSE_REGEX = Regex("</soundfile>", RegexOption.IGNORE_CASE)
+        private val PRONUNCIATION_PRACTICE_REGEX = Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE)
+        private val DI_INFO_REGEX = Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE)
+        private val SENSE_HEAD_OPEN_REGEX = Regex("<sense-head>", RegexOption.IGNORE_CASE)
+        private val SENSE_HEAD_CLOSE_REGEX = Regex("</sense-head>", RegexOption.IGNORE_CASE)
+        private val IPA_OPEN_REGEX = Regex("<ipa>", RegexOption.IGNORE_CASE)
+        private val IPA_CLOSE_REGEX = Regex("</ipa>", RegexOption.IGNORE_CASE)
+        private val PRONGRP_OPEN_REGEX = Regex("<prongrp>", RegexOption.IGNORE_CASE)
+        private val PRONGRP_CLOSE_REGEX = Regex("</prongrp>", RegexOption.IGNORE_CASE)
+        private val INFLECTION_OPEN_REGEX = Regex("<inflection>", RegexOption.IGNORE_CASE)
+        private val INFLECTION_CLOSE_REGEX = Regex("</inflection>", RegexOption.IGNORE_CASE)
+        private val CAPVAR_OPEN_REGEX = Regex("<capvar>", RegexOption.IGNORE_CASE)
+        private val CAPVAR_CLOSE_REGEX = Regex("</capvar>", RegexOption.IGNORE_CASE)
+        private val SENSE_BLOCK_OPEN_REGEX = Regex("<sense-block>", RegexOption.IGNORE_CASE)
+        private val SENSE_BLOCK_CLOSE_REGEX = Regex("</sense-block>", RegexOption.IGNORE_CASE)
+        private val SENSE_BODY_OPEN_REGEX = Regex("<sense-body>", RegexOption.IGNORE_CASE)
+        private val SENSE_BODY_CLOSE_REGEX = Regex("</sense-body>", RegexOption.IGNORE_CASE)
+        private val DI_HEAD_OPEN_REGEX = Regex("<di-head>", RegexOption.IGNORE_CASE)
+        private val DI_HEAD_CLOSE_REGEX = Regex("</di-head>", RegexOption.IGNORE_CASE)
+        private val DI_TITLE_OPEN_REGEX = Regex("<di-title>", RegexOption.IGNORE_CASE)
+        private val DI_TITLE_CLOSE_REGEX = Regex("</di-title>", RegexOption.IGNORE_CASE)
+        private val DI_BODY_OPEN_REGEX = Regex("<di-body>", RegexOption.IGNORE_CASE)
+        private val DI_BODY_CLOSE_REGEX = Regex("</di-body>", RegexOption.IGNORE_CASE)
+        private val ARL_OPEN_REGEX = Regex("<arl>", RegexOption.IGNORE_CASE)
+        private val ARL_CLOSE_REGEX = Regex("</arl>", RegexOption.IGNORE_CASE)
+        private val BASE_OPEN_REGEX = Regex("<base>", RegexOption.IGNORE_CASE)
+        private val BASE_CLOSE_REGEX = Regex("</base>", RegexOption.IGNORE_CASE)
+        private val RESULTS_OPEN_REGEX = Regex("<results>", RegexOption.IGNORE_CASE)
+        private val RESULTS_CLOSE_REGEX = Regex("</results>", RegexOption.IGNORE_CASE)
+        private val FORMS_OPEN_REGEX = Regex("<forms>", RegexOption.IGNORE_CASE)
+        private val FORMS_CLOSE_REGEX = Regex("</forms>", RegexOption.IGNORE_CASE)
+        private val INFLECTIONS_OPEN_REGEX = Regex("<inflections>", RegexOption.IGNORE_CASE)
+        private val INFLECTIONS_CLOSE_REGEX = Regex("</inflections>", RegexOption.IGNORE_CASE)
+        private val PRON_OPEN_REGEX = Regex("<pron>", RegexOption.IGNORE_CASE)
+        private val PRON_CLOSE_REGEX = Regex("</pron>", RegexOption.IGNORE_CASE)
+        private val USSYMBOL_OPEN_REGEX = Regex("<ussymbol>", RegexOption.IGNORE_CASE)
+        private val USSYMBOL_CLOSE_REGEX = Regex("</ussymbol>", RegexOption.IGNORE_CASE)
+        private val SENSE_INFO_OPEN_REGEX = Regex("<sense-info>", RegexOption.IGNORE_CASE)
+        private val SENSE_INFO_CLOSE_REGEX = Regex("</sense-info>", RegexOption.IGNORE_CASE)
+        private val SOUND_HREF_REGEX = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
 
         fun transformHtmlStatic(raw: String): String {
             var result = raw
-            result = result.replace(Regex("<SEP[^>]*>([^<]*)</SEP>", RegexOption.IGNORE_CASE)) { match ->
+            result = result.replace(SEP_CONTENT_REGEX) { match ->
                 val content = match.groupValues[1].trim()
                 if (content.isEmpty()) " " else " $content "
             }
-            result = result.replace(Regex("<SEP\\s*/?>", RegexOption.IGNORE_CASE), " ")
-            result = result.replace(Regex("</SEP>", RegexOption.IGNORE_CASE), "")
-            result = result.replace(Regex("<hw>", RegexOption.IGNORE_CASE), "<b class='hw'>")
-            result = result.replace(Regex("</hw>", RegexOption.IGNORE_CASE), "</b>")
-            result = result.replace(Regex("<inf>", RegexOption.IGNORE_CASE), "<i class='inf'>")
-            result = result.replace(Regex("</inf>", RegexOption.IGNORE_CASE), "</i>")
-            result = result.replace(Regex("<ex>", RegexOption.IGNORE_CASE), "<span class='ex'>")
-            result = result.replace(Regex("</ex>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<hit[^>]*>", RegexOption.IGNORE_CASE), "<div class='hit'>")
-            result = result.replace(Regex("</hit>", RegexOption.IGNORE_CASE), "</div>")
-            result = result.replace(Regex("<link\\s+rel=stylesheet[^>]*>", RegexOption.IGNORE_CASE), "")
-            result = result.replace(Regex("<meta[^>]*>", RegexOption.IGNORE_CASE), "")
-            result = result.replace(Regex("<soundfile>", RegexOption.IGNORE_CASE), "<span class='soundfile'>")
-            result = result.replace(Regex("</soundfile>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<pronunciation-practice\\s*/?>", RegexOption.IGNORE_CASE), "")
-            result = result.replace(Regex("<di-info\\s*/?>", RegexOption.IGNORE_CASE), "")
-            result = result.replace(Regex("<sense-head>", RegexOption.IGNORE_CASE), "<div class='sense-head'>")
-            result = result.replace(Regex("</sense-head>", RegexOption.IGNORE_CASE), "</div>")
-            result = result.replace(Regex("<ipa>", RegexOption.IGNORE_CASE), "<span class='ipa'>")
-            result = result.replace(Regex("</ipa>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<prongrp>", RegexOption.IGNORE_CASE), "<span class='prongrp'>")
-            result = result.replace(Regex("</prongrp>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<inflection>", RegexOption.IGNORE_CASE), "<span class='inflection'>")
-            result = result.replace(Regex("</inflection>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<capvar>", RegexOption.IGNORE_CASE), "<span class='capvar'>")
-            result = result.replace(Regex("</capvar>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<sense-block>", RegexOption.IGNORE_CASE), "<span class='sense-block'>")
-            result = result.replace(Regex("</sense-block>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<sense-body>", RegexOption.IGNORE_CASE), "<span class='sense-body'>")
-            result = result.replace(Regex("</sense-body>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<di-head>", RegexOption.IGNORE_CASE), "<span class='di-head'>")
-            result = result.replace(Regex("</di-head>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<di-title>", RegexOption.IGNORE_CASE), "<span class='di-title'>")
-            result = result.replace(Regex("</di-title>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<di-body>", RegexOption.IGNORE_CASE), "<span class='di-body'>")
-            result = result.replace(Regex("</di-body>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<arl>", RegexOption.IGNORE_CASE), "<span class='arl'>")
-            result = result.replace(Regex("</arl>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<base>", RegexOption.IGNORE_CASE), "<span class='base'>")
-            result = result.replace(Regex("</base>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<results>", RegexOption.IGNORE_CASE), "<span class='results'>")
-            result = result.replace(Regex("</results>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<forms>", RegexOption.IGNORE_CASE), "<span class='forms'>")
-            result = result.replace(Regex("</forms>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<inflections>", RegexOption.IGNORE_CASE), "<span class='inflections'>")
-            result = result.replace(Regex("</inflections>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<pron>", RegexOption.IGNORE_CASE), "<span class='pron'>")
-            result = result.replace(Regex("</pron>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<ussymbol>", RegexOption.IGNORE_CASE), "<span class='ussymbol'>")
-            result = result.replace(Regex("</ussymbol>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("<sense-info>", RegexOption.IGNORE_CASE), "<span class='sense-info'>")
-            result = result.replace(Regex("</sense-info>", RegexOption.IGNORE_CASE), "</span>")
-            result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+            result = result.replace(SEP_SELF_CLOSE_REGEX, " ")
+            result = result.replace(SEP_CLOSE_REGEX, "")
+            result = result.replace(HW_OPEN_REGEX, "<b class='hw'>")
+            result = result.replace(HW_CLOSE_REGEX, "</b>")
+            result = result.replace(INF_OPEN_REGEX, "<i class='inf'>")
+            result = result.replace(INF_CLOSE_REGEX, "</i>")
+            result = result.replace(EX_OPEN_REGEX, "<span class='ex'>")
+            result = result.replace(EX_CLOSE_REGEX, "</span>")
+            result = result.replace(HIT_OPEN_REGEX, "<div class='hit'>")
+            result = result.replace(HIT_CLOSE_REGEX, "</div>")
+            result = result.replace(LINK_STYLESHEET_REGEX, "")
+            result = result.replace(META_REGEX, "")
+            result = result.replace(SOUNDFILE_OPEN_REGEX, "<span class='soundfile'>")
+            result = result.replace(SOUNDFILE_CLOSE_REGEX, "</span>")
+            result = result.replace(PRONUNCIATION_PRACTICE_REGEX, "")
+            result = result.replace(DI_INFO_REGEX, "")
+            result = result.replace(SENSE_HEAD_OPEN_REGEX, "<div class='sense-head'>")
+            result = result.replace(SENSE_HEAD_CLOSE_REGEX, "</div>")
+            result = result.replace(IPA_OPEN_REGEX, "<span class='ipa'>")
+            result = result.replace(IPA_CLOSE_REGEX, "</span>")
+            result = result.replace(PRONGRP_OPEN_REGEX, "<span class='prongrp'>")
+            result = result.replace(PRONGRP_CLOSE_REGEX, "</span>")
+            result = result.replace(INFLECTION_OPEN_REGEX, "<span class='inflection'>")
+            result = result.replace(INFLECTION_CLOSE_REGEX, "</span>")
+            result = result.replace(CAPVAR_OPEN_REGEX, "<span class='capvar'>")
+            result = result.replace(CAPVAR_CLOSE_REGEX, "</span>")
+            result = result.replace(SENSE_BLOCK_OPEN_REGEX, "<span class='sense-block'>")
+            result = result.replace(SENSE_BLOCK_CLOSE_REGEX, "</span>")
+            result = result.replace(SENSE_BODY_OPEN_REGEX, "<span class='sense-body'>")
+            result = result.replace(SENSE_BODY_CLOSE_REGEX, "</span>")
+            result = result.replace(DI_HEAD_OPEN_REGEX, "<span class='di-head'>")
+            result = result.replace(DI_HEAD_CLOSE_REGEX, "</span>")
+            result = result.replace(DI_TITLE_OPEN_REGEX, "<span class='di-title'>")
+            result = result.replace(DI_TITLE_CLOSE_REGEX, "</span>")
+            result = result.replace(DI_BODY_OPEN_REGEX, "<span class='di-body'>")
+            result = result.replace(DI_BODY_CLOSE_REGEX, "</span>")
+            result = result.replace(ARL_OPEN_REGEX, "<span class='arl'>")
+            result = result.replace(ARL_CLOSE_REGEX, "</span>")
+            result = result.replace(BASE_OPEN_REGEX, "<span class='base'>")
+            result = result.replace(BASE_CLOSE_REGEX, "</span>")
+            result = result.replace(RESULTS_OPEN_REGEX, "<span class='results'>")
+            result = result.replace(RESULTS_CLOSE_REGEX, "</span>")
+            result = result.replace(FORMS_OPEN_REGEX, "<span class='forms'>")
+            result = result.replace(FORMS_CLOSE_REGEX, "</span>")
+            result = result.replace(INFLECTIONS_OPEN_REGEX, "<span class='inflections'>")
+            result = result.replace(INFLECTIONS_CLOSE_REGEX, "</span>")
+            result = result.replace(PRON_OPEN_REGEX, "<span class='pron'>")
+            result = result.replace(PRON_CLOSE_REGEX, "</span>")
+            result = result.replace(USSYMBOL_OPEN_REGEX, "<span class='ussymbol'>")
+            result = result.replace(USSYMBOL_CLOSE_REGEX, "</span>")
+            result = result.replace(SENSE_INFO_OPEN_REGEX, "<span class='sense-info'>")
+            result = result.replace(SENSE_INFO_CLOSE_REGEX, "</span>")
+            result = result.replace(SOUND_HREF_REGEX) { match ->
                 "href=\"sound://${match.groupValues[1]}\" onclick=\"event.preventDefault(); window.location.href=this.href;\""
             }
             return result

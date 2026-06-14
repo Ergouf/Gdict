@@ -37,6 +37,42 @@ class DictionaryManager(
     private val cssCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
     private val resourceCache = java.util.concurrent.ConcurrentHashMap<String, OptionalByteArray>()
     private val cssKeysCache = java.util.concurrent.ConcurrentHashMap<Long, List<String>>()
+    
+    // 资源缓存大小限制（可配置）
+    private val resourceCacheSize = java.util.concurrent.atomic.AtomicLong(0)
+    @Volatile private var maxResourceCacheSize = calculateMaxCacheSize()
+    private val resourceCacheAccessOrder = java.util.concurrent.ConcurrentLinkedQueue<String>()
+    
+    /**
+     * 根据 JVM 可用内存动态计算缓存上限
+     * 策略：使用可用内存的 25%，限制在 50MB ~ 512MB 之间
+     */
+    private fun calculateMaxCacheSize(): Long {
+        val runtime = Runtime.getRuntime()
+        val maxMemory = runtime.maxMemory()
+        val totalMemory = runtime.totalMemory()
+        val freeMemory = runtime.freeMemory()
+        val availableMemory = maxMemory - totalMemory + freeMemory
+        
+        // 使用可用内存的 25%
+        val targetSize = availableMemory / 4
+        
+        // 限制在 50MB ~ 512MB 之间
+        val minSize = 50L * 1024 * 1024
+        val maxSize = 512L * 1024 * 1024
+        
+        return targetSize.coerceIn(minSize, maxSize)
+    }
+
+    /**
+     * 设置资源缓存大小上限（MB）。修改后会立即清理超出部分的缓存。
+     */
+    fun setResourceCacheLimit(sizeMB: Int) {
+        val newSize = (sizeMB.toLong() * 1024 * 1024).coerceIn(50L * 1024 * 1024, 1024L * 1024 * 1024)
+        maxResourceCacheSize = newSize
+        // 清理超出限制的缓存
+        evictIfNeeded()
+    }
 
     private val loadLock = Mutex()
     @Volatile private var loadStarted = false
@@ -238,7 +274,7 @@ class DictionaryManager(
         val mddsSnapshot = loadedMdds.toMap()
         val result = searchEngine.getAudioResource(word, snapshot, mddsSnapshot)
         if (result != null) {
-            resourceCache[word] = OptionalByteArray.wrap(result)
+            addToResourceCache(word, result)
         }
         return result
     }
@@ -249,9 +285,31 @@ class DictionaryManager(
         val mddsSnapshot = loadedMdds.toMap()
         val result = searchEngine.getAudioResourceByPath(path, snapshot, mddsSnapshot)
         if (result != null) {
-            resourceCache[path] = OptionalByteArray.wrap(result)
+            addToResourceCache(path, result)
         }
         return result
+    }
+
+    private fun addToResourceCache(key: String, data: ByteArray) {
+        val size = data.size.toLong()
+        // 如果单个资源超过缓存限制的1/4，不缓存
+        if (size > maxResourceCacheSize / 4) return
+        
+        evictIfNeeded(size)
+        
+        resourceCache[key] = OptionalByteArray.wrap(data)
+        resourceCacheSize.addAndGet(size)
+        resourceCacheAccessOrder.offer(key)
+    }
+
+    private fun evictIfNeeded(requiredSpace: Long = 0) {
+        while (resourceCacheSize.get() + requiredSpace > maxResourceCacheSize && resourceCacheAccessOrder.isNotEmpty()) {
+            val oldestKey = resourceCacheAccessOrder.poll() ?: break
+            val removed = resourceCache.remove(oldestKey)
+            if (removed != null && removed.value != null) {
+                resourceCacheSize.addAndGet(-removed.value!!.size.toLong())
+            }
+        }
     }
 
     fun searchSuggestions(prefix: String, limit: Int = 10): List<String> {

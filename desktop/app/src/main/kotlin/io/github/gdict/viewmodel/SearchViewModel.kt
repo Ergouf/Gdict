@@ -159,8 +159,20 @@ class SearchViewModel(
     }
 
     suspend fun searchWordForResult(word: String): List<SearchResultItem> {
+        val normalized = word.trim()
+        if (normalized.isEmpty()) return emptyList()
+        // Fast path: the entry was rendered in the current result list, so
+        // we can hand back the exact same objects without any IO. This is
+        // the common case (user clicks a row they can already see).
+        val current = _searchResults.value
+        if (current.any { it.word.equals(normalized, ignoreCase = true) }) {
+            log.i("Search", "searchWordForResult fast-hit (in-memory) word='$normalized'")
+            return current
+        }
         return try {
-            dictionaryRepo.searchWord(word)
+            val results = dictionaryRepo.searchWord(normalized)
+            log.i("Search", "searchWordForResult slow-path word='$normalized' results=${results.size}")
+            results
         } catch (_: Exception) {
             emptyList()
         }

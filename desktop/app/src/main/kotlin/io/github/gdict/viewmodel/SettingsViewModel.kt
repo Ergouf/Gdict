@@ -21,6 +21,8 @@ class SettingsViewModel(
 
     val detailZoom: StateFlow<Float> = settingsRepo.detailZoom
 
+    val resourceCacheSizeMB: StateFlow<Int> = settingsRepo.resourceCacheSizeMB
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
@@ -42,6 +44,10 @@ class SettingsViewModel(
 
     fun setDetailZoom(zoom: Float) {
         settingsRepo.setDetailZoom(zoom)
+    }
+
+    fun setResourceCacheSizeMB(sizeMB: Int) {
+        settingsRepo.setResourceCacheSizeMB(sizeMB)
     }
 
     fun clearError() {

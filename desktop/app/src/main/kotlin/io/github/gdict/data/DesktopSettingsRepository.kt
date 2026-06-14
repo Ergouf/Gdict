@@ -21,6 +21,11 @@ class DesktopSettingsRepository(private val storage: StorageBackend) : SettingsR
     private val _detailZoom = MutableStateFlow(storage.getString("detailZoom")?.toFloatOrNull() ?: 1.0f)
     override val detailZoom: StateFlow<Float> = _detailZoom.asStateFlow()
 
+    private val _resourceCacheSizeMB = MutableStateFlow(
+        storage.getString("resourceCacheSizeMB")?.toIntOrNull() ?: 100
+    )
+    override val resourceCacheSizeMB: StateFlow<Int> = _resourceCacheSizeMB.asStateFlow()
+
     override fun setDarkMode(enabled: Boolean) {
         _darkMode.value = enabled
         storage.putBoolean("darkMode", enabled)
@@ -44,5 +49,10 @@ class DesktopSettingsRepository(private val storage: StorageBackend) : SettingsR
     override fun setDetailZoom(zoom: Float) {
         _detailZoom.value = zoom
         storage.putString("detailZoom", zoom.toString())
+    }
+
+    override fun setResourceCacheSizeMB(sizeMB: Int) {
+        _resourceCacheSizeMB.value = sizeMB
+        storage.putString("resourceCacheSizeMB", sizeMB.toString())
     }
 }

@@ -14,6 +14,10 @@ class DictSearchEngine {
     companion object {
         private val PIPE_PATTERN = Regex("\\|")
         fun cleanWord(word: String?): String = word?.replace(PIPE_PATTERN, "") ?: ""
+
+        private val AUDIO_EXTENSIONS = listOf("mp3", "wav", "ogg", "spx")
+        private val AUDIO_PREFIXES = listOf("uk", "us", "gb", "en", "audio", "sound", "pron")
+        private val AUDIO_PATTERN_CACHE = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
     }
 
     fun searchWord(
@@ -25,24 +29,39 @@ class DictSearchEngine {
         cssKeysCache: MutableMap<Long, List<String>>? = null
     ): List<SearchResult> {
         if (query.isBlank()) return emptyList()
-        val results = mutableListOf<SearchResult>()
-        log().i("DictSearchEngine", "searchWord('$query') called, loadedDicts=${loadedDicts.size}, enabledDicts=${dictionaries.count { it.isEnabled }}")
 
         val snapshot = dictionaries.filter { it.isEnabled }
+        if (snapshot.size <= 1) {
+            val results = mutableListOf<SearchResult>()
+            for (dict in snapshot) {
+                val parser = loadedDicts[dict.id]
+                if (parser != null) {
+                    results.addAll(searchWithParser(parser, dict, query, cssCache, loadedMdds, cssKeysCache))
+                }
+            }
+            return results
+        }
 
-        for (dict in snapshot) {
-            val parser = loadedDicts[dict.id]
-            if (parser != null) {
-                log().d("DictSearchEngine", "  Searching '${dict.name}' (id=${dict.id}) using parser title='${parser.title}' words=${parser.wordCount}")
-                val dictResults = searchWithParser(parser, dict, query, cssCache, loadedMdds, cssKeysCache)
-                results.addAll(dictResults)
-            } else {
-                log().w("DictSearchEngine", "  No parser for '${dict.name}' (id=${dict.id})")
+        // 并行搜索多个词典
+        val tasks = snapshot.mapNotNull { dict ->
+            val parser = loadedDicts[dict.id] ?: return@mapNotNull null
+            java.util.concurrent.Callable {
+                searchWithParser(parser, dict, query, cssCache, loadedMdds, cssKeysCache)
             }
         }
 
-        log().i("DictSearchEngine", "searchWord('$query') returned ${results.size} results")
-        return results
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(
+            minOf(tasks.size, Runtime.getRuntime().availableProcessors())
+        )
+        try {
+            val futures = executor.invokeAll(tasks)
+            return futures.flatMap { it.get() }
+        } catch (e: Exception) {
+            log().e("DictSearchEngine", "Parallel search failed: ${e.message}")
+            return emptyList()
+        } finally {
+            executor.shutdown()
+        }
     }
 
     private fun searchWithParser(
@@ -55,27 +74,16 @@ class DictSearchEngine {
     ): List<SearchResult> {
         return try {
             val results = mutableListOf<SearchResult>()
-            log().i("DictSearchEngine", "    [SEARCH] dict='${dict.name}' query='$query' parserHash=${parser.hashCode()} parserTitle='${parser.title}' parserFile='${parser.fileName}' parserWords=${parser.wordCount}")
             val css = buildCss(parser, dict.id, cssCache, loadedMdds, cssKeysCache)
-            if (css.isNotEmpty()) {
-                log().i("DictSearchEngine", "    [SEARCH] CSS loaded for '${dict.name}': ${css.length} chars")
-            }
 
             val exact = parser.readArticles(query)
-            log().d("DictSearchEngine", "    '${dict.name}' exact match: ${exact.size} articles")
             for ((word, def) in exact) {
-                val defHash = def?.hashCode() ?: 0
-                val preview = def?.take(60)?.replace("\n", "\\n") ?: "(null)"
-                log().d("DictSearchEngine", "      ['$word'] defHash=$defHash preview='$preview'")
                 results.add(SearchResult(word = cleanWord(word), definition = def ?: "", dictionaryName = dict.name, css = css))
             }
 
             if (results.isEmpty()) {
                 val predictive = parser.readArticlesPredictive(query)
-                log().d("DictSearchEngine", "    '${dict.name}' predictive: ${predictive.size} articles")
                 for ((word, def) in predictive) {
-                    val defHash = def?.hashCode() ?: 0
-                    log().d("DictSearchEngine", "      ['$word'] defHash=$defHash")
                     results.add(SearchResult(word = cleanWord(word), definition = def ?: "", dictionaryName = dict.name, css = css))
                 }
             }
@@ -108,15 +116,10 @@ class DictSearchEngine {
                         val cssBytes = mddParser.readResourceBytesByKey(key)
                         if (cssBytes != null && cssBytes.isNotEmpty()) {
                             sb.append(String(cssBytes, Charsets.UTF_8)).append("\n")
-                            log().i("DictSearchEngine", "  Loaded CSS from MDD: $key (${cssBytes.size} bytes)")
                         }
-                    } catch (e: Exception) {
-                        log().w("DictSearchEngine", "  Failed to read CSS resource $key: ${e.message}")
-                    }
+                    } catch (_: Exception) {}
                 }
-            } catch (e: Exception) {
-                log().w("DictSearchEngine", "  Failed to extract CSS from MDD: ${e.message}")
-            }
+            } catch (_: Exception) {}
         }
         val result = sb.toString()
         cssCache[dictId] = result
@@ -125,11 +128,9 @@ class DictSearchEngine {
 
     fun getCssFromMdd(dictId: Long, loadedMdds: Map<Long, MdxParser>, cssKeysCache: MutableMap<Long, List<String>>? = null): String {
         val mddParser = loadedMdds[dictId] ?: return ""
-        log().i("DictSearchEngine", "getCssFromMdd: dictId=$dictId, mddParser.title='${mddParser.title}' words=${mddParser.wordCount}")
         val cssKeys = cssKeysCache?.get(dictId) ?: mddParser.findResourceKeys(".css").also {
             cssKeysCache?.put(dictId, it)
         }
-        log().i("DictSearchEngine", "getCssFromMdd: found ${cssKeys.size} CSS keys: $cssKeys")
         if (cssKeys.isEmpty()) return ""
         val sb = StringBuilder()
         for (key in cssKeys) {
@@ -138,13 +139,8 @@ class DictSearchEngine {
                 if (data != null && data.isNotEmpty()) {
                     sb.append(String(data, Charsets.UTF_8))
                     sb.append("\n")
-                    log().i("DictSearchEngine", "Loaded CSS from MDD: '$key' (${data.size} bytes)")
-                } else {
-                    log().w("DictSearchEngine", "CSS key '$key' returned ${if (data == null) "null" else "empty"}")
                 }
-            } catch (e: Exception) {
-                log().w("DictSearchEngine", "Failed to read CSS '$key' from MDD: ${e.message}")
-            }
+            } catch (_: Exception) {}
         }
         return sb.toString()
     }
@@ -155,47 +151,26 @@ class DictSearchEngine {
         loadedMdds: Map<Long, MdxParser>
     ): ByteArray? {
         val snapshot = dictionaries.filter { it.isEnabled }
-        val extensions = listOf("mp3", "wav", "ogg", "spx")
-        val prefixes = listOf("uk", "us", "gb", "en", "audio", "sound", "pron")
-        val audioPatterns = mutableListOf<String>()
-        val upperWord = word.uppercase()
-        for (ext in extensions) {
-            audioPatterns.add("\\$word.$ext")
-            audioPatterns.add("\\${word.lowercase()}.$ext")
-            audioPatterns.add("\\$upperWord.$ext")
-            audioPatterns.add("$word.$ext")
-            audioPatterns.add("${word.lowercase()}.$ext")
-            audioPatterns.add("$upperWord.$ext")
-            for (prefix in prefixes) {
-                audioPatterns.add("\\$prefix\\$word.$ext")
-                audioPatterns.add("\\$prefix\\${word.lowercase()}.$ext")
-                audioPatterns.add("\\$prefix\\$upperWord.$ext")
-                audioPatterns.add("\\$prefix\\${word.lowercase()}_$ext.$ext")
-                audioPatterns.add("\\${word.lowercase()}_$prefix.$ext")
-                audioPatterns.add("$prefix/$word.$ext")
-                audioPatterns.add("$prefix/${word.lowercase()}.$ext")
-                audioPatterns.add("$prefix/$upperWord.$ext")
-            }
+        val audioPatterns = AUDIO_PATTERN_CACHE.getOrPut(word) {
+            buildAudioPatterns(word)
         }
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
             for (pattern in audioPatterns) {
                 val data = mddParser.readResourceBytes(pattern)
                 if (data != null && data.isNotEmpty()) {
-                    log().i("DictSearchEngine", "Audio found for '$word' in '${dict.name}': pattern='$pattern' size=${data.size}")
                     return data
                 }
             }
         }
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
-            for (ext in extensions) {
+            for (ext in AUDIO_EXTENSIONS) {
                 val suffix = "\\$word.$ext"
                 val matches = mddParser.findResourceKeys(suffix)
                 for (match in matches) {
                     val data = mddParser.readResourceBytesByKey(match)
                     if (data != null && data.isNotEmpty()) {
-                        log().i("DictSearchEngine", "Audio found (fuzzy) for '$word' in '${dict.name}': key='$match' size=${data.size}")
                         return data
                     }
                 }
@@ -204,13 +179,36 @@ class DictSearchEngine {
                 for (match in lowerMatches) {
                     val data = mddParser.readResourceBytesByKey(match)
                     if (data != null && data.isNotEmpty()) {
-                        log().i("DictSearchEngine", "Audio found (fuzzy-lower) for '$word' in '${dict.name}': key='$match' size=${data.size}")
                         return data
                     }
                 }
             }
         }
         return null
+    }
+
+    private fun buildAudioPatterns(word: String): List<String> {
+        val patterns = mutableListOf<String>()
+        val upperWord = word.uppercase()
+        for (ext in AUDIO_EXTENSIONS) {
+            patterns.add("\\$word.$ext")
+            patterns.add("\\${word.lowercase()}.$ext")
+            patterns.add("\\$upperWord.$ext")
+            patterns.add("$word.$ext")
+            patterns.add("${word.lowercase()}.$ext")
+            patterns.add("$upperWord.$ext")
+            for (prefix in AUDIO_PREFIXES) {
+                patterns.add("\\$prefix\\$word.$ext")
+                patterns.add("\\$prefix\\${word.lowercase()}.$ext")
+                patterns.add("\\$prefix\\$upperWord.$ext")
+                patterns.add("\\$prefix\\${word.lowercase()}_$ext.$ext")
+                patterns.add("\\${word.lowercase()}_$prefix.$ext")
+                patterns.add("$prefix/$word.$ext")
+                patterns.add("$prefix/${word.lowercase()}.$ext")
+                patterns.add("$prefix/$upperWord.$ext")
+            }
+        }
+        return patterns
     }
 
     fun getAudioResourceByPath(
@@ -246,30 +244,24 @@ class DictSearchEngine {
             }
         }
 
-        log().d("DictSearchEngine", "getAudioResourceByPath('$path') enabledDicts=${snapshot.size} loadedMdds=${loadedMdds.size} variants=${pathVariants.distinct().size}")
+        val distinctVariants = pathVariants.distinct()
         for (dict in snapshot) {
-            val mddParser = loadedMdds[dict.id]
-            if (mddParser == null) {
-                log().w("DictSearchEngine", "  MDD not loaded for '${dict.name}' (id=${dict.id})")
-                continue
-            }
-            log().d("DictSearchEngine", "  Trying '${dict.name}' MDD (words=${mddParser.wordCount})")
-            for (variant in pathVariants.distinct()) {
+            val mddParser = loadedMdds[dict.id] ?: continue
+            for (variant in distinctVariants) {
                 val data = mddParser.readResourceBytes(variant)
                 if (data != null && data.isNotEmpty()) {
-                    log().i("DictSearchEngine", "Audio found by path '$path' in '${dict.name}' variant='$variant' size=${data.size}")
                     return data
                 }
             }
         }
+        val lowerVariants = distinctVariants.map { it.lowercase() }.distinct()
         for (dict in snapshot) {
             val mddParser = loadedMdds[dict.id] ?: continue
-            for (suffix in pathVariants.distinct().map { it.lowercase() }) {
+            for (suffix in lowerVariants) {
                 val matches = mddParser.findResourceKeys(suffix)
                 for (match in matches) {
                     val data = mddParser.readResourceBytesByKey(match)
                     if (data != null && data.isNotEmpty()) {
-                        log().i("DictSearchEngine", "Audio found (fuzzy) by path '$path' in '${dict.name}': key='$match' size=${data.size}")
                         return data
                     }
                 }

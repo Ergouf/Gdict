@@ -2,14 +2,18 @@ package io.github.gdict.data
 
 import android.content.Context
 import io.github.gdict.core.model.HistoryItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 
 class AndroidHistoryRepository(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("gdict_data", Context.MODE_PRIVATE)
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     private val _history = MutableStateFlow<List<HistoryItem>>(emptyList())
     val history: StateFlow<List<HistoryItem>> = _history.asStateFlow()
@@ -21,17 +25,27 @@ class AndroidHistoryRepository(private val context: Context) {
     fun addToHistory(word: String) {
         val item = HistoryItem(word = word)
         _history.value = listOf(item) + _history.value.filter { it.word != word }
-        saveHistory(_history.value)
+        // 限制历史记录数量
+        if (_history.value.size > MAX_HISTORY_SIZE) {
+            _history.value = _history.value.take(MAX_HISTORY_SIZE)
+        }
+        saveHistoryAsync(_history.value)
     }
 
     fun removeFromHistory(item: HistoryItem) {
         _history.value = _history.value.filter { it.word != item.word }
-        saveHistory(_history.value)
+        saveHistoryAsync(_history.value)
     }
 
     fun clearHistory() {
         _history.value = emptyList()
-        saveHistory(emptyList())
+        saveHistoryAsync(emptyList())
+    }
+
+    private fun saveHistoryAsync(items: List<HistoryItem>) {
+        scope.launch {
+            saveHistory(items)
+        }
     }
 
     private fun saveHistory(items: List<HistoryItem>) {
@@ -60,5 +74,9 @@ class AndroidHistoryRepository(private val context: Context) {
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    companion object {
+        private const val MAX_HISTORY_SIZE = 100
     }
 }

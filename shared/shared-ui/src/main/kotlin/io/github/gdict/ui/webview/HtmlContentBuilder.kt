@@ -6,6 +6,15 @@ object HtmlContentBuilder {
 
     private val renderers = listOf(CambridgeEpdRenderer())
 
+    // Precompiled regex patterns for build() hot path
+    private val RE_CONTROL_CHARS = Regex("[\\x00-\\x1f\\x7f]")
+    private val RE_ENTRY_HREF = Regex("""href=["']entry://([^"']+)["']""", RegexOption.IGNORE_CASE)
+    private val RE_BWORD_HREF = Regex("""href=["']bword://([^"']+)["']""", RegexOption.IGNORE_CASE)
+    private val RE_SOUND_HREF = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+    private val RE_STYLESHEET_LINK = Regex("""<link[^>]*rel=["']stylesheet["'][^>]*>""", RegexOption.IGNORE_CASE)
+    private val RE_RESOURCE_SRC = Regex("""(?i)(src|background|poster)=["']([^"']*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ico))["']""")
+    private val RE_CSS_URL = Regex("""(?i)url\(\s*['"]?([^"')]*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ttf|\.woff|\.woff2|\.eot|\.otf)[^"']*)['"]?\s*\)""")
+
     private val BASE_CSS = """
 :root {
   --bg:#FFFFFF;--text:#424242;--header:#2C4A6E;--link:#63BD04;--phon:#1565C0;
@@ -101,31 +110,31 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
     fun build(definition: String, css: String, darkMode: Boolean = false, resourcePrefix: String = "mdxres://"): String {
         val renderer = renderers.find { it.matches(definition) } ?: DefaultRenderer
 
-        val cleanDefinition = definition.replace(Regex("[\\x00-\\x1f\\x7f]"), "")
+        val cleanDefinition = definition.replace(RE_CONTROL_CHARS, "")
 
         val transformedDef = renderer.transformHtml(cleanDefinition).let { def ->
             var result = MdxParser.transformHtmlStatic(def)
-            result = result.replace(Regex("""href=["']entry://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+            result = result.replace(RE_ENTRY_HREF) { match ->
                 val entry = match.groupValues[1]
                 "href=\"entry://$entry\""
             }
-            result = result.replace(Regex("""href=["']bword://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+            result = result.replace(RE_BWORD_HREF) { match ->
                 val entry = match.groupValues[1]
                 "href=\"bword://$entry\""
             }
-            result = result.replace(Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)) { match ->
+            result = result.replace(RE_SOUND_HREF) { match ->
                 val soundPath = match.groupValues[1]
                 "href=\"sound://$soundPath\""
             }
             if (css.isNotEmpty()) {
-                result = result.replace(Regex("""<link[^>]*rel=["']stylesheet["'][^>]*>""", RegexOption.IGNORE_CASE), "")
+                result = result.replace(RE_STYLESHEET_LINK, "")
             }
-            result = result.replace(Regex("""(?i)(src|background|poster)=["']([^"']*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ico))["']""")) { match ->
+            result = result.replace(RE_RESOURCE_SRC) { match ->
                 val attr = match.groupValues[1]
                 val path = match.groupValues[2]
                 "$attr=\"${resourcePrefix}${path}\""
             }
-            result = result.replace(Regex("""(?i)url\(\s*['"]?([^"')]*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ttf|\.woff|\.woff2|\.eot|\.otf)[^"']*)['"]?\s*\)""")) { match ->
+            result = result.replace(RE_CSS_URL) { match ->
                 val path = match.groupValues[1].trim()
                 "url(${resourcePrefix}${path})"
             }

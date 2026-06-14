@@ -56,6 +56,9 @@ import javax.swing.SwingUtilities
 
 private val log = GdictLogger.get()
 
+// 缓存正则表达式，避免每次调用都创建
+private val CONTROL_CHAR_REGEX = Regex("[\\x00-\\x1f\\x7f]")
+
 private var cefApp: CefApp? = null
 private var cefClient: CefClient? = null
 private var cefInitialized = false
@@ -289,7 +292,7 @@ private class SoundResourceHandler : CefResourceHandlerAdapter() {
 }
 
 private fun resolveResourcePath(path: String, repository: DictionaryRepository): ByteArray? {
-    val cleanPath = path.replace(Regex("[\\x00-\\x1f\\x7f]"), "").trimEnd('/')
+    val cleanPath = path.replace(CONTROL_CHAR_REGEX, "").trimEnd('/')
     val normalizedPath = cleanPath.replace("/", "\\")
     val trimmedPath = normalizedPath.trimStart('\\')
     val candidates = buildList {
@@ -554,19 +557,24 @@ private object GlobalBrowserManager {
 
             pendingHtml = null
 
-            with(File(System.getProperty("java.io.tmpdir"), "gdict_html")) {
-                mkdirs()
-            }
             val tempDir = File(System.getProperty("java.io.tmpdir"), "gdict_html")
-            val tempFile = File(tempDir, "content_${System.currentTimeMillis()}.html")
-            tempFile.writeText(html, Charsets.UTF_8)
+            tempDir.mkdirs()
+            // Reuse a single temp file across navigations. Creating a fresh
+            // file per load was hammering the filesystem and forcing Chromium
+            // to discard its in-memory cache between pages.
+            val tempFile = currentTempFile ?: File(tempDir, "content.html").also { currentTempFile = it }
+            try {
+                tempFile.writeText(html, Charsets.UTF_8)
+            } catch (e: Throwable) {
+                log.e("MdxWebView", "writeText to $tempFile failed: ${e.message}")
+                return
+            }
 
-            currentTempFile?.delete()
-            currentTempFile = tempFile
-
-            val url = tempFile.toURI().toURL().toString()
+            // Append a unique query so Chromium treats the load as a fresh
+            // navigation even when the underlying file path is the same.
+            val url = tempFile.toURI().toURL().toString() + "?t=" + System.nanoTime()
             b.loadURL(url)
-            log.i("MdxWebView", "Content loaded via file URL ($url, ${html.length} chars)")
+            log.i("MdxWebView", "Content loaded via file URL (${html.length} chars)")
         }
     }
 
@@ -594,6 +602,23 @@ private object GlobalBrowserManager {
                 } catch (e: Throwable) {
                     log.e("MdxWebView", "Failed to set zoom: ${e.message}")
                 }
+            }
+        }
+    }
+
+    /**
+     * Toggle the in-page theme by calling the JS setTheme helper. Cheaper
+     * than rebuilding the entire HTML on a dark-mode change. The helper also
+     * runs fixInlineStyles() so inline white-on-black CSS gets cleaned up.
+     */
+    fun setThemeInBrowser(dark: Boolean) {
+        val b = browser ?: return
+        val flag = if (dark) "true" else "false"
+        SwingUtilities.invokeLater {
+            try {
+                b.executeJavaScript("setTheme($flag); fixInlineStyles();", "gdict_theme", 0)
+            } catch (e: Throwable) {
+                log.e("MdxWebView", "setThemeInBrowser failed: ${e.message}")
             }
         }
     }
@@ -633,7 +658,7 @@ fun MdxWebView(
         }
     }
 
-    LaunchedEffect(definition, css, darkMode) {
+    LaunchedEffect(definition, css) {
         if (definition.isEmpty()) return@LaunchedEffect
 
         if (!GlobalBrowserManager.isBrowserReady()) {
@@ -644,22 +669,30 @@ fun MdxWebView(
             log.i("MdxWebView", "Browser is now ready")
         }
 
-        delay(50)
-
+        val started = System.nanoTime()
         val rawHtml = HtmlContentBuilder.build(definition, css, darkMode)
-        val mdxresCount = rawHtml.count { it == 'm' }.let { _ -> Regex("mdxres://").findAll(rawHtml).count() }
-        val imgCount = Regex("<img[^>]*>").findAll(rawHtml).count()
-        val imgSamples = Regex("<img[^>]{0,80}>").findAll(rawHtml).take(3).map { it.value }.toList()
-        log.i("MdxWebView", "After HtmlContentBuilder: mdxres://=$mdxresCount, img=$imgCount, samples=$imgSamples")
 
         val withBridge = rawHtml.replace("</body>", "$BRIDGE_JS\n</body>")
         val finalHtml = preprocessHtmlImages(withBridge)
 
-        log.i("MdxWebView", "Loading content (${finalHtml.length} chars)")
+        val buildMs = (System.nanoTime() - started) / 1_000_000
+        log.i("MdxWebView", "Loading content (${finalHtml.length} chars, build=${buildMs}ms)")
 
         SwingUtilities.invokeLater {
             GlobalBrowserManager.loadHtmlToBrowser(finalHtml)
         }
+    }
+
+    // Theme toggle is independent of the content; calling JS is much cheaper
+    // than rebuilding and reloading the entire HTML.
+    LaunchedEffect(darkMode) {
+        if (definition.isEmpty()) return@LaunchedEffect
+        if (!GlobalBrowserManager.isBrowserReady()) {
+            while (!GlobalBrowserManager.isBrowserReady()) {
+                delay(100)
+            }
+        }
+        GlobalBrowserManager.setThemeInBrowser(darkMode)
     }
 
     SwingPanel(

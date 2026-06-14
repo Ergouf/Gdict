@@ -8,9 +8,11 @@ interface SettingsRepository {
     val language: StateFlow<String>
     val cardScale: StateFlow<Float>
     val detailZoom: StateFlow<Float>
+    val resourceCacheSizeMB: StateFlow<Int>
     fun setDarkMode(enabled: Boolean)
     fun setScanPopup(enabled: Boolean)
     fun setLanguage(tag: String)
     fun setCardScale(scale: Float)
     fun setDetailZoom(zoom: Float)
+    fun setResourceCacheSizeMB(sizeMB: Int)
 }
