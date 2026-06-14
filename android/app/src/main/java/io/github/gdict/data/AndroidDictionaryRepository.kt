@@ -11,10 +11,13 @@ import io.github.gdict.core.DictionaryManager
 import io.github.gdict.core.model.Dictionary
 import io.github.gdict.core.model.SearchResultItem
 import io.github.gdict.platform.AndroidPersistenceBackend
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -37,6 +40,13 @@ class AndroidDictionaryRepository(private val context: Context) {
         _dictionaries.value = dictionaryManager.getDictionaries().map { entry ->
             Dictionary(id = entry.id, name = entry.name, path = entry.path, isEnabled = entry.isEnabled)
         }
+    }
+
+    /**
+     * 预加载所有已启用的词典，在应用启动时调用
+     */
+    fun preloadDictionaries() {
+        dictionaryManager.loadAllAsync(CoroutineScope(SupervisorJob() + Dispatchers.IO))
     }
 
     fun scanSafDirectory(treeUri: Uri): List<DictFileImporter.DictCandidate> {
@@ -260,5 +270,13 @@ class AndroidDictionaryRepository(private val context: Context) {
 
     fun getAudioResourceByPathSync(path: String): ByteArray? {
         return dictionaryManager.getAudioResourceByPath(path)
+    }
+
+    fun extractExamples(definition: String): List<String> {
+        return dictionaryManager.extractExamples(definition)
+    }
+
+    fun extractSynonyms(definition: String): List<String> {
+        return dictionaryManager.extractSynonyms(definition)
     }
 }

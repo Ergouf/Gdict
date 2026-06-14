@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gdict.data.DictionaryRepository
@@ -73,6 +77,8 @@ fun WordDetailScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isPlaying by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("词源", "例句", "同义词")
     val darkMode by settingsViewModel.darkMode.collectAsState()
     val detailZoom by settingsViewModel.detailZoom.collectAsState()
     val isPronunciationDict = definition.contains("cepd18.css")
@@ -173,7 +179,24 @@ fun WordDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            DefinitionCard(
+            // Tab 按钮
+            if (!isPronunciationDict) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        DesktopTabButton(
+                            text = tab,
+                            isSelected = selectedTab == index,
+                            onClick = { selectedTab = index }
+                        )
+                    }
+                }
+            }
+
+            when (selectedTab) {
+                0 -> DefinitionCard(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 definition = definition,
                 css = css,
@@ -236,6 +259,127 @@ fun WordDetailScreen(
                     }
                 }
             )
+                1 -> {
+                    val examples = remember(definition) { dictionaryRepository.extractExamples(definition) }
+                    DesktopExamplesCard(examples = examples, darkMode = darkMode)
+                }
+                2 -> {
+                    val synonyms = remember(definition) { dictionaryRepository.extractSynonyms(definition) }
+                    DesktopSynonymsCard(synonyms = synonyms, darkMode = darkMode, onEntryClick = onEntryClick)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopTabButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun DesktopExamplesCard(
+    examples: List<String>,
+    darkMode: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                "例句",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (examples.isEmpty()) {
+                Text(
+                    "暂无例句",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                examples.forEach { example ->
+                    Text(
+                        "\u2022 $example",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DesktopSynonymsCard(
+    synonyms: List<String>,
+    darkMode: Boolean,
+    onEntryClick: (String) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                "同义词",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (synonyms.isEmpty()) {
+                Text(
+                    "暂无同义词",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    synonyms.forEach { synonym ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            modifier = Modifier.clickable { onEntryClick(synonym) }
+                        ) {
+                            Text(
+                                synonym,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

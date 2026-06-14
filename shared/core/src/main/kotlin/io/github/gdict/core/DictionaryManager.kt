@@ -260,12 +260,105 @@ class DictionaryManager(
     }
 
     fun searchWord(query: String): List<SearchResult> {
+        // 如果词典正在加载中，等待加载完成再搜索，避免返回空结果
+        if (loadStarted && !loadCompleted) {
+            // 使用 runBlocking 等待加载完成（最多 30 秒）
+            val deadline = System.nanoTime() + 30_000_000_000L
+            while (!loadCompleted && System.nanoTime() < deadline) {
+                Thread.sleep(50)
+            }
+        }
         val snapshot = synchronized(this) { dictionaries.filter { it.isEnabled }.toList() }
         val dictsSnapshot = loadedDicts.toMap()
         val mddsSnapshot = loadedMdds.toMap()
         return searchEngine.searchWord(query, snapshot, dictsSnapshot, cssCache, mddsSnapshot, cssKeysCache).map {
             SearchResult(it.word, it.definition, it.dictionaryName, it.css)
         }
+    }
+
+    /**
+     * 从词典HTML中提取例句
+     * 匹配 <ex>...</ex> 标签内容，以及常见的例句HTML模式
+     */
+    fun extractExamples(definition: String): List<String> {
+        val examples = mutableListOf<String>()
+        
+        // 匹配 <ex>...</ex> 标签（MDX标准格式）
+        val exRegex = Regex("<ex>(.*?)</ex>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        exRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty()) examples.add(text)
+        }
+        
+        // 匹配常见的例句CSS类（如 example, sentence 等）
+        val classRegex = Regex("""<[^>]+class="[^"]*(?:example|sentence|ex-sent)[^"]*"[^>]*>(.*?)</[^>]+>""", 
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        classRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty() && text !in examples) examples.add(text)
+        }
+        
+        // 匹配 <li> 中包含引号的句子（常见例句格式）
+        val liRegex = Regex("<li[^>]*>(.*?)</li>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        liRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty() && (text.contains("\u201E") || text.contains("\u201C") || text.contains("\u201D"))) {
+                if (text !in examples) examples.add(text)
+            }
+        }
+        
+        return examples
+    }
+
+    /**
+     * 从词典HTML中提取同义词
+     * 匹配同义词相关的标签和CSS类
+     */
+    fun extractSynonyms(definition: String): List<String> {
+        val synonyms = mutableListOf<String>()
+        
+        // 匹配 <syn>...</syn> 或 <synonym>...</synonym> 标签
+        val synRegex = Regex("<syn[^>]*>(.*?)</syn[^>]*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        synRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty()) {
+                // 同义词通常用逗号分隔
+                text.split(Regex("[,;、，；]")).forEach { syn ->
+                    val trimmed = syn.trim()
+                    if (trimmed.isNotEmpty() && trimmed !in synonyms) synonyms.add(trimmed)
+                }
+            }
+        }
+        
+        // 匹配常见的同义词CSS类
+        val classRegex = Regex("""<[^>]+class="[^"]*(?:synonym|syn|thesaurus|antonym)[^"]*"[^>]*>(.*?)</[^>]+>""", 
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        classRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty()) {
+                text.split(Regex("[,;、，；]")).forEach { syn ->
+                    val trimmed = syn.trim()
+                    if (trimmed.isNotEmpty() && trimmed !in synonyms) synonyms.add(trimmed)
+                }
+            }
+        }
+        
+        // 匹配 "同义词" / "Synonyms" / "SYNONYMS" 标题后的内容
+        val headerRegex = Regex(
+            """(?:同义词|近义词|Synonyms?|SYNONYMS?|Thesaurus)\s*[:：]?\s*(.*?)(?=<|$)""",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+        headerRegex.findAll(definition).forEach { match ->
+            val text = match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
+            if (text.isNotEmpty()) {
+                text.split(Regex("[,;、，；\n]")).forEach { syn ->
+                    val trimmed = syn.trim()
+                    if (trimmed.isNotEmpty() && trimmed.length < 30 && trimmed !in synonyms) synonyms.add(trimmed)
+                }
+            }
+        }
+        
+        return synonyms
     }
 
     fun getAudioResource(word: String): ByteArray? {

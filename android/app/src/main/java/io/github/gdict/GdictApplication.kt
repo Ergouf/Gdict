@@ -9,8 +9,13 @@ import io.github.gdict.data.AndroidDictionaryRepository
 import io.github.gdict.data.AndroidHistoryRepository
 import io.github.gdict.data.AndroidSettingsRepository
 import io.github.gdict.util.LocaleHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class GdictApplication : Application() {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val dictionaryRepository: AndroidDictionaryRepository by lazy { AndroidDictionaryRepository(this) }
     val historyRepository: AndroidHistoryRepository by lazy { AndroidHistoryRepository(this) }
     val bookmarkRepository: AndroidBookmarkRepository by lazy { AndroidBookmarkRepository(this) }
@@ -19,6 +24,10 @@ class GdictApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         GdictLogger.setLogger(AndroidLogger)
+        // 启动时预加载词典，避免添加词典后搜索需要等待
+        applicationScope.launch {
+            dictionaryRepository.preloadDictionaries()
+        }
     }
 
     override fun attachBaseContext(base: Context) {

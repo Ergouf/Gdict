@@ -7,6 +7,8 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -289,16 +292,17 @@ fun WordDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                DefinitionCard(
-                    definition = definition,
-                    css = css,
-                    cardColor = cardColor,
-                    textColor = textColor,
-                    darkMode = darkMode,
-                    contentScale = contentScale,
-                    dictionaryRepository = dictionaryRepository,
-                    onEntryClick = onEntryClick,
-                    onPlayAudio = { audioPath ->
+                when (selectedTab) {
+                    0 -> DefinitionCard(
+                        definition = definition,
+                        css = css,
+                        cardColor = cardColor,
+                        textColor = textColor,
+                        darkMode = darkMode,
+                        contentScale = contentScale,
+                        dictionaryRepository = dictionaryRepository,
+                        onEntryClick = onEntryClick,
+                        onPlayAudio = { audioPath ->
                         val fallbackWord = audioPath.removeSuffix(".mp3")
                             .removeSuffix(".wav")
                             .removeSuffix(".ogg")
@@ -345,6 +349,111 @@ fun WordDetailScreen(
                         }
                     }
                 )
+                    1 -> {
+                        val examples = remember(definition) { dictionaryRepository.extractExamples(definition) }
+                        ExamplesCard(examples = examples, cardColor = cardColor, textColor = textColor, darkMode = darkMode)
+                    }
+                    2 -> {
+                        val synonyms = remember(definition) { dictionaryRepository.extractSynonyms(definition) }
+                        SynonymsCard(synonyms = synonyms, cardColor = cardColor, textColor = textColor, darkMode = darkMode, onEntryClick = onEntryClick)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExamplesCard(
+    examples: List<String>,
+    cardColor: Color,
+    textColor: Color,
+    darkMode: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                stringResource(R.string.tab_examples),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (examples.isEmpty()) {
+                Text(
+                    "暂无例句",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+                )
+            } else {
+                examples.forEach { example ->
+                    Text(
+                        "\u2022 $example",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SynonymsCard(
+    synonyms: List<String>,
+    cardColor: Color,
+    textColor: Color,
+    darkMode: Boolean,
+    onEntryClick: (String) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                stringResource(R.string.tab_synonyms),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (synonyms.isEmpty()) {
+                Text(
+                    "暂无同义词",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+                )
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    synonyms.forEach { synonym ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (darkMode) GdictColors.PrimarySoft.copy(alpha = 0.15f) else GdictColors.PrimarySoft.copy(alpha = 0.1f),
+                            modifier = Modifier.clickable { onEntryClick(synonym) }
+                        ) {
+                            Text(
+                                synonym,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (darkMode) GdictColors.DarkOnSurface else GdictColors.PrimarySoft,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -20,4 +20,6 @@ interface DictionaryRepository {
     suspend fun getAudioResource(word: String): ByteArray?
     suspend fun getAudioResourceByPath(path: String): ByteArray?
     fun getAudioResourceByPathSync(path: String): ByteArray?
+    fun extractExamples(definition: String): List<String>
+    fun extractSynonyms(definition: String): List<String>
 }

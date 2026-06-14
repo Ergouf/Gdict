@@ -175,6 +175,14 @@ class DesktopDictionaryRepository(
         return dictionaryManager.getAudioResourceByPath(path)
     }
 
+    override fun extractExamples(definition: String): List<String> {
+        return dictionaryManager.extractExamples(definition)
+    }
+
+    override fun extractSynonyms(definition: String): List<String> {
+        return dictionaryManager.extractSynonyms(definition)
+    }
+
     companion object {
         // Bounded LRU size. Each entry is a small (key, list) pair; with 500
         // entries of ~10 results each this is well under a few MB.
