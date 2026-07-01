@@ -211,23 +211,126 @@ fun AcrylicCapsule(
 
 ---
 
-## 六、底部导航栏（全局）
+## 六、闪卡学习（背面）页面设计规范
 
-### 6.1 形态
+### 6.1 整体方向
+
+- **设计语言**：Microsoft Fluent Design 2 / Windows 11 Acrylic Glass
+- **核心目标**：去除绿色，营造专注、轻盈、沉浸式的学习体验
+- **关键词**：Acrylic Glass、Floating Cards、Ambient Light、Soft Shadow、Blue Gradient、Premium Learning UI、Immersive、Rounded Corners、Soft Depth
+
+### 6.2 页面背景
+
+- 白色到浅蓝色柔和渐变
+- 叠加大面积环境光（Ambient Light）和微弱蓝色光晕
+- 避免纯白背景的生硬感，增强空间层次
+
+### 6.3 顶部区域
+
+#### 页面标题
+- 文字：「闪卡」
+- 字号：`headlineMedium` / 28sp
+- 字重：`FontWeight.Bold`
+- 对齐：左对齐
+
+#### 学习进度条
+- Fluent 风格线性进度条
+- 填充色：`BluePrimary`
+- 轨道：浅蓝半透明
+- 圆角：满圆角
+- 柔和发光效果
+
+#### 计数与 Skip
+- 左侧：「1 / 1」浅灰色文字
+- 右侧：`Skip` 文字按钮
+- Skip 颜色：`BluePrimary`
+- 点击反馈：轻微玻璃高亮
+
+### 6.4 学习内容：双悬浮 Acrylic 卡片
+
+两张卡片上下排列，均采用统一的 Acrylic 材质：
+
+- 背景：`BlueSurfaceGlass`（白色半透明）
+- 背景模糊：约 20dp
+- 圆角：24dp
+- 1px 半透明高光描边
+- 柔和阴影：4dp
+- 卡片间距：16dp
+
+#### 第一张卡片：单词正面
+
+包含：
+- 顶部词典名称（浅灰色）
+- 中间单词（视觉中心，大字号 Bold）
+- 发音按钮：浅蓝色玻璃胶囊按钮，带 Fluent 音量图标
+  - 圆角：20dp
+  - 背景：`BluePrimaryLight.copy(alpha = 0.25f)`
+  - 点击反馈：缩放 + 光泽
+- 右上角可放置蓝色书签状态图标
+
+#### 第二张卡片：解释与例句
+
+包含：
+- 词形变化行（如 ◆◆◆◆◆ read reads reading read）
+- 词性标签（如 `[VB]`）：浅蓝色标签样式
+- 释义文本：深色正文
+- 例句列表：
+  - 每项以浅蓝色圆点作为列表标识
+  - 例句之间适当增加间距
+  - 重点词可使用 `BluePrimary` 突出
+- 合理留白，提升阅读体验
+
+### 6.5 底部评分区域：Floating Action Panel
+
+四个评分按钮横向排列：
+
+| 按钮 | 颜色方向 | 玻璃背景 |
+|---|---|---|
+| Again | 柔和红色 | 红色半透明玻璃 |
+| Hard | 柔和橙色 | 橙色半透明玻璃 |
+| Good | 品牌蓝 | 蓝色半透明玻璃 |
+| Easy | 浅青蓝 | 青蓝半透明玻璃 |
+
+按钮规范：
+- 圆角：24dp
+- 背景：对应语义色的半透明玻璃（alpha 约 0.15–0.25）
+- 文字颜色：对应语义色
+- 背景模糊：8–12dp
+- 柔和阴影：2dp
+- 点击反馈：Acrylic Press 动效 + 轻微发光
+
+### 6.6 底部导航栏
+
+沿用全局 Floating Navigation Bar：
+- 当前选中「学习」Tab：蓝色图标/文字 + 浅蓝玻璃胶囊 + 外发光
+- 其余 Tab：深灰色线性图标
+
+### 6.7 布局系统
+
+- 8pt Grid
+- 所有组件圆角统一 24dp
+- 统一玻璃材质和柔和光影
+- 避免厚重边框和高饱和颜色
+
+---
+
+## 七、底部导航栏（全局）
+
+### 7.1 形态
 
 - Floating Navigation Bar，悬浮于页面底部
 - 不贴边：水平边距 24dp，底部边距 20dp
 - 圆角：32dp
 - 高度：72dp
 
-### 6.2 材质
+### 7.2 材质
 
 - 背景：`BlueSurfaceGlass`
 - 背景模糊：18dp
 - 1px 高光白边
 - 柔和阴影：6dp
 
-### 6.3 选中态
+### 7.3 选中态
 
 - 图标颜色：`BluePrimary`
 - 文字颜色：`BluePrimary`
@@ -235,13 +338,13 @@ fun AcrylicCapsule(
 - 胶囊背景：`BluePrimaryLight.copy(alpha = 0.35f)`
 - 外发光：可选蓝色 glow shadow
 
-### 6.4 未选中态
+### 7.4 未选中态
 
 - 图标：深灰色线性图标
 - 文字：深灰色
 - 无背景胶囊
 
-### 6.5 Tab 顺序
+### 7.5 Tab 顺序
 
 1. 搜索
 2. 收藏
@@ -250,29 +353,30 @@ fun AcrylicCapsule(
 
 ---
 
-## 七、完整实施路线图
+## 八、完整实施路线图
 
 | 阶段 | 模块 | 核心任务 | 影响文件 |
 |---|---|---|---|
 | 1 | 色板基建 | 新增蓝主题 token，保留旧绿 token | `Color.kt` |
 | 2 | 通用组件 | 新建 `AcrylicCard`、`AcrylicCapsule` | 新增组件文件 |
-| 3 | 搜索页背景 | 蓝白渐变 + 环境光斑 | `SearchScreen.kt` |
-| 4 | 搜索框 | 搜索框 Acrylic 化 + 蓝色图标 | `SearchScreen.kt` |
-| 5 | 搜索页历史 | 历史项 Acrylic 化 + 蓝色历史图标 | `SearchScreen.kt` |
-| 6 | 搜索页每日一词 | 卡片 Acrylic 化 + 蓝色标题 | `SearchScreen.kt` |
-| 7 | 搜索结果/空态 | 结果卡片蓝色标题 + Acrylic；建议词蓝色胶囊 | `SearchScreen.kt` |
-| 8 | 全局底部导航 | Floating Acrylic Navigation Bar + 蓝色选中态 | `MainActivity.kt` |
+| 3 | 全局底部导航 | Floating Acrylic Navigation Bar + 蓝色选中态 | `MainActivity.kt` |
+| 4 | 搜索页背景 | 蓝白渐变 + 环境光斑 | `SearchScreen.kt` |
+| 5 | 搜索框 | 搜索框 Acrylic 化 + 蓝色图标 | `SearchScreen.kt` |
+| 6 | 搜索页历史 | 历史项 Acrylic 化 + 蓝色历史图标 | `SearchScreen.kt` |
+| 7 | 搜索页每日一词 | 卡片 Acrylic 化 + 蓝色标题 | `SearchScreen.kt` |
+| 8 | 搜索结果/空态 | 结果卡片蓝色标题 + Acrylic；建议词蓝色胶囊 | `SearchScreen.kt` |
 | 9 | 收藏页背景 | 蓝白渐变 + 环境光斑 | `BookmarksScreen.kt` |
 | 10 | 收藏页标题 | 大字号 Bold 标题 | `BookmarksScreen.kt` |
 | 11 | 收藏卡片 | Floating Acrylic Card + 蓝色书签 + 删除按钮 Fluent 化 | `BookmarksScreen.kt` |
 | 12 | 闪卡入口 | 大 Acrylic 功能卡片 + Chevron | `BookmarksScreen.kt` |
 | 13 | 删除对话框 | Acrylic 圆角对话框 + 蓝色按钮 | `BookmarksScreen.kt` |
-| 14 | 学习/我的页 | 按同样蓝主题 + Acrylic 规范改造 | `FlashcardScreen.kt`, `SettingsScreen.kt` 等 |
-| 15 | 验证发布 | CI 编译 + 真机截图验证 + release tag | CI / GitHub |
+| 14 | 闪卡学习页 | 双悬浮 Acrylic 卡片 + 评分按钮 + 去除绿色 | `FlashcardScreen.kt` |
+| 15 | 我的/设置页 | 按同样蓝主题 + Acrylic 规范改造 | `SettingsScreen.kt` |
+| 16 | 验证发布 | CI 编译 + 真机截图验证 + release tag | CI / GitHub |
 
 ---
 
-## 八、技术约束
+## 九、技术约束
 
 1. **背景模糊兼容性**：`Modifier.blur()` 需要 API 31+，低版本需降级为纯半透明。
 2. **性能**：避免在同一屏叠加过多模糊层，环境光斑使用简单 radial gradient。
@@ -282,9 +386,9 @@ fun AcrylicCapsule(
 
 ---
 
-## 九、下一步决策
+## 十、下一步决策
 
-1. 是否确认以上搜索页 + 收藏页设计规范？
+1. 是否确认以上搜索页 + 收藏页 + 闪卡学习页设计规范？
 2. 是否现在开始执行 **阶段 1（色板基建）+ 阶段 2（通用 Acrylic 组件）**？
 3. 底部导航栏是否统一为 Floating Navigation Bar（悬浮胶囊）？
 4. 深色模式是否同步适配蓝主题 Acrylic？
