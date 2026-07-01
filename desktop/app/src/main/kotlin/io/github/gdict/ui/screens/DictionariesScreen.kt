@@ -6,7 +6,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -119,7 +124,7 @@ fun DictionariesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
         Row(
             modifier = Modifier
@@ -163,11 +168,13 @@ fun DictionariesScreen(
                 )
             ) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
@@ -253,8 +260,9 @@ fun DictionariesScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
                                     .clickable { showAddDialog = true },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 colors = CardDefaults.cardColors(containerColor = GdictColors.SidebarIconActive),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
@@ -268,13 +276,13 @@ fun DictionariesScreen(
                                     Icon(
                                         Icons.Default.Add,
                                         contentDescription = null,
-                                        tint = androidx.compose.ui.graphics.Color.White,
+                                        tint = GdictColors.OnPrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         strings.addDictionary,
-                                        color = androidx.compose.ui.graphics.Color.White,
+                                        color = GdictColors.OnPrimary,
                                         fontWeight = FontWeight.SemiBold,
                                         style = MaterialTheme.typography.titleMedium
                                     )
@@ -335,7 +343,7 @@ fun DictionariesScreen(
                 modifier = Modifier
                     .fillMaxWidth(0.95f)
                     .heightIn(max = 600.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -413,6 +421,7 @@ fun DictionariesScreen(
     dictToDelete?.let { dict ->
         AlertDialog(
             onDismissRequest = { dictToDelete = null },
+            shape = RoundedCornerShape(8.dp),
             title = { Text(strings.removeDictionary, fontWeight = FontWeight.Bold) },
             text = { Text(strings.confirmRemoveDictionary(dict.name)) },
             confirmButton = {
@@ -440,11 +449,18 @@ private fun DictionaryItemCard(
     onToggle: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.surface
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -498,8 +514,8 @@ private fun DictionaryItemCard(
                     checked = dictionary.isEnabled,
                     onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onSecondary,
-                        checkedTrackColor = MaterialTheme.colorScheme.secondary,
+                        checkedThumbColor = GdictColors.OnPrimary,
+                        checkedTrackColor = GdictColors.PrimarySoft,
                         uncheckedThumbColor = MaterialTheme.colorScheme.surfaceVariant,
                         uncheckedTrackColor = MaterialTheme.colorScheme.outline
                     ),
@@ -543,7 +559,7 @@ private fun AddDictionaryDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .heightIn(max = 500.dp),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
@@ -774,6 +790,7 @@ private fun BatchImportDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(8.dp),
         title = { Text(strings.batchImport, fontWeight = FontWeight.Bold) },
         text = {
             Column {

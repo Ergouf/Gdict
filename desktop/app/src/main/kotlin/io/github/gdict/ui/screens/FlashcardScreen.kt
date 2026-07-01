@@ -3,8 +3,12 @@ package io.github.gdict.ui.screens
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,7 +144,7 @@ fun FlashcardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
         Box(
             modifier = Modifier
@@ -185,6 +189,11 @@ private fun FlashcardStartView(
 ) {
     val hasItems = reviewStats.total > 0
     val hasDue = reviewStats.due > 0 || reviewStats.new > 0
+
+    val startInteractionSource = remember { MutableInteractionSource() }
+    val isStartHovered by startInteractionSource.collectIsHoveredAsState()
+    val startBorderColor =
+        if (isStartHovered) MaterialTheme.colorScheme.primary else GdictColors.CardStroke
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -237,8 +246,10 @@ private fun FlashcardStartView(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onStart),
-                    shape = RoundedCornerShape(16.dp),
+                        .border(1.dp, startBorderColor, RoundedCornerShape(8.dp))
+                        .hoverable(startInteractionSource)
+                        .clickable(interactionSource = startInteractionSource, indication = null, onClick = onStart),
+                    shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -274,8 +285,9 @@ private fun StatChip(label: String, count: Int, color: Color) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = 0.1f))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Text(
@@ -363,12 +375,11 @@ private fun FlashcardReviewView(
                             else if (dragAmount > 100f && isFlipped) isFlipped = false
                         }
                     }
-                    .clickable { isFlipped = !isFlipped },
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (showFront) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    .clickable { isFlipped = !isFlipped }
+                    .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -582,11 +593,17 @@ private fun RatingButtonsRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(GdictColors.CardStroke)
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -634,6 +651,10 @@ private fun RatingButton(
     modifier: Modifier = Modifier,
     onClick: (Rating) -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) GdictColors.SubtleHover else Color.Transparent
+
     val daysText = scheduling?.scheduledDays?.let { days ->
         when {
             days == 1 -> "1d"
@@ -646,9 +667,11 @@ private fun RatingButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(color.copy(alpha = 0.1f))
-            .clickable { onClick(rating) }
+            .clip(RoundedCornerShape(8.dp))
+            .background(containerColor)
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null) { onClick(rating) }
             .padding(vertical = 12.dp, horizontal = 8.dp)
     ) {
         Text(
@@ -671,6 +694,11 @@ private fun FlashcardCompleteView(
     total: Int,
     onRestart: () -> Unit
 ) {
+    val restartInteractionSource = remember { MutableInteractionSource() }
+    val isRestartHovered by restartInteractionSource.collectIsHoveredAsState()
+    val restartBorderColor =
+        if (isRestartHovered) MaterialTheme.colorScheme.primary else GdictColors.CardStroke
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -711,8 +739,10 @@ private fun FlashcardCompleteView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp)
-                    .clickable(onClick = onRestart),
-                shape = RoundedCornerShape(16.dp),
+                    .border(1.dp, restartBorderColor, RoundedCornerShape(8.dp))
+                    .hoverable(restartInteractionSource)
+                    .clickable(interactionSource = restartInteractionSource, indication = null, onClick = onRestart),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {

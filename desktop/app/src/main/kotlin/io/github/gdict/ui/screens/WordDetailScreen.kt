@@ -1,7 +1,12 @@
 package io.github.gdict.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gdict.data.DictionaryRepository
 import io.github.gdict.core.GdictLogger
 import io.github.gdict.tts.EdgeTtsClient
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.ui.webview.DesktopAudioPlayer
 import io.github.gdict.ui.webview.MdxWebView
 import io.github.gdict.viewmodel.BookmarkViewModel
@@ -98,15 +104,25 @@ fun WordDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
+        val backInteractionSource = remember { MutableInteractionSource() }
+        val isBackHovered by backInteractionSource.collectIsHoveredAsState()
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isBackHovered) GdictColors.SubtleHover else Color.Transparent)
+                    .hoverable(backInteractionSource)
+            ) {
                 Icon(
                     Icons.Default.ArrowBack,
                     contentDescription = "Back",
@@ -278,11 +294,19 @@ private fun DesktopTabButton(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val backgroundColor = when {
+        isSelected -> GdictColors.SubtleSelected
+        isHovered -> GdictColors.SubtleHover
+        else -> Color.Transparent
+    }
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
-            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         Text(
@@ -300,9 +324,12 @@ private fun DesktopExamplesCard(
     darkMode: Boolean
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
@@ -340,9 +367,12 @@ private fun DesktopSynonymsCard(
     onEntryClick: (String) -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
@@ -364,10 +394,15 @@ private fun DesktopSynonymsCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     synonyms.forEach { synonym ->
+                        val chipInteractionSource = remember { MutableInteractionSource() }
+                        val isChipHovered by chipInteractionSource.collectIsHoveredAsState()
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.clickable { onEntryClick(synonym) }
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isChipHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.primaryContainer,
+                            border = BorderStroke(1.dp, GdictColors.CardStroke),
+                            modifier = Modifier
+                                .hoverable(chipInteractionSource)
+                                .clickable(interactionSource = chipInteractionSource, indication = null) { onEntryClick(synonym) }
                         ) {
                             Text(
                                 synonym,
@@ -416,14 +451,17 @@ private fun ActionButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.surface
     Card(
         modifier = modifier
             .height(44.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -464,8 +502,9 @@ private fun DefinitionCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),

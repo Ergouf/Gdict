@@ -161,7 +161,7 @@ fun DesktopApp(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.background)
+                .background(Color.Transparent)
         ) {
             // We deliberately avoid AnimatedContent because the transition would
             // have to render BOTH the old screen and the new screen at the same
@@ -206,7 +206,7 @@ fun DesktopApp(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(Color.Transparent)
             ) {
                 if (showingDetail) {
                     WordDetailScreen(
