@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -357,32 +360,52 @@ private fun FlashcardReviewView(
 
     val backCardColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
 
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val progress = (currentIndex + 1).toFloat() / totalCount
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        LinearProgressIndicator(
-            progress = { (currentIndex + 1).toFloat() / totalCount },
+        // 圆角胶囊进度条
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            color = GdictColors.PrimarySoft,
-            trackColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant,
-        )
+                .padding(horizontal = 20.dp)
+                .height(12.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, glassBorder, RoundedCornerShape(12.dp))
+                .background(glassBg)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            0.0f to GdictColors.Primary,
+                            1.0f to GdictColors.PrimarySoft
+                        )
+                    )
+            )
+        }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 "${currentIndex + 1} / $totalCount",
-                style = MaterialTheme.typography.labelMedium,
-                color = subtitleColor
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = GdictColors.OnBackground
             )
             TextButton(onClick = onSkip) {
-                Text("Skip", color = subtitleColor)
+                Text("Skip", color = GdictColors.Primary, fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -393,14 +416,19 @@ private fun FlashcardReviewView(
                 .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center
         ) {
-            Card(
+            // Acrylic 玻璃大圆角卡片
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxSize()
+                    .fillMaxHeight()
                     .graphicsLayer {
                         rotationY = rotation
-                        cameraDistance = 12f * density
+                        cameraDistance = 16f * density
                     }
+                    .shadow(12.dp, RoundedCornerShape(32.dp))
+                    .clip(RoundedCornerShape(32.dp))
+                    .border(1.5.dp, glassBorder, RoundedCornerShape(32.dp))
+                    .background(glassBg)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { _, dragAmount ->
                             if (dragAmount < -100f && !isFlipped) isFlipped = true
@@ -408,32 +436,24 @@ private fun FlashcardReviewView(
                         }
                     }
                     .clickable { isFlipped = !isFlipped },
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (showFront) cardColor else backCardColor
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (showFront) {
-                        FlashcardFront(
-                            word = item.word,
-                            dictName = dictName,
-                            textColor = textColor,
-                            subtitleColor = subtitleColor
-                        )
-                    } else {
-                        FlashcardBack(
-                            word = item.word,
-                            dictName = dictName,
-                            parsed = parsed,
-                            textColor = textColor,
-                            subtitleColor = subtitleColor
-                        )
-                    }
+                if (showFront) {
+                    FlashcardFront(
+                        word = item.word,
+                        dictName = dictName,
+                        darkMode = darkMode,
+                        textColor = textColor,
+                        subtitleColor = subtitleColor
+                    )
+                } else {
+                    FlashcardBack(
+                        word = item.word,
+                        dictName = dictName,
+                        parsed = parsed,
+                        textColor = textColor,
+                        subtitleColor = subtitleColor
+                    )
                 }
             }
         }
@@ -459,9 +479,13 @@ private fun FlashcardReviewView(
 private fun FlashcardFront(
     word: String,
     dictName: String,
+    darkMode: Boolean,
     textColor: Color,
     subtitleColor: Color
 ) {
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -471,8 +495,12 @@ private fun FlashcardFront(
             Text(
                 text = dictName,
                 style = MaterialTheme.typography.bodySmall,
-                color = subtitleColor,
-                modifier = Modifier.align(Alignment.TopEnd)
+                fontWeight = FontWeight.Medium,
+                color = subtitleColor.copy(alpha = 0.85f),
+                modifier = Modifier.align(Alignment.TopCenter),
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -483,25 +511,42 @@ private fun FlashcardFront(
         ) {
             Text(
                 text = word,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = textColor,
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontSize = 52.sp,
+                    lineHeight = 58.sp
+                ),
+                fontWeight = FontWeight.Black,
+                color = GdictColors.OnBackground,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(40.dp))
+            // 蓝色胶囊翻转按钮
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(1.dp, glassBorder, RoundedCornerShape(22.dp))
+                    .background(glassBg)
+                    .padding(horizontal = 18.dp)
             ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(20.dp)
+                )
                 Text(
                     stringResource(R.string.tap_to_reveal),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = subtitleColor.copy(alpha = 0.7f)
+                    fontWeight = FontWeight.SemiBold,
+                    color = GdictColors.Primary
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = subtitleColor.copy(alpha = 0.5f),
+                    tint = GdictColors.Primary,
                     modifier = Modifier.size(20.dp)
                 )
             }
