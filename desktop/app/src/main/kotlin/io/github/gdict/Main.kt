@@ -168,7 +168,6 @@ fun main() = application {
                     "cef=${(tCefEnd - tReposAndVmsEnd) / 1_000_000} " +
                     "firstFrame=${(nowNs - processStartNanos) / 1_000_000}"
             )
-            WindowsBackdrop.applyMica(window, darkMode = false)
             // Enable window dragging from any point on the window (when over
             // non-interactive areas we still want to be able to drag the frame).
             val dragHandler = object : java.awt.event.MouseAdapter() {
@@ -202,8 +201,14 @@ fun main() = application {
         val languageCode by settingsViewModel.language.collectAsState()
         val effectiveLanguage = resolveEffectiveLanguage(AppLanguage.fromCode(languageCode))
         val strings = getStringResourcesForLanguage(effectiveLanguage)
+        val darkMode by settingsViewModel.darkMode.collectAsState()
 
-        GdictTheme {
+        // Apply / refresh Mica backdrop whenever dark mode changes
+        LaunchedEffect(darkMode) {
+            WindowsBackdrop.applyMica(window, darkMode = darkMode)
+        }
+
+        GdictTheme(darkTheme = darkMode) {
             DesktopApp(
                 searchViewModel = searchViewModel,
                 bookmarkViewModel = bookmarkViewModel,

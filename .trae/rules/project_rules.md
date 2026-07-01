@@ -6,7 +6,14 @@ description: Gdict 项目全局规则，AI 助手在编辑代码时必须遵循
 
 ## 项目概述
 
-Gdict 是一款遵循 Material Design 3 的 Android 词典应用，支持 MDX/MDD 词典格式，内置 FSRS 间隔重复算法。包名 `io.github.gdict`。
+Gdict 是一款跨平台词典应用（Android + Desktop），支持 MDX/MDD 词典格式，内置 FSRS 间隔重复算法。包名 `io.github.gdict`。
+
+### 设计系统（双端差异）
+
+- **Android 端**：Material Design 3（遵循 Material You 平台惯例）
+- **Desktop 端**：Fluent Design 风格（通过 MD3 `colorScheme` 承载 Fluent 色板，复用 Mica/Acrylic 系统材料）
+- 两端共享同一套 `GdictColors` 色值定义（品牌绿色 accent + Fluent 中性色），仅"应用层背景透明度"等平台特性有差异
+- 品牌主色（accent）固定为绿色 `#5D8A6B`，不得切换为 Fluent 默认蓝
 
 ## 架构
 
@@ -55,7 +62,8 @@ Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 
 ### 语言与框架
 
-- 100% Kotlin，UI 使用 Jetpack Compose + Material Design 3
+- 100% Kotlin，UI 使用 Jetpack Compose
+- Android 端使用 Material Design 3；Desktop 端使用 Fluent Design 风格（通过 MD3 `colorScheme` token 承载 Fluent 色值，不引入第三方 Fluent 库）
 - 禁止使用 XML 布局，所有 UI 必须用 Compose 编写
 - 状态管理使用 ViewModel + StateFlow，禁止 LiveData
 - 导航使用 Navigation Compose
