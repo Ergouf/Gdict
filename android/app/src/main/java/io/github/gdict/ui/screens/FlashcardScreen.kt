@@ -356,105 +356,108 @@ private fun FlashcardReviewView(
 
     val parsed = remember(item.definition) { parseDefinition(item.definition) }
     val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
+    val showRating = isFlipped && scheduling.isNotEmpty()
 
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        LinearProgressIndicator(
-            progress = { (currentIndex + 1).toFloat() / totalCount },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            color = GdictColors.PrimarySoft,
-            trackColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant,
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                "${currentIndex + 1} / $totalCount",
-                style = MaterialTheme.typography.labelMedium,
-                color = subtitleColor
-            )
-            TextButton(onClick = onSkip) {
-                Text("Skip", color = subtitleColor)
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 20.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
+            LinearProgressIndicator(
+                progress = { (currentIndex + 1).toFloat() / totalCount },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        rotationY = rotation
-                        cameraDistance = 12f * density
-                    }
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures { _, dragAmount ->
-                            if (dragAmount < -100f && !isFlipped) isFlipped = true
-                            else if (dragAmount > 100f && isFlipped) isFlipped = false
-                        }
-                    }
-                    .clickable { isFlipped = !isFlipped }
-                    .border(
-                        1.dp,
-                        if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke,
-                        RoundedCornerShape(8.dp)
-                    ),
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .padding(horizontal = 20.dp),
+                color = GdictColors.PrimarySoft,
+                trackColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant,
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                Text(
+                    "${currentIndex + 1} / $totalCount",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = subtitleColor
+                )
+                TextButton(onClick = onSkip) {
+                    Text("Skip", color = subtitleColor)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = if (showRating) 96.dp else 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationY = rotation
+                            cameraDistance = 12f * density
+                        }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                if (dragAmount < -100f && !isFlipped) isFlipped = true
+                                else if (dragAmount > 100f && isFlipped) isFlipped = false
+                            }
+                        }
+                        .clickable { isFlipped = !isFlipped }
+                        .border(
+                            1.dp,
+                            if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke,
+                            RoundedCornerShape(8.dp)
+                        ),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    if (showFront) {
-                        FlashcardFront(
-                            word = item.word,
-                            dictName = dictName,
-                            textColor = textColor,
-                            subtitleColor = subtitleColor
-                        )
-                    } else {
-                        FlashcardBack(
-                            word = item.word,
-                            dictName = dictName,
-                            parsed = parsed,
-                            textColor = textColor,
-                            subtitleColor = subtitleColor
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (showFront) {
+                            FlashcardFront(
+                                word = item.word,
+                                dictName = dictName,
+                                textColor = textColor,
+                                subtitleColor = subtitleColor
+                            )
+                        } else {
+                            FlashcardBack(
+                                word = item.word,
+                                dictName = dictName,
+                                parsed = parsed,
+                                textColor = textColor,
+                                subtitleColor = subtitleColor
+                            )
+                        }
                     }
                 }
             }
         }
 
-        if (isFlipped && scheduling.isNotEmpty()) {
+        if (showRating) {
             RatingButtonsRow(
                 scheduling = scheduling,
                 darkMode = darkMode,
                 onRate = { rating ->
                     onRate(rating)
                     isFlipped = false
-                }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
-        } else {
-            Spacer(modifier = Modifier.height(80.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -647,12 +650,13 @@ private fun FlashcardBack(
 private fun RatingButtonsRow(
     scheduling: Map<Rating, SchedulingCard>,
     darkMode: Boolean,
-    onRate: (Rating) -> Unit
+    onRate: (Rating) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
