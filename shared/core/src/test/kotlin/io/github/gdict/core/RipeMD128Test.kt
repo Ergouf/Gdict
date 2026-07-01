@@ -10,42 +10,42 @@ class RipeMD128Test {
 
     @Test
     fun testEmptyString() {
-        val expected = "cdf26212a687ac340f141b67a34a7cc2"
+        val expected = "cdf26213a150dc3ecb610f18f6b38b46"
         val result = RipeMD128.digest(ByteArray(0)).toHexString()
         assertEquals(expected, result)
     }
 
     @Test
     fun testSingleCharA() {
-        val expected = "86be7afa339d0fc73ec62aa34f424670"
+        val expected = "86be7afa339d0fc7cfc785e72f578d33"
         val result = RipeMD128.digest("a".toByteArray()).toHexString()
         assertEquals(expected, result)
     }
 
     @Test
     fun testAbc() {
-        val expected = "c14f52ac6e270e7aa3e1f2d84076101d"
+        val expected = "c14a12199c66e4ba84636b0f69144c77"
         val result = RipeMD128.digest("abc".toByteArray()).toHexString()
         assertEquals(expected, result)
     }
 
     @Test
     fun testMessageDigest() {
-        val expected = "3e5e8e050c356278390f27e2da0ec2e7"
+        val expected = "9e327b3d6e523062afc1132d7df9d1b8"
         val result = RipeMD128.digest("message digest".toByteArray()).toHexString()
         assertEquals(expected, result)
     }
 
     @Test
     fun testAlphabetLowercase() {
-        val expected = "fd2aa607f71a1c643f485221764b124b"
+        val expected = "fd2aa607f71dc8f510714922b371834e"
         val result = RipeMD128.digest("abcdefghijklmnopqrstuvwxyz".toByteArray()).toHexString()
         assertEquals(expected, result)
     }
 
     @Test
     fun testAlphabetMixedCase() {
-        val expected = "a2fd772e0c3d93055f6a6c4c5e4fa7f0"
+        val expected = "601ab34c07a83be57fdc67611af179ee"
         val input = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         val result = RipeMD128.digest(input.toByteArray()).toHexString()
         assertEquals(expected, result)
@@ -53,7 +53,7 @@ class RipeMD128Test {
 
     @Test
     fun testNumericString() {
-        val expected = "fd9498e1f89c5b3d9356e9c07310f098"
+        val expected = "3f45ef194732c2dbb2c4a2c769795fa3"
         val input = "1234567890" + "1234567890" + "1234567890" + "1234567890" +
                 "1234567890" + "1234567890" + "1234567890" + "1234567890"
         val result = RipeMD128.digest(input.toByteArray()).toHexString()
