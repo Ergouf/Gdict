@@ -146,8 +146,9 @@ fun FlashcardScreen(
     } else {
         Brush.verticalGradient(
             0.0f to GdictColors.BlueBackgroundTop,
-            0.5f to GdictColors.BlueBackgroundBottom,
-            1.0f to GdictColors.BlueBackgroundTop.copy(alpha = 0.6f)
+            0.35f to GdictColors.BlueBackgroundBottom,
+            0.75f to GdictColors.BlueBackgroundBottom,
+            1.0f to GdictColors.BlueBackgroundTop
         )
     }
     val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
@@ -360,7 +361,12 @@ private fun FlashcardReviewView(
 
     val backCardColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
 
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    // 闪卡专用玻璃：低透明度 + 淡蓝色调，在浅色背景上也能透出玻璃层次
+    val cardGlassBg = if (darkMode) {
+        Color(0xCC1A2A3A)
+    } else {
+        Color(0xFFE8F4FF).copy(alpha = 0.40f)
+    }
     val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val progress = (currentIndex + 1).toFloat() / totalCount
 
@@ -375,7 +381,7 @@ private fun FlashcardReviewView(
                 .height(12.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, glassBorder, RoundedCornerShape(12.dp))
-                .background(glassBg)
+                .background(cardGlassBg)
         ) {
             Box(
                 modifier = Modifier
@@ -425,10 +431,10 @@ private fun FlashcardReviewView(
                         rotationY = rotation
                         cameraDistance = 16f * density
                     }
-                    .shadow(12.dp, RoundedCornerShape(32.dp))
+                    .shadow(16.dp, RoundedCornerShape(32.dp))
                     .clip(RoundedCornerShape(32.dp))
                     .border(1.5.dp, glassBorder, RoundedCornerShape(32.dp))
-                    .background(glassBg)
+                    .background(cardGlassBg)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { _, dragAmount ->
                             if (dragAmount < -100f && !isFlipped) isFlipped = true
@@ -483,7 +489,7 @@ private fun FlashcardFront(
     textColor: Color,
     subtitleColor: Color
 ) {
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val cardGlassBg = if (darkMode) Color(0xCC1A2A3A) else Color(0xFFE8F4FF).copy(alpha = 0.40f)
     val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
 
     Box(
@@ -512,11 +518,11 @@ private fun FlashcardFront(
             Text(
                 text = word,
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontSize = 52.sp,
-                    lineHeight = 58.sp
+                    fontSize = 56.sp,
+                    lineHeight = 62.sp
                 ),
                 fontWeight = FontWeight.Black,
-                color = GdictColors.OnBackground,
+                color = GdictColors.Primary,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(40.dp))
@@ -528,7 +534,7 @@ private fun FlashcardFront(
                     .height(44.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .border(1.dp, glassBorder, RoundedCornerShape(22.dp))
-                    .background(glassBg)
+                    .background(cardGlassBg)
                     .padding(horizontal = 18.dp)
             ) {
                 Icon(
