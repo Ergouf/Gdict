@@ -394,8 +394,7 @@ private fun FlashcardReviewView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = if (showRating) 96.dp else 16.dp),
+                    .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Card(
@@ -528,6 +527,7 @@ private fun FlashcardBack(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp)
+                .padding(bottom = 96.dp)
                 .verticalScroll(rememberScrollState())
                 .graphicsLayer { scaleX = -1f }
         ) {
@@ -659,7 +659,7 @@ private fun RatingButtonsRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
     ) {
         Column {
             Box(
@@ -669,7 +669,7 @@ private fun RatingButtonsRow(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.18f),
+                                Color.White.copy(alpha = 0.28f),
                                 Color.Transparent
                             )
                         )
@@ -736,7 +736,7 @@ private fun RatingButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-    val containerColor = if (isHovered) hoverColor else Color.Transparent
+    val containerColor = if (isHovered) hoverColor else MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
 
     val daysText = scheduling?.scheduledDays?.let { days ->
         when {
