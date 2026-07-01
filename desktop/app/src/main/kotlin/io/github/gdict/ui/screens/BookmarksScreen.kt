@@ -1,7 +1,11 @@
 package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,10 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gdict.core.model.BookmarkItem
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.BookmarkViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
 
@@ -59,7 +65,7 @@ fun BookmarksScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
     ) {
         Box(
             modifier = Modifier
@@ -135,6 +141,7 @@ fun BookmarksScreen(
     bookmarkToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { bookmarkToDelete = null },
+            shape = RoundedCornerShape(8.dp),
             title = { Text("Remove Bookmark", fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to remove \"${item.word}\"?") },
             confirmButton = {
@@ -162,12 +169,19 @@ private fun BookmarkCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // Fluent 卡片：1px 描边 + hover Subtle 填充
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.surface
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(

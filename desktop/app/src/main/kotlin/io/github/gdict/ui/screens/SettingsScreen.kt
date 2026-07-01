@@ -1,7 +1,11 @@
 package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gdict.ui.AppLanguage
 import io.github.gdict.ui.strings.StringResources
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SettingsViewModel
 import io.github.gdict.api.AfdianClient
 
@@ -69,7 +74,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.Transparent)
             .verticalScroll(rememberScrollState())
     ) {
         Box(
@@ -186,6 +191,7 @@ fun SettingsScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
+            shape = RoundedCornerShape(8.dp),
             title = { Text(strings.confirmClear) },
             text = { Text(strings.confirmClearMessage) },
             confirmButton = {
@@ -209,6 +215,7 @@ fun SettingsScreen(
     if (showLanguageDialog) {
         AlertDialog(
             onDismissRequest = { showLanguageDialog = false },
+            shape = RoundedCornerShape(8.dp),
             title = { Text(strings.selectLanguage) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -256,8 +263,10 @@ fun SettingsScreen(
 @Composable
 private fun DonationSection(strings: StringResources) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -266,7 +275,7 @@ private fun DonationSection(strings: StringResources) {
                 Icon(
                     imageVector = Icons.Filled.Favorite,
                     contentDescription = null,
-                    tint = Color(0xFFE53935),
+                    tint = Color(0xFFE53935), // 爱心语义色，保留
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -294,7 +303,7 @@ private fun DonationSection(strings: StringResources) {
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     "❤ 爱发电赞助",
@@ -312,8 +321,10 @@ private fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -337,11 +348,18 @@ private fun SettingsButtonItem(
     icon: ImageVector,
     onClick: () -> Unit
 ) {
+    // Fluent 列表项：hover 时 Subtle 填充反馈
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val background = if (isHovered) GdictColors.SubtleHover else Color.Transparent
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .background(background)
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
