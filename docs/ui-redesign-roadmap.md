@@ -93,7 +93,9 @@ fun AcrylicCapsule(
 
 ---
 
-## 四、搜索页设计规范
+## 四、搜索页面设计规范
+
+搜索页面包含两种状态：**搜索首页**（无输入/初始状态）和**搜索结果页**（输入关键词后展示结果）。两种状态共享同一套 Fluent Acrylic 设计语言。
 
 ### 4.1 页面背景
 
@@ -101,34 +103,47 @@ fun AcrylicCapsule(
 - 叠加 2~3 个径向环境光斑
 - 光斑位置：左上、右下分散
 - 光斑尺寸：200dp–300dp
+- 背景保持纯净，无纹理或复杂图案
 
-### 4.2 标题
+### 4.2 顶部标题
 
 - 文字：「搜索」
-- 字号：`headlineSmall` / 24sp
+- 字号：34sp / `headlineLarge`
 - 字重：`FontWeight.Bold`
-- 颜色：`OnBackground`
-- 边距：水平 20dp，顶部 `statusBarsPadding + 16dp`
+- 颜色：深蓝黑 `#102A56`
+- 对齐：左对齐
+- 边距：水平 24dp，顶部 `statusBarsPadding + 24dp`
 
-### 4.3 搜索框
+### 4.3 Fluent 搜索框
 
 - 高度：52dp
 - 圆角：28dp（胶囊形）
-- 背景：Acrylic 毛玻璃（`BlueSurfaceGlass`）
-- 背景模糊：8dp
+- 背景：`BlueSurfaceGlass`（半透明白色，约 70%）
+- 背景模糊：20dp
+- 内边距：水平 20dp
 - 1px 高光白边
 - 轻阴影：2dp
-- 搜索图标颜色：`BluePrimary`
+- 左侧搜索图标：品牌蓝描边/填充
+- 输入文字：深灰色
 - 占位文字：`BluePrimary.copy(alpha = 0.5f)`
+- 右侧清除按钮：圆形 Glass Icon Button
+  - 默认透明背景
+  - 深灰图标
+  - 点击：缩放 0.95 + 蓝色高亮反馈
+- 获取焦点：边框高亮 + 光泽动画
 
-### 4.4 历史记录
+---
+
+### 4.4 搜索首页状态
+
+#### 历史记录
 
 - 标题「最近搜索」：深色、Bold
 - 历史图标 `History`：改为 `BluePrimary`
 - 历史项：Acrylic 胶囊行，28dp 圆角，轻阴影
 - 行背景 hover/press：`BluePrimaryLight.copy(alpha = 0.3f)`
 
-### 4.5 每日一词卡片
+#### 每日一词卡片
 
 - 尺寸：180dp × 110dp
 - 圆角：20dp
@@ -137,22 +152,64 @@ fun AcrylicCapsule(
 - 标题颜色：`BluePrimary`
 - 词典名：`subtitleColor`
 
-### 4.6 搜索结果卡片
+---
 
-- 圆角：16dp（不再随缩放超过 16dp）
-- 标题颜色：`BluePrimary`
-- 背景：Acrylic 毛玻璃
-- 拖拽阴影降低为 4dp
+### 4.5 搜索结果页状态
 
-### 4.7 空结果/建议词
+#### 设计目标
 
+强调快速浏览、清晰层级、高效检索。通过玻璃材质、柔和光影和合理留白，让大量搜索结果依然保持舒适的阅读体验。
+
+#### 搜索结果卡片
+
+每条搜索结果采用独立的 Floating Acrylic Card：
+
+- 背景：`BlueSurfaceGlass`（白色半透明玻璃）
+- 背景模糊：20–24dp
+- 圆角：24dp
+- 1px 白色高光描边
+- 柔和阴影：4dp
+- 卡片间距：16–20dp
+- 左右边距：24dp
+- 内边距：20dp
+
+##### 卡片内容层级
+
+| 元素 | 规范 |
+|---|---|
+| 单词标题 | `BluePrimary`，Bold，28sp，视觉焦点 |
+| 词典来源 | 浅灰色辅助文字，最多两行，超出省略 |
+| 词形变化 | 蓝色菱形符号 + 变化形式 |
+| 词性标签 | 浅蓝色 Fluent Tag（如 `[VB]`） |
+| 释义预览 | 深灰色正文，关键词用 `BluePrimary` 高亮，最多 2–3 行 |
+| 更多按钮 | 右侧圆形 Glass Icon Button，品牌蓝菜单图标，点击 Acrylic Ripple + Glow |
+
+#### 空结果/建议词
+
+- 提示文字保持深色
 - 建议词改为蓝色胶囊标签
 - Acrylic 背景 + 蓝色文字
 
-### 4.8 错误提示卡
+#### 错误提示卡
 
 - 保持错误语义，但改为 Acrylic 材质
 - 圆角 16dp 或 20dp
+
+#### 卡片交互
+
+- 点击整张卡片：Scale 0.98 + 阴影增强 + Glass 高光移动
+- 打开详情：Shared Element Transition，卡片平滑放大进入详情页
+- 结果列表进入：逐项淡入（Stagger Animation）
+
+---
+
+### 4.6 搜索页面动效规范
+
+- 页面进入：Fade + 上浮 16px（250ms）
+- 搜索框获取焦点：边框高亮 + 光泽动画
+- 搜索结果列表：逐项淡入（Stagger，间隔 50ms）
+- 历史项/卡片点击：Scale 0.98 + Ripple
+- 导航切换：Glass Pill 平滑滑动
 
 ---
 
