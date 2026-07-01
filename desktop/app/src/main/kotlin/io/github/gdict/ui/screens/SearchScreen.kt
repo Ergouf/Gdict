@@ -1,6 +1,7 @@
 package io.github.gdict.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -12,10 +13,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
+import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
 import io.github.gdict.util.HtmlUtils
@@ -493,56 +498,87 @@ private fun WideSearchBar(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit
 ) {
+    // Fluent AutoSuggestBox 风格：
+    // - 容器透明，hover/聚焦时 Subtle 填充
+    // - 圆角 8dp（Fluent 标配）
+    // - 聚焦时底部 1px accent 下划线
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val background = when {
+        isFocused -> GdictColors.SubtleSelected
+        isHovered -> GdictColors.SubtleHover
+        else -> androidx.compose.ui.graphics.Color.Transparent
+    }
+    val bottomBarColor = if (isFocused) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        androidx.compose.ui.graphics.Color.Transparent
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(androidx.compose.ui.graphics.Color.Transparent)
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = "Search",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                decorationBox = { innerTextField ->
-                    if (query.isEmpty()) {
-                        Text(
-                            "Search English Dictionary... Enter word or phrase",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(background)
+                    .hoverable(interactionSource)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusable(interactionSource = interactionSource),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    decorationBox = { innerTextField ->
+                        if (query.isEmpty()) {
+                            Text(
+                                "Search English Dictionary... Enter word or phrase",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
-                    innerTextField()
-                }
-            )
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Clear",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
                 }
             }
+            // 聚焦时底部 1px accent 下划线（AutoSuggestBox 聚焦反馈）
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(bottomBarColor)
+            )
         }
     }
 }
@@ -555,26 +591,27 @@ private fun WordTranslationCard(
     cardScale: Float = 1.0f,
     onClick: () -> Unit = {}
 ) {
+    // Fluent 卡片：去阴影，改用 1px 描边 + hover/press 时 Subtle 填充反馈
     val cardInteractionSource = remember { MutableInteractionSource() }
     val isPressed by cardInteractionSource.collectIsPressedAsState()
     val isHovered by cardInteractionSource.collectIsHoveredAsState()
     val scale by animateFloatAsState(
         targetValue = when {
-            isPressed -> 0.97f
-            isHovered -> 1.015f
+            isPressed -> 0.98f
+            isHovered -> 1.012f
             else -> 1f
         },
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f),
         label = "cardPressScale"
     )
-    val elevation by animateDpAsState(
+    val containerColor by animateColorAsState(
         targetValue = when {
-            isPressed -> 2.dp
-            isHovered -> 4.dp
-            else -> 0.dp
+            isPressed -> GdictColors.SubtleSelected
+            isHovered -> GdictColors.SubtleHover
+            else -> MaterialTheme.colorScheme.surface
         },
-        animationSpec = tween(220, easing = FastOutSlowInEasing),
-        label = "cardElevation"
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "cardBackground"
     )
 
     val titleFontSize = (16f * cardScale).coerceIn(12f, 24f).sp
@@ -587,19 +624,20 @@ private fun WordTranslationCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation, RoundedCornerShape(12.dp))
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
+            .clip(RoundedCornerShape(8.dp)) // Fluent 标配 8dp
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
             .clickable(
                 interactionSource = cardInteractionSource,
                 indication = null,
                 onClick = onClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(modifier = Modifier.padding(contentPadding)) {
             Row(

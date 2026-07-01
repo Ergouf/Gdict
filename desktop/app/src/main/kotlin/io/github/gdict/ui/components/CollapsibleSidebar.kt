@@ -8,6 +8,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,15 +68,17 @@ fun CollapsibleSidebar(
     val targetWidth = if (isCollapsed) 56.dp else 180.dp
     val animatedWidth by animateDpAsState(
         targetValue = targetWidth,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 280f),
+        // Fluent 推荐缓动：略高阻尼，更克制的回弹
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 350f),
         label = "sidebarWidth"
     )
 
+    // Fluent NavigationView：侧栏透明，叠加在窗口 Mica 材料之上
     Box(
         modifier = modifier
             .width(animatedWidth)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.background)
+            .background(androidx.compose.ui.graphics.Color.Transparent)
     ) {
         Column(
             modifier = Modifier
@@ -150,69 +156,88 @@ private fun SidebarNavigationItem(
     isCollapsed: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) {
-        GdictColors.SidebarSelected
-    } else {
-        androidx.compose.ui.graphics.Color.Transparent
+    // Fluent NavigationView 语义：
+    // - 选中态：左侧 3px accent 竖条 + SubtleSelected 浅填充，图标/文字转 primary
+    // - hover 态：SubtleHover 浅填充（未选中时）
+    // - 未选中：透明背景，onSurfaceVariant 前景
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val backgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer
+        isHovered -> GdictColors.SubtleHover
+        else -> androidx.compose.ui.graphics.Color.Transparent
     }
-    val iconTint = if (isSelected) {
-        GdictColors.SidebarIconActive
-    } else {
-        GdictColors.SidebarIconInactive
-    }
-    val textColor = if (isSelected) {
-        GdictColors.SidebarIconActive
+    val foreground = if (isSelected) {
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(8.dp) // Fluent 标配 8dp 圆角
 
-    if (isCollapsed) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .clip(shape)
-                .background(backgroundColor)
-                .clickable(onClick = onClick)
-                .padding(vertical = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.label,
-                tint = iconTint,
-                modifier = Modifier.size(22.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        // 选中态左侧 accent 竖条（Fluent NavigationView 指示条）
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(3.dp)
+                    .height(24.dp)
+                    .background(MaterialTheme.colorScheme.primary)
             )
         }
-    } else {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .clip(shape)
-                .background(backgroundColor)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.label,
-                tint = iconTint,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = item.label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = textColor,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+
+        if (isCollapsed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(backgroundColor)
+                    .hoverable(interactionSource)
+                    .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = item.label,
+                    tint = foreground,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(backgroundColor)
+                    .hoverable(interactionSource)
+                    .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = item.label,
+                    tint = foreground,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = foreground,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
