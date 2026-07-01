@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -165,11 +166,24 @@ fun DictionariesScreen(
                 }
             }
         },
-        containerColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+        containerColor = if (darkMode) GdictColors.DarkBackground else GdictColors.BlueBackgroundTop
     ) { paddingValues ->
+        val bgGradient = if (darkMode) {
+            Brush.verticalGradient(
+                0.0f to GdictColors.DarkBackground,
+                1.0f to GdictColors.DarkSurfaceVariant
+            )
+        } else {
+            Brush.verticalGradient(
+                0.0f to GdictColors.BlueBackgroundTop,
+                0.5f to GdictColors.BlueBackgroundBottom,
+                1.0f to GdictColors.BlueBackgroundTop.copy(alpha = 0.6f)
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(bgGradient)
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {

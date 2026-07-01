@@ -121,6 +121,18 @@ fun SettingsScreen(
     val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
     val currentLanguage by settingsViewModel.language.collectAsStateWithLifecycle()
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.BlueBackgroundTop
+    val bgGradient = if (darkMode) {
+        Brush.verticalGradient(
+            0.0f to GdictColors.DarkBackground,
+            1.0f to GdictColors.DarkSurfaceVariant
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to GdictColors.BlueBackgroundTop,
+            0.5f to GdictColors.BlueBackgroundBottom,
+            1.0f to GdictColors.BlueBackgroundTop.copy(alpha = 0.6f)
+        )
+    }
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val context = LocalContext.current
@@ -129,7 +141,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(bgGradient)
             .verticalScroll(rememberScrollState())
     ) {
         ProfileHero(
