@@ -121,6 +121,7 @@ fun SettingsScreen(
     val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
     val currentLanguage by settingsViewModel.language.collectAsStateWithLifecycle()
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.BlueBackgroundTop
+    // 真实渐变：顶部明显蓝 → 中段浅蓝 → 底部接近白，对比度足够在浅色背景上能看出来
     val bgGradient = if (darkMode) {
         Brush.verticalGradient(
             0.0f to GdictColors.DarkBackground,
@@ -128,9 +129,9 @@ fun SettingsScreen(
         )
     } else {
         Brush.verticalGradient(
-            0.0f to GdictColors.BlueBackgroundTop,
-            0.5f to GdictColors.BlueBackgroundBottom,
-            1.0f to GdictColors.BlueBackgroundTop.copy(alpha = 0.6f)
+            0.0f to Color(0xFFD9E8FF),    // 顶部深一点的蓝
+            0.45f to Color(0xFFEDF5FF),   // 中段
+            1.0f to Color(0xFFFFFFFF)     // 底部白
         )
     }
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground

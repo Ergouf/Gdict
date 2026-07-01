@@ -96,9 +96,10 @@ fun GdictApp(
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
 
     GdictTheme(darkTheme = darkMode) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+        // Acrylic: 顶层必须是透明，渐变背景由各 Screen 自己画在根 Column 上；
+        // 没画渐变的页面由 Scaffold 的 containerColor 作浅色 fallback，避免透明露底。
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
             GdictAppContent(
                 settingsViewModel = settingsViewModel,
@@ -135,7 +136,8 @@ private fun GdictAppContent(
                        currentDestination?.route?.startsWith("dictionaries") == true
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        // containerColor 透明，让各 Screen 自己画渐变能透过来
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (!isDetailPage) {

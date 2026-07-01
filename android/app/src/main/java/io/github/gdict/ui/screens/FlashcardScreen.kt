@@ -144,11 +144,11 @@ fun FlashcardScreen(
             1.0f to GdictColors.DarkSurfaceVariant
         )
     } else {
+        // 蓝白渐变：顶部明显蓝 → 底部白，对比度足够
         Brush.verticalGradient(
-            0.0f to GdictColors.BlueBackgroundTop,
-            0.35f to GdictColors.BlueBackgroundBottom,
-            0.75f to GdictColors.BlueBackgroundBottom,
-            1.0f to GdictColors.BlueBackgroundTop
+            0.0f to Color(0xFFD9E8FF),
+            0.45f to Color(0xFFEDF5FF),
+            1.0f to Color(0xFFFFFFFF)
         )
     }
     val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
