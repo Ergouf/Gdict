@@ -7,6 +7,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -210,6 +214,12 @@ private fun FlashcardStartView(
     val hasItems = reviewStats.total > 0
     val hasDue = reviewStats.due > 0 || reviewStats.new > 0
 
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val startInteractionSource = remember { MutableInteractionSource() }
+    val isStartHovered by startInteractionSource.collectIsHoveredAsState()
+    val startContainerColor = if (isStartHovered) hoverColor else cardColor
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -261,11 +271,15 @@ private fun FlashcardStartView(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onStart),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-                    ),
+                        .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+                        .hoverable(startInteractionSource)
+                        .clickable(
+                            interactionSource = startInteractionSource,
+                            indication = null,
+                            onClick = onStart
+                        ),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = startContainerColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
@@ -300,8 +314,9 @@ private fun StatChip(label: String, count: Int, color: Color) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = 0.1f))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Text(
@@ -341,8 +356,6 @@ private fun FlashcardReviewView(
 
     val parsed = remember(item.definition) { parseDefinition(item.definition) }
     val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
-
-    val backCardColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -394,11 +407,14 @@ private fun FlashcardReviewView(
                             else if (dragAmount > 100f && isFlipped) isFlipped = false
                         }
                     }
-                    .clickable { isFlipped = !isFlipped },
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (showFront) cardColor else backCardColor
-                ),
+                    .clickable { isFlipped = !isFlipped }
+                    .border(
+                        1.dp,
+                        if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke,
+                        RoundedCornerShape(8.dp)
+                    ),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Box(
@@ -560,11 +576,11 @@ private fun FlashcardBack(
                     parsed.posTags.forEach { tag ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(8.dp))
                                 .border(
-                                    width = 1.5.dp,
+                                    width = 1.dp,
                                     color = GdictColors.TealAccent.copy(alpha = 0.65f),
-                                    shape = RoundedCornerShape(6.dp)
+                                    shape = RoundedCornerShape(8.dp)
                                 )
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
                         ) {
@@ -633,13 +649,34 @@ private fun RatingButtonsRow(
     darkMode: Boolean,
     onRate: (Rating) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface,
-        shadowElevation = 0.dp
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
     ) {
         Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.18f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(strokeColor)
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -692,6 +729,11 @@ private fun RatingButton(
     modifier: Modifier = Modifier,
     onClick: (Rating) -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val containerColor = if (isHovered) hoverColor else Color.Transparent
+
     val daysText = scheduling?.scheduledDays?.let { days ->
         when {
             days == 1 -> "1d"
@@ -700,15 +742,15 @@ private fun RatingButton(
         }
     } ?: ""
 
-    val btnBg = if (darkMode) GdictColors.DarkSurfaceVariant else color.copy(alpha = 0.1f)
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(btnBg)
-            .clickable { onClick(rating) }
+            .clip(RoundedCornerShape(8.dp))
+            .background(containerColor)
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null) { onClick(rating) }
             .padding(vertical = 12.dp, horizontal = 8.dp)
     ) {
         Text(
@@ -735,6 +777,12 @@ private fun FlashcardCompleteView(
     darkMode: Boolean,
     onRestart: () -> Unit
 ) {
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val restartInteractionSource = remember { MutableInteractionSource() }
+    val isRestartHovered by restartInteractionSource.collectIsHoveredAsState()
+    val restartContainerColor = if (isRestartHovered) hoverColor else cardColor
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -775,11 +823,15 @@ private fun FlashcardCompleteView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp)
-                    .clickable(onClick = onRestart),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-                ),
+                    .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+                    .hoverable(restartInteractionSource)
+                    .clickable(
+                        interactionSource = restartInteractionSource,
+                        indication = null,
+                        onClick = onRestart
+                    ),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = restartContainerColor),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Row(
