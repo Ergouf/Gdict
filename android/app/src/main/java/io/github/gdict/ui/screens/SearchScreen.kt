@@ -3,9 +3,13 @@ package io.github.gdict.ui.screens
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,14 +134,17 @@ fun SearchScreen(
         }
 
         errorMessage?.let { msg ->
+            val errorStroke = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .border(1.dp, errorStroke, RoundedCornerShape(8.dp)),
                 colors = CardDefaults.cardColors(
                     containerColor = GdictColors.CoralAccent.copy(alpha = 0.1f)
                 ),
-                shape = RoundedCornerShape(16.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -265,7 +272,7 @@ private fun SearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(searchBarBg)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -335,12 +342,16 @@ private fun DraggableSearchResultCard(
     val scaledWordFontSize = (16.sp * contentScale)
     val scaledDictFontSize = (12.sp * contentScale)
     val scaledDefFontSize = (14.sp * contentScale)
-    val scaledCornerRadius = (16.dp * contentScale).coerceIn(8.dp, 24.dp)
+    val scaledCornerRadius = (8.dp * contentScale).coerceIn(8.dp, 16.dp)
     val scaledDragIconSize = (20.dp * contentScale).coerceIn(14.dp, 28.dp)
     val scaledSpacing = (8.dp * contentScale)
     val scaledWordLineHeight = (22.sp * contentScale)
     val scaledDictLineHeight = (16.sp * contentScale)
     val scaledDefLineHeight = (20.sp * contentScale)
+
+    val cardInteractionSource = remember { MutableInteractionSource() }
+    val isHovered by cardInteractionSource.collectIsHoveredAsState()
+    val cardContainerColor = if (isHovered) MaterialTheme.colorScheme.surfaceVariant else cardColor
 
     Card(
         modifier = Modifier
@@ -350,13 +361,19 @@ private fun DraggableSearchResultCard(
             .graphicsLayer {
                 scaleX = if (isDragging) 1.03f else 1f
                 scaleY = if (isDragging) 1.03f else 1f
-            },
+            }
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(scaledCornerRadius))
+            .hoverable(cardInteractionSource)
+            .clickable(
+                interactionSource = cardInteractionSource,
+                indication = null,
+                onClick = onClick
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(scaledCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) cardColor.copy(alpha = 0.95f) else cardColor
-        ),
-        onClick = onClick
+            containerColor = if (isDragging) cardContainerColor.copy(alpha = 0.95f) else cardContainerColor
+        )
     ) {
         Row(
             modifier = Modifier
@@ -413,7 +430,7 @@ private fun DraggableSearchResultCard(
             Box(
                 modifier = Modifier
                     .padding(end = 4.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .pointerInput(index, totalItems) {
                         detectDragGestures(
                             onDragStart = {
@@ -487,14 +504,28 @@ private fun EmptySearchResult(
             )
             Spacer(modifier = Modifier.height(8.dp))
             suggestions.take(5).forEach { suggestion ->
-                Text(
-                    text = suggestion,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GdictColors.PrimarySoft,
+                val suggestionInteractionSource = remember { MutableInteractionSource() }
+                val isSuggestionHovered by suggestionInteractionSource.collectIsHoveredAsState()
+                val suggestionBg = if (isSuggestionHovered) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+                Box(
                     modifier = Modifier
-                        .clickable { onSuggestionClick(suggestion) }
-                        .padding(vertical = 4.dp)
-                )
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(suggestionBg)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                        .hoverable(suggestionInteractionSource)
+                        .clickable(
+                            interactionSource = suggestionInteractionSource,
+                            indication = null
+                        ) { onSuggestionClick(suggestion) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = suggestion,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = GdictColors.PrimarySoft
+                    )
+                }
             }
         }
     }
@@ -523,7 +554,7 @@ private fun RecentSearchSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable { onWordClick(item.word) }
                     .padding(vertical = 10.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -612,15 +643,26 @@ private fun WordOfDayCard(
     val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) hoverColor else cardColor
 
     Card(
         modifier = Modifier
             .width(180.dp)
             .height(110.dp)
-            .clickable(onClick = onClick),
+            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(
             modifier = Modifier

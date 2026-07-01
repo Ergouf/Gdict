@@ -3,7 +3,11 @@ package io.github.gdict.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -259,6 +263,7 @@ fun SettingsScreen(
                 if (showClearDialog) {
                     AlertDialog(
                         onDismissRequest = { showClearDialog = false },
+                        shape = RoundedCornerShape(8.dp),
                         title = { Text(stringResource(R.string.confirm_clear)) },
                         text = { Text(stringResource(R.string.confirm_clear_message)) },
                         confirmButton = {
@@ -310,6 +315,7 @@ private fun LanguageSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(8.dp),
         title = { Text(stringResource(R.string.select_language)) },
         text = {
             Column {
@@ -355,8 +361,10 @@ private fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = cardColor
@@ -421,9 +429,9 @@ private fun SettingsSwitchItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = GdictColors.OnPrimary,
                 checkedTrackColor = GdictColors.PrimarySoft,
-                uncheckedThumbColor = Color.White,
+                uncheckedThumbColor = GdictColors.OnPrimary,
                 uncheckedTrackColor = GdictColors.SurfaceVariant
             )
         )
@@ -439,11 +447,21 @@ private fun SettingsButtonItem(
     subtitleColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val background = if (isHovered) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(8.dp))
+            .background(background)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

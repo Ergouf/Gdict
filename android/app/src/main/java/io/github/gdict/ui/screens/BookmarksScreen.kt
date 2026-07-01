@@ -1,7 +1,11 @@
 package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -156,6 +160,7 @@ fun BookmarksScreen(
     bookmarkToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { bookmarkToDelete = null },
+            shape = RoundedCornerShape(8.dp),
             title = { Text(stringResource(R.string.remove_bookmark), fontWeight = FontWeight.Bold) },
             text = { Text(stringResource(R.string.remove_bookmark_confirm, item.word)) },
             confirmButton = {
@@ -187,13 +192,25 @@ private fun BookmarkItemCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) hoverColor else cardColor
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = cardColor
+            containerColor = containerColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -254,14 +271,25 @@ private fun FlashcardPromoCard(
     onClick: () -> Unit = {}
 ) {
     val promoBg = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) hoverColor else promoBg
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = promoBg
+            containerColor = containerColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -274,7 +302,7 @@ private fun FlashcardPromoCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(GdictColors.PrimarySoft.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {

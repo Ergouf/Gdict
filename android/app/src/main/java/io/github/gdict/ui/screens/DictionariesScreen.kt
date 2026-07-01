@@ -10,7 +10,11 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,6 +60,7 @@ fun DictionariesScreen(
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val dialogBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val cardBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
     var visible by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
@@ -153,7 +158,7 @@ fun DictionariesScreen(
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
                     containerColor = GdictColors.PrimarySoft,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -179,11 +184,13 @@ fun DictionariesScreen(
                 )
             ) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, strokeColor, RoundedCornerShape(8.dp)),
                     colors = CardDefaults.cardColors(
-                        containerColor = GdictColors.PrimarySoft.copy(alpha = 0.1f)
+                        containerColor = cardBg
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
@@ -331,7 +338,7 @@ fun DictionariesScreen(
                 modifier = Modifier
                     .fillMaxWidth(0.95f)
                     .fillMaxHeight(0.85f),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -371,7 +378,7 @@ fun DictionariesScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
+                    HorizontalDivider(color = strokeColor)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Column(
@@ -390,7 +397,7 @@ fun DictionariesScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
+                    HorizontalDivider(color = strokeColor)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -420,6 +427,11 @@ fun DictionaryItemCard(
     val cardBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val surfaceBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) hoverColor else cardBg
     LaunchedEffect(Unit) {
         scale = 0.95f
         delay(50)
@@ -428,11 +440,13 @@ fun DictionaryItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(scale),
+            .scale(scale)
+            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = cardBg
+            containerColor = containerColor
         )
     ) {
         Row(
@@ -448,7 +462,7 @@ fun DictionaryItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = if (dictionary.isEnabled)
                         GdictColors.PrimarySoft.copy(alpha = 0.1f)
                     else
@@ -528,7 +542,6 @@ fun AddDictionaryDialog(
     var scanError by remember { mutableStateOf<String?>(null) }
     val dialogBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val titleColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
-    val fieldBg = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -578,6 +591,7 @@ fun AddDictionaryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(8.dp),
         containerColor = dialogBg,
         title = {
             Text(
@@ -590,35 +604,35 @@ fun AddDictionaryDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                OutlinedTextField(
+                TextField(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.dictionary_name)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GdictColors.PrimarySoft,
-                        unfocusedBorderColor = GdictColors.Outline,
-                        focusedContainerColor = fieldBg,
-                        unfocusedContainerColor = fieldBg,
-                        cursorColor = GdictColors.PrimarySoft
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = GdictColors.Primary,
+                        unfocusedIndicatorColor = GdictColors.OutlineVariant,
+                        focusedLabelColor = GdictColors.Primary,
+                        cursorColor = GdictColors.Primary
                     )
                 )
-                OutlinedTextField(
+                TextField(
                     value = path,
                     onValueChange = { path = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.dictionary_path)) },
                     placeholder = { Text(stringResource(R.string.dictionary_path_hint)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GdictColors.PrimarySoft,
-                        unfocusedBorderColor = GdictColors.Outline,
-                        focusedContainerColor = fieldBg,
-                        unfocusedContainerColor = fieldBg,
-                        cursorColor = GdictColors.PrimarySoft
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = GdictColors.Primary,
+                        unfocusedIndicatorColor = GdictColors.OutlineVariant,
+                        focusedLabelColor = GdictColors.Primary,
+                        cursorColor = GdictColors.Primary
                     ),
                     trailingIcon = {
                         IconButton(onClick = {
@@ -636,7 +650,7 @@ fun AddDictionaryDialog(
                 OutlinedButton(
                     onClick = { scanFolderLauncher.launch(null) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = GdictColors.PrimarySoft
                     ),
@@ -664,11 +678,12 @@ fun AddDictionaryDialog(
                     }
                 },
                 enabled = name.isNotEmpty() && path.isNotEmpty(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = GdictColors.PrimarySoft,
                     disabledContainerColor = GdictColors.PrimarySoft.copy(alpha = 0.38f)
-                )
+                ),
+                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp)
             ) {
                 Text(
                     stringResource(R.string.add),
@@ -700,6 +715,7 @@ fun BatchImportDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(8.dp),
         containerColor = dialogBg,
         title = {
             Text(
@@ -718,7 +734,7 @@ fun BatchImportDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable {
                                 selected = if (isChecked) selected - candidate
                                 else selected + candidate
@@ -734,8 +750,9 @@ fun BatchImportDialog(
                                 else selected - candidate
                             },
                             colors = CheckboxDefaults.colors(
-                                checkedColor = GdictColors.PrimarySoft,
-                                uncheckedColor = GdictColors.OnSurfaceVariant
+                                checkedColor = GdictColors.Primary,
+                                uncheckedColor = GdictColors.OutlineVariant,
+                                checkmarkColor = GdictColors.OnPrimary
                             )
                         )
                         Column {
@@ -759,11 +776,12 @@ fun BatchImportDialog(
             Button(
                 onClick = { onImport(selected.toList()) },
                 enabled = selected.isNotEmpty(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = GdictColors.PrimarySoft,
                     disabledContainerColor = GdictColors.PrimarySoft.copy(alpha = 0.38f)
-                )
+                ),
+                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp)
             ) {
                 Text(
                     stringResource(R.string.import_count, selected.size),
