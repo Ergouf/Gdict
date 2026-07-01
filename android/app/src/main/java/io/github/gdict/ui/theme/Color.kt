@@ -56,7 +56,9 @@ object GdictColors {
     val SubtleSelected = Color(0xFFEAEAEA)
 
     // Acrylic Glass 玻璃材质 token
-    val BlueSurfaceGlass = Color.White.copy(alpha = 0.72f) // Acrylic 卡片/导航栏填充
+    // 浅色模式：淡蓝色调 + 55% 透明度，在浅色背景上呈现真正的玻璃透感
+    // 之前 72% alpha White 在浅色背景上表现为实心白色块，看不到玻璃效果
+    val BlueSurfaceGlass = Color(0xFFE8F4FF).copy(alpha = 0.55f)
     val BlueSurfaceGlassDark = Color(0xCC1A2A3A) // 深色模式 Acrylic 填充
     val BlueHighlightBorder = Color.White.copy(alpha = 0.60f) // 1px 高光白边
     val BlueCardBorder = Color(0x331E8CFF) // 浅蓝微描边
