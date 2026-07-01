@@ -303,6 +303,11 @@ private fun DonationSection(strings: StringResources) {
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                ),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(

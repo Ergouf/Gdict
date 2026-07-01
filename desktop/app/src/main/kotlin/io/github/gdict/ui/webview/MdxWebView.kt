@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -414,7 +413,7 @@ private object GlobalBrowserManager {
             if (!ensureCefInitialized()) {
                 log.e("MdxWebView", "GlobalBrowserManager: JCEF init failed")
                 val errorPanel = JPanel(BorderLayout())
-                errorPanel.background = java.awt.Color.WHITE
+                errorPanel.background = java.awt.Color(0xF5, 0xF5, 0xF5)
                 val errorLabel = JLabel("Browser engine failed to initialize.")
                 errorLabel.horizontalAlignment = SwingConstants.CENTER
                 errorPanel.add(errorLabel, BorderLayout.CENTER)
@@ -526,9 +525,9 @@ private object GlobalBrowserManager {
             messageRouter = router
 
             val p = JPanel(BorderLayout())
-            p.background = java.awt.Color.WHITE
+            p.background = java.awt.Color(0xF5, 0xF5, 0xF5)
             val browserComponent = cefBrowser.uiComponent
-            browserComponent.background = java.awt.Color.WHITE
+            browserComponent.background = java.awt.Color(0xF5, 0xF5, 0xF5)
             p.add(browserComponent, BorderLayout.CENTER)
             panel = p
 

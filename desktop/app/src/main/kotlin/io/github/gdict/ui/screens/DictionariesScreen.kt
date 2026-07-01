@@ -43,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -381,7 +382,7 @@ fun DictionariesScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
+                    HorizontalDivider(color = GdictColors.CardStroke)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Column(
@@ -400,7 +401,7 @@ fun DictionariesScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
+                    HorizontalDivider(color = GdictColors.CardStroke)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -475,7 +476,7 @@ private fun DictionaryItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = if (dictionary.isEnabled)
                         MaterialTheme.colorScheme.surfaceVariant
                     else
@@ -574,7 +575,7 @@ private fun AddDictionaryDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -608,7 +609,11 @@ private fun AddDictionaryDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = TextFieldDefaults.colors(
                                     focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                    focusedIndicatorColor = GdictColors.Primary,
+                                    unfocusedIndicatorColor = GdictColors.OutlineVariant,
+                                    focusedLabelColor = GdictColors.Primary,
+                                    cursorColor = GdictColors.Primary
                                 )
                             )
                             Row(
@@ -623,7 +628,11 @@ private fun AddDictionaryDialog(
                                     modifier = Modifier.weight(1f),
                                     colors = TextFieldDefaults.colors(
                                         focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        focusedIndicatorColor = GdictColors.Primary,
+                                        unfocusedIndicatorColor = GdictColors.OutlineVariant,
+                                        focusedLabelColor = GdictColors.Primary,
+                                        cursorColor = GdictColors.Primary
                                     )
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -665,7 +674,11 @@ private fun AddDictionaryDialog(
                                     modifier = Modifier.weight(1f),
                                     colors = TextFieldDefaults.colors(
                                         focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        focusedIndicatorColor = GdictColors.Primary,
+                                        unfocusedIndicatorColor = GdictColors.OutlineVariant,
+                                        focusedLabelColor = GdictColors.Primary,
+                                        cursorColor = GdictColors.Primary
                                     )
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -822,7 +835,12 @@ private fun BatchImportDialog(
                                 checked = candidate in selected.value,
                                 onCheckedChange = { checked ->
                                     selected.value = if (checked) selected.value + candidate else selected.value - candidate
-                                }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = GdictColors.Primary,
+                                    uncheckedColor = GdictColors.OutlineVariant,
+                                    checkmarkColor = GdictColors.OnPrimary
+                                )
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {

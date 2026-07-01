@@ -327,7 +327,7 @@ fun AnimatedTitleBarButton(
     Box(
         modifier = modifier
             .size(32.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = bgAlpha))
             .clickable(

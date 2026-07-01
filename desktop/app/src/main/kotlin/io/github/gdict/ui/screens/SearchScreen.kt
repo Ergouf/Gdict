@@ -138,11 +138,13 @@ fun SearchScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp)),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
-                shape = RoundedCornerShape(12.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -363,7 +365,7 @@ private fun DraggableGrid(
                             if (isDragging) {
                                 Modifier
                                     .offset { IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt()) }
-                                    .shadow(elevation, RoundedCornerShape(12.dp))
+                                    .shadow(elevation, RoundedCornerShape(8.dp))
                                     .graphicsLayer { alpha = 0.9f }
                             } else {
                                 Modifier
@@ -761,14 +763,24 @@ private fun WordOfDayCard(
     meaning: String,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val containerColor = if (isHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.surface
+
     Card(
         modifier = Modifier
             .width(200.dp)
             .height(120.dp)
-            .clickable(onClick = onClick),
+            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(
             modifier = Modifier
@@ -824,11 +836,19 @@ private fun EmptySearchResult(
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 suggestions.forEach { suggestion ->
+                    val suggestionInteractionSource = remember { MutableInteractionSource() }
+                    val isHovered by suggestionInteractionSource.collectIsHoveredAsState()
+                    val suggestionBg = if (isHovered) GdictColors.SubtleHover else MaterialTheme.colorScheme.surface
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onSuggestionClick(suggestion) }
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(suggestionBg)
+                            .border(1.dp, GdictColors.CardStroke, RoundedCornerShape(8.dp))
+                            .hoverable(suggestionInteractionSource)
+                            .clickable(
+                                interactionSource = suggestionInteractionSource,
+                                indication = null
+                            ) { onSuggestionClick(suggestion) }
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
