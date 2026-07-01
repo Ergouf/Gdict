@@ -10,10 +10,11 @@ Gdict 是一款跨平台词典应用（Android + Desktop），支持 MDX/MDD 词
 
 ### 设计系统（双端差异）
 
-- **Android 端**：Material Design 3（遵循 Material You 平台惯例）
-- **Desktop 端**：Fluent Design 风格（通过 MD3 `colorScheme` 承载 Fluent 色板，复用 Mica/Acrylic 系统材料）
-- 两端共享同一套 `GdictColors` 色值定义（品牌绿色 accent + Fluent 中性色），仅"应用层背景透明度"等平台特性有差异
-- 品牌主色（accent）固定为绿色 `#5D8A6B`，不得切换为 Fluent 默认蓝
+- **Android 端**：Material Design 3（遵循 Material You 平台惯例）+ Fluent Design 2 / Acrylic Glass 视觉
+- **Desktop 端**：Fluent Design 2 风格（通过 MD3 `colorScheme` 承载 Fluent 色板，复用 Mica/Acrylic 系统材料）
+- 两端共享同一套 `GdictColors` 色值定义（品牌蓝 accent + Fluent 中性色 + Acrylic Glass token），仅"应用层背景透明度"等平台特性有差异
+- 品牌主色（accent）固定为蓝色 `#1E8CFF`（Logo 同款蓝），全面采用 Fluent Design 2 / Windows 11 Acrylic Glass 视觉规范
+- 详细 UI 规范见 `docs/ui-redesign-roadmap.md`
 
 ## 架构
 

@@ -2,6 +2,7 @@ package io.github.gdict.ui
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -139,6 +142,7 @@ private fun GdictAppContent(
                 GdictBottomBar(
                     screens = screens,
                     currentDestination = currentDestination,
+                    darkMode = darkMode,
                     onNavigate = { screen ->
                         navController.navigate(screen.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -245,19 +249,27 @@ private fun GdictAppContent(
 fun GdictBottomBar(
     screens: List<Screen>,
     currentDestination: androidx.navigation.NavDestination?,
+    darkMode: Boolean,
     onNavigate: (Screen) -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(vertical = 6.dp, horizontal = 24.dp)
-                .height(56.dp),
+                .height(64.dp)
+                .shadow(8.dp, RoundedCornerShape(32.dp))
+                .clip(RoundedCornerShape(32.dp))
+                .border(1.dp, borderColor, RoundedCornerShape(32.dp))
+                .background(glassBg)
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -266,6 +278,7 @@ fun GdictBottomBar(
                 GdictBottomNavItem(
                     screen = screen,
                     isSelected = isSelected,
+                    darkMode = darkMode,
                     onClick = { onNavigate(screen) }
                 )
             }
@@ -277,34 +290,34 @@ fun GdictBottomBar(
 fun GdictBottomNavItem(
     screen: Screen,
     isSelected: Boolean,
+    darkMode: Boolean,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val capsuleBg = if (isSelected) GdictColors.Primary.copy(alpha = 0.15f) else Color.Transparent
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    if (isSelected) GdictColors.PrimarySoft.copy(alpha = 0.12f) else androidx.compose.ui.graphics.Color.Transparent
-                )
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .clip(RoundedCornerShape(16.dp))
+                .background(capsuleBg)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
                 contentDescription = stringResource(screen.titleResId),
-                tint = if (isSelected) GdictColors.PrimarySoft else GdictColors.OnSurfaceVariant,
+                tint = if (isSelected) GdictColors.Primary else GdictColors.OnSurfaceVariant,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -313,7 +326,7 @@ fun GdictBottomNavItem(
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
             ),
-            color = if (isSelected) GdictColors.PrimarySoft else GdictColors.OnSurfaceVariant,
+            color = if (isSelected) GdictColors.Primary else GdictColors.OnSurfaceVariant,
             fontSize = 11.sp
         )
     }

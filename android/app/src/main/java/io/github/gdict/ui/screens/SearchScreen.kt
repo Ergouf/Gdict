@@ -3,6 +3,7 @@ package io.github.gdict.ui.screens
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -259,21 +260,24 @@ private fun SearchBar(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit
 ) {
-    val searchBarBg = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    val searchBarBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(52.dp)
+            .shadow(2.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
             .background(searchBarBg)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             Icons.Default.Search,
             contentDescription = stringResource(R.string.search_hint),
-            tint = GdictColors.OnSurfaceVariant,
+            tint = GdictColors.Primary,
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -332,21 +336,24 @@ private fun DraggableSearchResultCard(
 
     val scaledHorizontalPadding = (16.dp * contentScale)
     val scaledVerticalPadding = (16.dp * contentScale)
-    val scaledWordFontSize = (16.sp * contentScale)
+    val scaledWordFontSize = (18.sp * contentScale)
     val scaledDictFontSize = (12.sp * contentScale)
     val scaledDefFontSize = (14.sp * contentScale)
-    val scaledCornerRadius = (16.dp * contentScale).coerceIn(8.dp, 24.dp)
+    val scaledCornerRadius = (24.dp * contentScale).coerceIn(12.dp, 24.dp)
     val scaledDragIconSize = (20.dp * contentScale).coerceIn(14.dp, 28.dp)
     val scaledSpacing = (8.dp * contentScale)
-    val scaledWordLineHeight = (22.sp * contentScale)
+    val scaledWordLineHeight = (24.sp * contentScale)
     val scaledDictLineHeight = (16.sp * contentScale)
     val scaledDefLineHeight = (20.sp * contentScale)
+    val glassBg = GdictColors.BlueSurfaceGlass
+    val glassBorder = GdictColors.BlueHighlightBorder
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .offset { IntOffset(0, dragOffset.roundToInt()) }
-            .shadow(animatedElevation, RoundedCornerShape(scaledCornerRadius))
+            .shadow(animatedElevation.coerceAtLeast(4.dp), RoundedCornerShape(scaledCornerRadius))
+            .border(1.dp, glassBorder, RoundedCornerShape(scaledCornerRadius))
             .graphicsLayer {
                 scaleX = if (isDragging) 1.03f else 1f
                 scaleY = if (isDragging) 1.03f else 1f
@@ -354,7 +361,7 @@ private fun DraggableSearchResultCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(scaledCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) cardColor.copy(alpha = 0.95f) else cardColor
+            containerColor = if (isDragging) glassBg.copy(alpha = 0.95f) else glassBg
         ),
         onClick = onClick
     ) {
@@ -379,7 +386,7 @@ private fun DraggableSearchResultCard(
                         lineHeight = scaledWordLineHeight
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = GdictColors.PrimarySoft
+                    color = GdictColors.Primary
                 )
                 if (dictionaryName.isNotEmpty()) {
                     Text(
@@ -523,15 +530,18 @@ private fun RecentSearchSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .shadow(2.dp, RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(28.dp))
+                    .border(1.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(28.dp))
+                    .background(GdictColors.BlueSurfaceGlass)
                     .clickable { onWordClick(item.word) }
-                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Outlined.History,
                     contentDescription = null,
-                    tint = subtitleColor,
+                    tint = GdictColors.Primary,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -609,7 +619,8 @@ private fun WordOfDayCard(
     darkMode: Boolean,
     onClick: () -> Unit
 ) {
-    val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
@@ -619,8 +630,9 @@ private fun WordOfDayCard(
             .height(110.dp)
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
@@ -632,7 +644,7 @@ private fun WordOfDayCard(
                 text = word,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = GdictColors.PrimarySoft
+                color = GdictColors.Primary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(

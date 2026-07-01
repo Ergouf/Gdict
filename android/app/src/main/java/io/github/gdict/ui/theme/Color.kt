@@ -3,57 +3,70 @@ package io.github.gdict.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Fluent Design 色板（通过 MD3 colorScheme token 承载）。
+ * Fluent Design 2 色板（品牌蓝主题）。
  *
- * 与桌面端 GdictColors 共享同一套 Fluent 色值（品牌绿 accent + Fluent 中性灰阶）。
- * 差异：Android 端无 Mica 系统材料，Background 不透明（alpha=FF）。
- * 设计依据：Fluent 2 Color Tokens（https://fluent2.microsoft.design/color-tokens/）。
+ * 通过 MD3 colorScheme token 承载，与桌面端共享同一套色值。
+ * 品牌主色为 Logo 同款蓝 #1E8CFF，全面移除绿色。
+ * 设计依据：Fluent 2 Color Tokens + Windows 11 Acrylic Glass。
  */
 object GdictColors {
-    // 品牌主色（绿色 accent）—— Fluent accent 语义
-    val Primary = Color(0xFF5D8A6B)
-    val PrimarySoft = Color(0xFF63BD04) // 高亮绿，用于开关/选中态强反馈
-    val PrimaryLight = Color(0xFF7DA88B) // 深色主题下的主色（提亮以保证对比度）
+    // 品牌主色（蓝色 accent）—— Fluent accent 语义
+    val Primary = Color(0xFF1E8CFF)
+    val PrimarySoft = Color(0xFF4DA3FF) // hover/pressed 反馈色
+    val PrimaryLight = Color(0xFF7BB8FF) // 深色主题下的主色（提亮以保证对比度）
     val OnPrimary = Color.White
 
-    val PrimaryContainer = Color(0xFFE8F0EB) // 浅绿容器
-    val OnPrimaryContainer = Color(0xFF1F3A28)
+    val PrimaryContainer = Color(0xFFE3F0FF) // 浅蓝容器
+    val OnPrimaryContainer = Color(0xFF0D3B6B)
 
-    // 次级色（中性石板灰，由原 Primary 降级而来）—— 用于次要交互
+    // 次级色（中性石板灰）—— 用于次要交互
     val Secondary = Color(0xFF5B6B7C)
     val SecondaryLight = Color(0xFF8495A8)
     val OnSecondary = Color.White
-    val SecondaryContainer = Color(0xFFEFEFEF) // colorSubtleBackground hover
+    val SecondaryContainer = Color(0xFFEFEFEF)
     val OnSecondaryContainer = Color(0xFF3F4E5C)
 
-    val Accent = Color(0xFF7D8E9F)
-    val TealAccent = Color(0xFF5D8A6B) // 别名，与 Primary 一致，保留以兼容旧引用
-    val CoralAccent = Color(0xFFE08B82) // error
-    val AmberAccent = Color(0xFFE5A84B)
-    val MintGreen = Color(0xFF8FBC8F)
+    // 第三色（用于 MD3 tertiary token）
+    val Tertiary = Color(0xFF6B7A90)
+    val OnTertiary = Color.White
+
+    val Accent = Color(0xFF6B7A90)
+    val TealAccent = Color(0xFF1E8CFF) // 别名，与 Primary 一致（蓝色）
+    val CoralAccent = Color(0xFFE08B82) // error / Again 评分
+    val AmberAccent = Color(0xFFE5A84B) // Hard 评分
+    val MintGreen = Color(0xFF5BC0EB) // Easy 评分（改为青蓝）
 
     // Fluent 中性背景（纯灰阶，Android 不透明）
-    val Background = Color(0xFFFAFAFA) // colorNeutralBackground2
+    val Background = Color(0xFFF5FAFF) // 蓝白渐变顶部色
     val Surface = Color(0xFFFAFAFA) // colorNeutralCardBackground
     val SurfaceVariant = Color(0xFFF4F4F4) // colorNeutralBackground3
 
     // Fluent 中性前景
-    val OnBackground = Color(0xFF242424) // colorNeutralForeground1
+    val OnBackground = Color(0xFF102A56) // 深蓝黑色
     val OnSurface = Color(0xFF242424)
-    val OnSurfaceVariant = Color(0xFF383838) // colorNeutralForeground2
+    val OnSurfaceVariant = Color(0xFF6B7A90) // 浅灰蓝辅助文字
 
     // Fluent 描边
-    val Outline = Color(0xFFD1D1D1) // colorNeutralStroke1
-    val OutlineVariant = Color(0xFFE0E0E0) // colorNeutralStroke2
-    val CardStroke = Color(0xFFE0E0E0) // CardStrokeColorDefault
+    val Outline = Color(0xFFD1D1D1)
+    val OutlineVariant = Color(0xFFE0E0E0)
+    val CardStroke = Color(0xFFE0E0E0)
 
     // Fluent 微妙填充（hover / selected 态）
-    val SubtleHover = Color(0xFFF4F4F4) // colorSubtleBackground hover
-    val SubtleSelected = Color(0xFFEAEAEA) // colorSubtleBackground selected
+    val SubtleHover = Color(0xFFF4F4F4)
+    val SubtleSelected = Color(0xFFEAEAEA)
+
+    // Acrylic Glass 玻璃材质 token
+    val BlueSurfaceGlass = Color.White.copy(alpha = 0.72f) // Acrylic 卡片/导航栏填充
+    val BlueSurfaceGlassDark = Color(0xCC1A2A3A) // 深色模式 Acrylic 填充
+    val BlueHighlightBorder = Color.White.copy(alpha = 0.60f) // 1px 高光白边
+    val BlueCardBorder = Color(0x331E8CFF) // 浅蓝微描边
+    val BlueBackgroundTop = Color(0xFFF5FAFF) // 页面渐变顶部
+    val BlueBackgroundBottom = Color(0xFFFFFFFF) // 页面渐变底部
+    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.08f) // 环境光斑
 
     // 深色主题
-    val DarkBackground = Color(0xFF1F1F1F) // colorNeutralBackground1 dark
-    val DarkSurface = Color(0xFF292929) // colorNeutralCardBackground dark
+    val DarkBackground = Color(0xFF1F1F1F)
+    val DarkSurface = Color(0xFF292929)
     val DarkSurfaceVariant = Color(0xFF141414)
     val DarkOnBackground = Color(0xFFFFFFFF)
     val DarkOnSurface = Color(0xFFFFFFFF)
@@ -63,8 +76,8 @@ object GdictColors {
     val DarkCardStroke = Color(0xFF404040)
     val DarkSubtleHover = Color(0xFF2B2B2B)
     val DarkSubtleSelected = Color(0xFF333333)
-    val DarkPrimaryContainer = Color(0xFF2A3D31)
-    val DarkOnPrimaryContainer = Color(0xFFB5D9C1)
+    val DarkPrimaryContainer = Color(0xFF0D3B6B)
+    val DarkOnPrimaryContainer = Color(0xFFB3D8FF)
     val DarkSecondaryContainer = Color(0xFF2B2B2B)
     val DarkOnSecondaryContainer = Color(0xFFD4D4D4)
 

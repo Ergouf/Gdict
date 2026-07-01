@@ -1,6 +1,7 @@
 package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -187,42 +189,45 @@ private fun BookmarkItemCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val iconContainerColor = GdictColors.Primary.copy(alpha = 0.12f)
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(4.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .background(glassBg)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(GdictColors.PrimarySoft.copy(alpha = 0.1f)),
+                    .background(iconContainerColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Filled.Bookmark,
                     contentDescription = null,
-                    tint = GdictColors.PrimarySoft,
-                    modifier = Modifier.size(20.dp)
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.word,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = textColor
                 )
                 Text(
@@ -235,13 +240,13 @@ private fun BookmarkItemCard(
             }
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = stringResource(R.string.cd_remove),
                     tint = subtitleColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -253,57 +258,60 @@ private fun FlashcardPromoCard(
     darkMode: Boolean,
     onClick: () -> Unit = {}
 ) {
-    val promoBg = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val iconContainerColor = GdictColors.Primary.copy(alpha = 0.12f)
+    val titleColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = promoBg
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(4.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .background(glassBg)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(GdictColors.PrimarySoft.copy(alpha = 0.1f)),
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(iconContainerColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Filled.Bookmark,
                     contentDescription = null,
-                    tint = GdictColors.PrimarySoft,
-                    modifier = Modifier.size(24.dp)
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(26.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     stringResource(R.string.flashcard),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor
                 )
                 Text(
                     "To practice and learn your word lists.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+                    color = subtitleColor
                 )
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                tint = GdictColors.Primary,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
