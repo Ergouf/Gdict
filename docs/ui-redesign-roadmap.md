@@ -417,23 +417,259 @@ fun AcrylicCapsule(
 
 ---
 
-## 七、底部导航栏（全局）
+## 七、个人中心 / 设置页设计规范
 
-### 7.1 形态
+### 7.1 整体方向
+
+- **设计语言**：Microsoft Fluent Design 2 / Windows 11 Acrylic Glass
+- **核心目标**：去除绿色，打造现代、轻盈、专业的设置中心
+- **关键词**：Acrylic Glass、Glassmorphism、Settings UI、Profile Center、Floating Cards、Ambient Light、Soft Shadow、Blue Gradient、Premium、Minimal、Modern
+
+### 7.2 页面背景
+
+- 浅蓝 → 白色径向渐变（Blue Frost Gradient）
+- 叠加低透明度环境光（Ambient Light）和柔和蓝色光晕
+- 背景保持纯净，无复杂纹理，确保设置内容成为视觉焦点
+
+### 7.3 顶部用户信息
+
+顶部采用 Profile Hero 布局：
+
+- 左侧圆形头像容器：
+  - Acrylic Glass 材质，半透明玻璃背景
+  - Background Blur：20dp
+  - 圆形设计，柔和蓝色外发光
+  - 头像图标：Fluent Filled 风格，品牌蓝色
+- 右侧文字：
+  - 标题「个人中心」：34sp，Bold，深蓝黑色 `#102A56`
+  - 副标题「管理你的设置」：浅灰色辅助文字
+- 头像与标题之间保持充足留白，提高视觉层级
+
+### 7.4 设置分组
+
+每分组使用大型 Acrylic Card：
+
+- 白色半透明玻璃，`BlueSurfaceGlass`
+- Background Blur：20–24dp
+- 圆角：28dp
+- 柔和阴影 + 1px 白色高光描边
+- 分组间距：20dp
+
+### 7.5 分组标题
+
+- 左侧品牌蓝竖线 Accent（宽度 3dp，高度与标题一致，圆角）
+- 标题：Bold，深蓝色，中号字体
+- 与卡片内容保持 12dp 底部间距
+
+### 7.6 设置项
+
+布局：`Icon | 标题 + 说明 | 控件 →`
+
+- 图标容器：
+  - 尺寸 56dp × 56dp
+  - 圆角 18dp
+  - 浅蓝色玻璃背景
+  - 品牌蓝图标颜色
+- 标题：Bold，深蓝黑色
+- 说明：浅灰色辅助文字
+- 控件区：Switch 或 Chevron Right
+- 行高：72–80dp
+
+### 7.7 开关（Switch）
+
+改为 Fluent Switch：
+
+- 关闭：浅灰玻璃轨道 + 白色按钮
+- 开启：品牌蓝渐变轨道 + 白色按钮 + 外围蓝色 Glow
+- 动画：按钮滑动 + 背景渐变，符合 Fluent Motion
+
+### 7.8 可点击设置项
+
+例如「词典管理」「语言」「版本信息」「项目仓库」：
+
+- 右侧统一采用 Fluent Chevron Right
+- 点击反馈：Glass Ripple + Shadow 增强 + Card 微缩放（Scale 0.98）
+
+### 7.9 关于模块
+
+- 版本信息：增加版本标签（Version Badge），蓝色描边/填充胶囊
+- 项目仓库：增加 GitHub Logo，链接使用品牌蓝强调色
+- 整体更加专业
+
+### 7.10 底部导航栏
+
+沿用全局 Floating Acrylic Navigation Bar：
+
+- 当前「我的」Tab：品牌蓝图标/文字 + 浅蓝 Glass 胶囊背景 + 柔和蓝色 Glow
+- 其余 Tab：深灰色线性图标
+
+### 7.11 动效规范
+
+- 页面进入：Fade + 上浮（250ms）
+- 卡片轻微浮起（Floating Effect）
+- Switch 切换：滑动 + 背景渐变
+- 点击设置项：Scale 0.98 + Ripple + Shadow
+- 导航切换：Glass Pill 平滑滑动
+
+### 7.12 布局规范
+
+- 8pt Grid 布局系统
+- 页面左右边距：24dp
+- 分组间距：20dp
+- 设置项高度：72–80dp
+- 圆角统一：24–32dp
+- 品牌蓝作为唯一强调色
+- 大量留白，减少视觉拥挤
+
+---
+
+## 八、添加词典弹窗设计规范
+
+### 8.1 设计目标
+
+将「添加词典」弹窗重新设计为 Microsoft Fluent Design 2 风格，与整套应用保持统一的品牌蓝视觉体系。强调轻盈、现代、沉浸式交互体验，弱化传统 Android 对话框的边界感，使弹窗自然悬浮于页面之上。
+
+### 8.2 遮罩层（Overlay）
+
+- 黑色蒙层透明度：30%–40%
+- 叠加 Background Blur：16–20dp
+- 保留背景内容轮廓，增强空间层次
+- 弹窗出现时背景轻微缩放（Scale 0.98），营造景深效果
+
+### 8.3 弹窗容器（Dialog）
+
+弹窗采用 Floating Acrylic Dialog：
+
+- 白色半透明玻璃背景（透明度约 75%）
+- Background Blur：24dp
+- 圆角：32dp
+- 1px 白色高光描边
+- 大面积柔和阴影
+- 内边距：32dp
+- 宽度约占屏幕宽度 88%–92%，高度根据内容自适应
+
+### 8.4 标题区域
+
+- 左侧品牌蓝圆角图标容器，内置 Fluent「书籍+」图标
+- 标题「添加词典」：32sp，Bold，深蓝黑色 `#102A56`
+- 标题与图标水平对齐
+- 右上角圆形关闭按钮：
+  - 半透明玻璃背景
+  - 品牌蓝关闭图标
+  - Hover / 点击时出现 Ripple 与蓝色 Glow
+
+### 8.5 输入区域
+
+所有输入框统一采用 Fluent Text Field：
+
+- 半透明白色背景
+- Background Blur：12dp
+- 圆角：20dp
+- 高度：56dp
+- 无传统边框，仅使用浅灰描边
+- 聚焦时边框切换为品牌蓝，并出现柔和外发光
+- 占位文字使用浅灰辅助色
+
+#### 词典名称
+
+- Label：「词典名称」
+- 占位文字：「请输入词典名称」
+
+#### 词典路径
+
+- Label：「词典路径」
+- 占位文字：「请选择词典文件」
+- 右侧文件按钮采用 Glass Icon Button：
+  - 半透明玻璃按钮
+  - 品牌蓝文件图标
+  - 圆角：16dp
+  - 点击时 Ripple + Glow
+- 输入框自动省略超长路径，仅保留关键目录和文件名
+
+### 8.6 扫描按钮
+
+采用全宽 Secondary Glass Button：
+
+- 半透明浅蓝背景
+- Background Blur：16dp
+- 圆角：20dp
+- 高度：56dp
+- 左侧 Fluent 文件夹图标
+- 品牌蓝文字「扫描文件夹查找词典」
+- 点击反馈：背景高亮 + 阴影增强 + Ripple 扩散动画
+
+### 8.7 底部操作区
+
+采用右对齐布局：
+
+- **取消按钮**：Secondary Glass Button
+  - 半透明玻璃背景
+  - 深灰文字
+  - 圆角：20dp
+  - 点击后出现轻微 Press 动画
+- **添加按钮**：Primary Button
+  - 品牌蓝渐变背景
+  - 白色文字
+  - 圆角：20dp
+  - 柔和蓝色外发光 + 明显阴影
+  - 可点击时渐变更鲜艳、Glow 增强
+  - 信息未填写完整时降低透明度并禁止点击，不使用绿色禁用态
+
+### 8.8 布局规范
+
+- 8pt Grid
+- Dialog 内边距：32dp
+- 控件间距：24dp
+- Label 与输入框间距：8dp
+- 输入框高度：56dp
+- 按钮高度：56dp
+- Dialog 圆角：32dp
+
+### 8.9 动效规范
+
+- Dialog 打开：Scale 0.95 → 1.0，Opacity 0 → 100%，220ms，Ease Out
+- Dialog 关闭：Fade Out，Scale 1.0 → 0.96，180ms
+- 输入框 Focus：边框渐变至品牌蓝 + 外围 Glow + 光泽扫过动画
+- 按钮点击：Scale 0.98 + Ripple + Shadow 增强
+
+### 8.10 色彩规范
+
+| Token | 值 |
+|---|---|
+| Primary Blue | `#1E8CFF` |
+| Primary Gradient | `#4DA3FF` → `#1E8CFF` |
+| Background | `#F5F9FF` → `#FFFFFF` |
+| Glass Surface | `RGBA(255,255,255,0.72)` |
+| Border | `RGBA(255,255,255,0.45)` |
+| Primary Text | `#102A56` |
+| Secondary Text | `#6B7A90` |
+| Disabled | `#B8C5D6` |
+
+全面移除绿色作为主题强调色，仅保留品牌蓝体系。
+
+### 8.11 设计关键词
+
+Fluent Design 2、Windows 11、Acrylic Glass、Glassmorphism、Dialog、Floating Modal、Blue Gradient、Soft Shadow、Ambient Light、Premium UI、Modern、Minimal、Rounded Corners、Focus State、Blue Accent、Immersive Experience。
+
+---
+
+## 九、底部导航栏（全局）
+
+### 9.1 形态
 
 - Floating Navigation Bar，悬浮于页面底部
 - 不贴边：水平边距 24dp，底部边距 20dp
 - 圆角：32dp
 - 高度：72dp
 
-### 7.2 材质
+### 9.2 材质
 
 - 背景：`BlueSurfaceGlass`
 - 背景模糊：18dp
 - 1px 高光白边
 - 柔和阴影：6dp
 
-### 7.3 选中态
+### 9.3 选中态
 
 - 图标颜色：`BluePrimary`
 - 文字颜色：`BluePrimary`
@@ -441,13 +677,13 @@ fun AcrylicCapsule(
 - 胶囊背景：`BluePrimaryLight.copy(alpha = 0.35f)`
 - 外发光：可选蓝色 glow shadow
 
-### 7.4 未选中态
+### 9.4 未选中态
 
 - 图标：深灰色线性图标
 - 文字：深灰色
 - 无背景胶囊
 
-### 7.5 Tab 顺序
+### 9.5 Tab 顺序
 
 1. 搜索
 2. 收藏
@@ -456,7 +692,7 @@ fun AcrylicCapsule(
 
 ---
 
-## 八、完整实施路线图
+## 十、完整实施路线图
 
 | 阶段 | 模块 | 核心任务 | 影响文件 |
 |---|---|---|---|
@@ -475,11 +711,12 @@ fun AcrylicCapsule(
 | 13 | 删除对话框 | Acrylic 圆角对话框 + 蓝色按钮 | `BookmarksScreen.kt` |
 | 14 | 闪卡学习页 | 双悬浮 Acrylic 卡片 + 评分按钮 + 去除绿色 | `FlashcardScreen.kt` |
 | 15 | 我的/设置页 | 按同样蓝主题 + Acrylic 规范改造 | `SettingsScreen.kt` |
-| 16 | 验证发布 | CI 编译 + 真机截图验证 + release tag | CI / GitHub |
+| 16 | 添加词典弹窗 | 按 Fluent Dialog 规范改造添加词典弹窗 | `DictionariesScreen.kt` / 相关 Dialog |
+| 17 | 验证发布 | CI 编译 + 真机截图验证 + release tag | CI / GitHub |
 
 ---
 
-## 九、技术约束
+## 十一、技术约束
 
 1. **背景模糊兼容性**：`Modifier.blur()` 需要 API 31+，低版本需降级为纯半透明。
 2. **性能**：避免在同一屏叠加过多模糊层，环境光斑使用简单 radial gradient。
@@ -489,9 +726,9 @@ fun AcrylicCapsule(
 
 ---
 
-## 十、下一步决策
+## 十二、下一步决策
 
-1. 是否确认以上搜索页 + 收藏页 + 闪卡学习页设计规范？
+1. 是否确认以上搜索页 + 收藏页 + 闪卡学习页 + 个人中心/设置页 + 添加词典弹窗设计规范？
 2. 是否现在开始执行 **阶段 1（色板基建）+ 阶段 2（通用 Acrylic 组件）**？
 3. 底部导航栏是否统一为 Floating Navigation Bar（悬浮胶囊）？
 4. 深色模式是否同步适配蓝主题 Acrylic？
