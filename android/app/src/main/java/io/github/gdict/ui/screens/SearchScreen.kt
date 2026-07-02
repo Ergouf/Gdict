@@ -228,6 +228,7 @@ fun SearchScreen(
                             contentScale = contentScale,
                             index = index,
                             totalItems = reorderedResults.size,
+                            darkMode = darkMode,
                             onReorder = { fromIndex, toIndex ->
                                 if (fromIndex != toIndex && fromIndex in reorderedResults.indices && toIndex in reorderedResults.indices) {
                                     val mutable = reorderedResults.toMutableList()
@@ -388,6 +389,7 @@ private fun DraggableSearchResultCard(
     contentScale: Float,
     index: Int,
     totalItems: Int,
+    darkMode: Boolean,
     onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
     onClick: () -> Unit
 ) {
@@ -412,8 +414,8 @@ private fun DraggableSearchResultCard(
     val scaledWordLineHeight = (34.sp * contentScale)
     val scaledDictLineHeight = (16.sp * contentScale)
     val scaledDefLineHeight = (21.sp * contentScale)
-    val glassBg = GdictColors.BlueSurfaceGlass
-    val glassBorder = GdictColors.BlueHighlightBorder
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
 
     Box(
         modifier = Modifier
@@ -454,7 +456,7 @@ private fun DraggableSearchResultCard(
                         lineHeight = scaledWordLineHeight
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = GdictColors.Primary
+                    color = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
                 )
                 if (dictionaryName.isNotEmpty()) {
                     Text(
@@ -463,7 +465,7 @@ private fun DraggableSearchResultCard(
                             fontSize = scaledDictFontSize,
                             lineHeight = scaledDictLineHeight
                         ),
-                        color = GdictColors.OnSurfaceVariant,
+                        color = subtitleColor,
                         modifier = Modifier.padding(top = (3.dp * contentScale))
                     )
                 }
