@@ -60,7 +60,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.gdict.BuildConfig
 import io.github.gdict.R
 import io.github.gdict.data.AndroidDictionaryRepository
 import io.github.gdict.ui.components.pageEnterAnimation
@@ -181,14 +180,6 @@ fun PronunciationDetailContent(
                 glassBorder = glassBorder
             )
 
-            // 版本标记（调试用，确认实际运行版本）
-            Text(
-                "v${BuildConfig.VERSION_NAME} · pron-native",
-                fontSize = 10.sp,
-                color = subtitleColor.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 28.dp, vertical = 2.dp)
-            )
-
             // 可缩放 + 滚动的主体
             Box(
                 modifier = Modifier
@@ -236,105 +227,49 @@ fun PronunciationDetailContent(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(6.dp, RoundedCornerShape(32.dp))
+                            .shadow(8.dp, RoundedCornerShape(32.dp), ambientColor = GdictColors.Primary.copy(alpha = 0.12f), spotColor = GdictColors.Primary.copy(alpha = 0.08f))
                             .clip(RoundedCornerShape(32.dp))
                             .border(1.dp, glassBorder, RoundedCornerShape(32.dp))
                             .background(glassBg)
                             .pageEnterAnimation()
                     ) {
-                        Column(modifier = Modifier.padding(28.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(28.dp)
+                        ) {
                             val displayWord = data.word.ifEmpty { word }
 
-                            // 诊断面板（顶部，帮助定位解析问题）
-                            val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
-                            Text(
-                                "[DIAG] parsedOk=${data.parsedOk} prons=${data.pronunciations.size} forms=${data.wordForms.size}",
-                                fontSize = 10.sp,
-                                color = diagColor,
-                                lineHeight = 14.sp,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-
-                            // 始终原生渲染单词标题（即使解析失败）
-                            Text(
-                                displayWord,
-                                fontSize = 52.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                lineHeight = 58.sp
-                            )
-
                             if (data.parsedOk && data.pronunciations.isNotEmpty()) {
-                                // —— 原生渲染：Pronunciation Chip + Word Forms + 阅读区 ——
-                                if (data.pronunciations.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    SectionHeader(cdPron, darkMode)
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    PronunciationChipsRow(
-                                        pronunciations = data.pronunciations,
-                                        darkMode = darkMode,
-                                        glassBorder = glassBorder
-                                    ) { entry ->
-                                        playAudio(entry.audioPath, displayWord)
-                                    }
-                                }
+                                // —— 原生渲染：单词 + 发音 ——
+                                Text(
+                                    displayWord,
+                                    fontSize = 56.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    lineHeight = 62.sp
+                                )
 
-                                if (data.wordForms.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    SectionHeader("Word Forms", darkMode)
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        data.wordForms.forEach { form ->
-                                            WordFormChip(
-                                                form = form,
-                                                darkMode = darkMode,
-                                                glassBorder = glassBorder,
-                                                onEntryClick = onEntryClick
-                                            ) {
-                                                playAudio(form.audioPath, form.word.ifEmpty { displayWord })
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (data.hasReadingContent) {
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    SectionHeader("Definitions", darkMode)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    PronunciationWebView(
-                                        definition = definition,
-                                        css = css + HIDE_PRON_CSS,
-                                        darkMode = darkMode,
-                                        contentScale = contentScale,
-                                        dictionaryRepository = dictionaryRepository,
-                                        onEntryClick = onEntryClick,
-                                        playAudio = playAudio,
-                                        displayWord = displayWord
-                                    )
+                                Spacer(modifier = Modifier.height(28.dp))
+                                SectionHeader(cdPron, darkMode)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                PronunciationChipsRow(
+                                    pronunciations = data.pronunciations,
+                                    darkMode = darkMode,
+                                    glassBorder = glassBorder
+                                ) { entry ->
+                                    playAudio(entry.audioPath, displayWord)
                                 }
                             } else {
-                                // —— 回退：WebView 渲染全部内容（保留原生单词标题 + Acrylic 卡片框架）——
+                                // —— 回退：WebView 渲染全部内容 ——
+                                Text(
+                                    displayWord,
+                                    fontSize = 56.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    lineHeight = 62.sp
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
-
-                                // 诊断面板：显示解析状态和原始 HTML 片段
-                                val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        "[DIAG] parsedOk=${data.parsedOk} prons=${data.pronunciations.size} forms=${data.wordForms.size} arlFound=${definition.contains("<arl", true)} prongrpFound=${definition.contains("<prongrp", true)} inflFound=${definition.contains("<inflection", true)} soundfileFound=${definition.contains("<soundfile", true)}",
-                                        fontSize = 10.sp,
-                                        color = diagColor,
-                                        lineHeight = 14.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        "[HTML] ${definition.take(800)}",
-                                        fontSize = 9.sp,
-                                        color = diagColor.copy(alpha = 0.7f),
-                                        lineHeight = 12.sp
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-
                                 PronunciationWebView(
                                     definition = definition,
                                     css = css,
@@ -491,12 +426,30 @@ private fun PronunciationChipsRow(
     glassBorder: Color,
     onPlay: (PronunciationEntry) -> Unit
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        pronunciations.forEach { entry ->
-            PronunciationChip(entry, darkMode, glassBorder) { onPlay(entry) }
+    // 按 region 分组：UK 一列，US 一列，整齐排列
+    val ukProns = pronunciations.filter { it.region.equals("UK", true) }
+    val usProns = pronunciations.filter { it.region.equals("US", true) }
+    val maxRows = maxOf(ukProns.size, usProns.size)
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        for (i in 0 until maxRows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // UK 列
+                if (i < ukProns.size) {
+                    PronunciationChip(ukProns[i], darkMode, glassBorder, Modifier.weight(1f)) { onPlay(ukProns[i]) }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+                // US 列
+                if (i < usProns.size) {
+                    PronunciationChip(usProns[i], darkMode, glassBorder, Modifier.weight(1f)) { onPlay(usProns[i]) }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
@@ -506,33 +459,54 @@ private fun PronunciationChip(
     pron: PronunciationEntry,
     darkMode: Boolean,
     glassBorder: Color,
+    modifier: Modifier = Modifier,
     onPlay: () -> Unit
 ) {
+    // 亚克力质感：半透明渐变背景 + 高光边框 + 柔和阴影
     val chipBg = if (darkMode) {
-        GdictColors.DarkSubtleHover.copy(alpha = 0.6f)
+        Brush.linearGradient(
+            colors = listOf(GdictColors.DarkSubtleHover.copy(alpha = 0.7f), GdictColors.BlueSurfaceGlassDark.copy(alpha = 0.5f))
+        )
     } else {
-        GdictColors.BluePrimaryLight.copy(alpha = 0.18f)
+        Brush.linearGradient(
+            colors = listOf(Color.White.copy(alpha = 0.6f), GdictColors.BluePrimaryLight.copy(alpha = 0.22f))
+        )
+    }
+    val highlightBorder = if (darkMode) {
+        Color.White.copy(alpha = 0.15f)
+    } else {
+        Color.White.copy(alpha = 0.7f)
     }
     val ipaColor = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
-            .border(0.5.dp, glassBorder, RoundedCornerShape(18.dp))
+
+    Box(
+        modifier = modifier
+            .shadow(3.dp, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, highlightBorder, RoundedCornerShape(20.dp))
             .background(chipBg)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        FlagBadge(pron.region)
-        if (pron.ipa.isNotEmpty()) {
-            Text(
-                pron.ipa,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = ipaColor
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FlagBadge(pron.region, size = 28.dp)
+            if (pron.ipa.isNotEmpty()) {
+                Text(
+                    pron.ipa,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = ipaColor,
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+            SpeakerButton(onPlay)
         }
-        SpeakerButton(onPlay)
     }
 }
 
