@@ -2,6 +2,7 @@ package io.github.gdict.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,7 +69,13 @@ import androidx.compose.ui.res.stringResource
 import io.github.gdict.R
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
+import io.github.gdict.ui.components.pageEnterAnimation
+import io.github.gdict.ui.components.pressScale
+import io.github.gdict.ui.components.staggerEnterAnimation
 import io.github.gdict.ui.theme.GdictColors
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
 import io.github.gdict.util.HtmlUtils
@@ -150,6 +157,7 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
+                .pageEnterAnimation()
         ) {
             Text(
                 stringResource(R.string.nav_search),
@@ -175,14 +183,14 @@ fun SearchScreen(
         }
 
         errorMessage?.let { msg ->
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = GdictColors.CoralAccent.copy(alpha = 0.1f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .shadow(2.dp, RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(0.5.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(18.dp))
+                    .background(GdictColors.BlueSurfaceGlass)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -220,8 +228,8 @@ fun SearchScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     itemsIndexed(
                         items = reorderedResults,
@@ -307,6 +315,18 @@ private fun SearchBar(
 ) {
     val searchBarBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
     val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val focusInteractionSource = remember { MutableInteractionSource() }
+    val isFocused by focusInteractionSource.collectIsFocusedAsState()
+    val focusedBorder by animateColorAsState(
+        targetValue = if (isFocused) GdictColors.Primary.copy(alpha = 0.6f) else borderColor,
+        animationSpec = tween(200),
+        label = "focusBorder"
+    )
+    val focusedBorderWidth by animateDpAsState(
+        targetValue = if (isFocused) 1.2.dp else 0.5.dp,
+        animationSpec = tween(200),
+        label = "focusBorderWidth"
+    )
 
     Row(
         modifier = Modifier
@@ -314,7 +334,7 @@ private fun SearchBar(
             .height(52.dp)
             .shadow(1.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
-            .border(0.5.dp, borderColor, RoundedCornerShape(28.dp))
+            .border(focusedBorderWidth, focusedBorder, RoundedCornerShape(28.dp))
             .background(searchBarBg)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -333,6 +353,7 @@ private fun SearchBar(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            interactionSource = focusInteractionSource,
             decorationBox = { innerTextField ->
                 if (query.isEmpty()) {
                     Text(
@@ -345,12 +366,28 @@ private fun SearchBar(
             }
         )
         if (query.isNotEmpty()) {
-            IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
+            val clearPressed = remember { MutableInteractionSource() }
+            val clearIsPressed by clearPressed.collectIsPressedAsState()
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .pressScale(clearIsPressed, 0.95f)
+                    .shadow(1.dp, androidx.compose.foundation.shape.CircleShape)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .border(0.5.dp, borderColor, androidx.compose.foundation.shape.CircleShape)
+                    .background(searchBarBg)
+                    .clickable(
+                        interactionSource = clearPressed,
+                        indication = null,
+                        onClick = { onQueryChange("") }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = stringResource(R.string.cancel),
-                    tint = GdictColors.OnSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
@@ -372,6 +409,8 @@ private fun DraggableSearchResultCard(
     onClick: () -> Unit
 ) {
     var isDragging by remember { mutableStateOf(false) }
+    val pressInteractionSource = remember { MutableInteractionSource() }
+    val isPressed by pressInteractionSource.collectIsPressedAsState()
     var dragOffset by remember { mutableStateOf(0f) }
     val animatedElevation by animateDpAsState(
         targetValue = if (isDragging) 8.dp else 1.dp,
@@ -381,13 +420,13 @@ private fun DraggableSearchResultCard(
 
     val scaledHorizontalPadding = (18.dp * contentScale)
     val scaledVerticalPadding = (18.dp * contentScale)
-    val scaledWordFontSize = (18.sp * contentScale)
+    val scaledWordFontSize = (28.sp * contentScale)
     val scaledDictFontSize = (12.sp * contentScale)
     val scaledDefFontSize = (14.sp * contentScale)
-    val scaledCornerRadius = (28.dp * contentScale).coerceIn(16.dp, 28.dp)
+    val scaledCornerRadius = (24.dp * contentScale).coerceIn(16.dp, 24.dp)
     val scaledDragIconSize = (20.dp * contentScale).coerceIn(14.dp, 28.dp)
     val scaledSpacing = (10.dp * contentScale)
-    val scaledWordLineHeight = (24.sp * contentScale)
+    val scaledWordLineHeight = (34.sp * contentScale)
     val scaledDictLineHeight = (16.sp * contentScale)
     val scaledDefLineHeight = (21.sp * contentScale)
     val glassBg = GdictColors.BlueSurfaceGlass
@@ -396,6 +435,7 @@ private fun DraggableSearchResultCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .staggerEnterAnimation(index)
             .offset { IntOffset(0, dragOffset.roundToInt()) }
             .shadow(animatedElevation, RoundedCornerShape(scaledCornerRadius))
             .clip(RoundedCornerShape(scaledCornerRadius))
@@ -405,7 +445,12 @@ private fun DraggableSearchResultCard(
                 scaleX = if (isDragging) 1.02f else 1f
                 scaleY = if (isDragging) 1.02f else 1f
             }
-            .clickable(onClick = onClick),
+            .pressScale(isPressed)
+            .clickable(
+                interactionSource = pressInteractionSource,
+                indication = null,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
