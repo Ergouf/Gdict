@@ -245,6 +245,16 @@ fun PronunciationDetailContent(
                         Column(modifier = Modifier.padding(28.dp)) {
                             val displayWord = data.word.ifEmpty { word }
 
+                            // 诊断面板（顶部，帮助定位解析问题）
+                            val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
+                            Text(
+                                "[DIAG] parsedOk=${data.parsedOk} prons=${data.pronunciations.size} forms=${data.wordForms.size}",
+                                fontSize = 10.sp,
+                                color = diagColor,
+                                lineHeight = 14.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
                             // 始终原生渲染单词标题（即使解析失败）
                             Text(
                                 displayWord,
@@ -305,6 +315,26 @@ fun PronunciationDetailContent(
                             } else {
                                 // —— 回退：WebView 渲染全部内容（保留原生单词标题 + Acrylic 卡片框架）——
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                // 诊断面板：显示解析状态和原始 HTML 片段
+                                val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        "[DIAG] parsedOk=${data.parsedOk} prons=${data.pronunciations.size} forms=${data.wordForms.size} arlFound=${definition.contains("<arl", true)} prongrpFound=${definition.contains("<prongrp", true)} inflFound=${definition.contains("<inflection", true)} soundfileFound=${definition.contains("<soundfile", true)}",
+                                        fontSize = 10.sp,
+                                        color = diagColor,
+                                        lineHeight = 14.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "[HTML] ${definition.take(800)}",
+                                        fontSize = 9.sp,
+                                        color = diagColor.copy(alpha = 0.7f),
+                                        lineHeight = 12.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
                                 PronunciationWebView(
                                     definition = definition,
                                     css = css,
