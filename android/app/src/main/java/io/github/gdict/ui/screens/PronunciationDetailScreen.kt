@@ -795,83 +795,99 @@ private fun Modifier.pronunciationAmbientBackground(
 private const val HIDE_PRON_CSS = "\n.cpepd .main-headword,.cpepd .main-ipa,.cpepd .main-pronunciation,.cpepd .main-audio-btns,.cpepd .cepd-forms-section{display:none !important;}"
 
 private fun parsePronunciationData(definition: String, fallbackWord: String): PronunciationData {
-    val arlPattern = Regex("""<arl[^>]*>(.*?)</arl>""", RegexOption.DOT_MATCHES_ALL)
-    val arlMatches = arlPattern.findAll(definition).toList()
-
-    if (arlMatches.isEmpty()) {
-        return PronunciationData(fallbackWord, emptyList(), emptyList(), hasReadingContent(definition), parsedOk = false)
-    }
-
-    val mainContent = arlMatches.last().groupValues[1]
-    val formsContents = arlMatches.dropLast(1).map { it.groupValues[1] }
-
-    val word = extractHeadword(mainContent).ifEmpty { fallbackWord }
-    val pronunciations = parsePronunciations(mainContent)
-    val wordForms = formsContents.map { parseWordForm(it) }.toMutableList()
-    wordForms.addAll(parseInflections(mainContent))
-
+    // 实际 HTML 结构：<span class="arl"> 包裹 <hit targettype="hw"> 和 <hit targettype="inflection">
+    val word = extractHeadword(definition).ifEmpty { fallbackWord }
+    val pronunciations = parsePronunciations(definition)
+    val wordForms = parseHitInflections(definition)
     val parsedOk = pronunciations.isNotEmpty() || wordForms.isNotEmpty()
     return PronunciationData(word, pronunciations, wordForms, hasReadingContent(definition), parsedOk)
 }
 
-private fun parseInflections(content: String): List<WordFormEntry> {
-    val inflPattern = Regex("""<inflection[^>]*>(.*?)</inflection>""", RegexOption.DOT_MATCHES_ALL)
-    return inflPattern.findAll(content).map { infl ->
-        val inner = infl.groupValues[1]
-        val labelMatch = Regex("""<label[^>]*>(.*?)</label>""", RegexOption.DOT_MATCHES_ALL).find(inner)
-        val label = cleanText(labelMatch?.groupValues?.get(1) ?: "")
-        val inflWord = extractHeadword(inner).ifEmpty { cleanText(inner).substringBefore(":").trim() }
-        val ipa = extractIpa(inner).ifEmpty {
-            Regex("""<inf[^>]*>(.*?)</inf>""", RegexOption.DOT_MATCHES_ALL).find(inner)?.let { cleanText(it.groupValues[1]) } ?: ""
-        }
+/**
+ * 从 <hit targettype="inflection"> 提取词形变化。
+ * 每个 hit 包含 <span class="results"> > <span class="base"> > <span class="inf">词形</span>
+ * 以及 <span class="comment">标签</span>（如 present tense）
+ */
+private fun parseHitInflections(definition: String): List<WordFormEntry> {
+    val hitPattern = Regex("""<hit[^>]*targettype=["']inflection["'][^>]*>(.*?)</hit>""", RegexOption.DOT_MATCHES_ALL)
+    return hitPattern.findAll(definition).map { hit ->
+        val inner = hit.groupValues[1]
+        val formWord = extractSpanClass(inner, "inf")
+            .ifEmpty { extractSpanClass(inner, "base") }
+            .ifEmpty { extractHeadword(inner) }
+        val label = extractSpanClass(inner, "comment")
+        val ipa = extractIpa(inner)
         val audio = extractSoundPath(inner)
-        val displayWord = if (label.isNotEmpty()) "$inflWord ($label)" else inflWord
+        val displayWord = if (label.isNotEmpty()) "$formWord ($label)" else formWord
         WordFormEntry(displayWord, ipa, audio)
-    }.toList()
+    }.filter { it.word.isNotEmpty() }.toList()
 }
 
-private fun parsePronunciations(content: String): List<PronunciationEntry> {
-    val prongrpPattern = Regex("""<prongrp[^>]*>(.*?)</prongrp>""", RegexOption.DOT_MATCHES_ALL)
-    val prongrpContent = prongrpPattern.findAll(content).joinToString("") { it.groupValues[1] }
-    val source = if (prongrpContent.isNotEmpty()) prongrpContent else content
-
+/**
+ * 解析发音：在整个 definition 中搜索国旗图片、IPA、音频链接。
+ * 支持多种格式：<img src="uk_sound.png">、<span class="phon">、<span class="ipa">、
+ * sound:// 链接、以及 /IPA/ 文本模式。
+ */
+private fun parsePronunciations(definition: String): List<PronunciationEntry> {
+    // 1. 搜索国旗图片
     val flagPattern = Regex(
         """<img[^>]*src=["'][^"']*(uk_sound|us_sound)\.png[^"']*["'][^>]*>""",
         RegexOption.IGNORE_CASE
     )
-    val flags = flagPattern.findAll(source).toList()
+    val flags = flagPattern.findAll(definition).toList()
 
-    val allIpas = Regex("""<(?:inf|ipa)[^>]*>(.*?)</(?:inf|ipa)>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(content)
-        .map { cleanText(it.groupValues[1]) }
-        .filter { it.isNotEmpty() }
-        .toList()
+    // 2. 搜索所有 sound:// 音频链接
+    val audioPattern = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+    val audios = audioPattern.findAll(definition).map { it.groupValues[1] }.toList()
 
-    if (flags.isEmpty()) {
-        val ipa = allIpas.firstOrNull() ?: ""
-        val audio = extractSoundPath(content)
-        return if (ipa.isNotEmpty() || audio != null) {
-            listOf(PronunciationEntry("UK", ipa, audio))
-        } else emptyList()
+    // 3. 搜索所有 IPA（多种来源）
+    val ipas = mutableListOf<String>()
+    // <span class="phon">...</span>
+    Regex("""<span[^>]*class=["'][^"']*phon[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+    // <span class="ipa">...</span>
+    Regex("""<span[^>]*class=["'][^"']*\bipa\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+    // <ipa>...</ipa>
+    Regex("""<ipa[^>]*>(.*?)</ipa>""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+    // 文本中的 /IPA/ 模式（如 /riːd/）
+    Regex("""/([a-zA-Zˈˌːˈˌɪiːæɑːʌʊuːeɛəɜːɔːɒːθðʃʒŋɲʎɽɾʀʁʋʍʜʢʡɕʑʝʎɣχʁβɸθðszfvbdgkptmnɲŋlrjwhæɑɒʌʊeɛəɪiːæɑːɔːuːɜːəˈˌːˈ]+)/""")
+        .findAll(definition).forEach { ipas.add("/${it.groupValues[1]}/") }
+    // 去重并过滤空
+    val cleanIpas = ipas.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+    if (flags.isNotEmpty()) {
+        // 有国旗：按国旗分段提取
+        return flags.mapIndexed { i, flag ->
+            val region = if (flag.groupValues[1].equals("uk_sound", ignoreCase = true)) "UK" else "US"
+            val segStart = flag.range.last + 1
+            val segEnd = if (i + 1 < flags.size) flags[i + 1].range.first else definition.length
+            val segment = definition.substring(segStart, segEnd)
+            var ipa = extractIpa(segment)
+            if (ipa.isEmpty() && i < cleanIpas.size) ipa = cleanIpas[i]
+            val audio = extractSoundPath(segment) ?: audios.getOrNull(i)
+            PronunciationEntry(region, ipa, audio)
+        }
     }
 
-    return flags.mapIndexed { i, flag ->
-        val region = if (flag.groupValues[1].equals("uk_sound", ignoreCase = true)) "UK" else "US"
-        val segStart = flag.range.last + 1
-        val segEnd = if (i + 1 < flags.size) flags[i + 1].range.first else source.length
-        val segment = source.substring(segStart, segEnd)
-        var ipa = extractIpa(segment)
-        if (ipa.isEmpty() && i < allIpas.size) ipa = allIpas[i]
-        val audio = extractSoundPath(segment)
-        PronunciationEntry(region, ipa, audio)
+    // 无国旗：尝试用音频链接和 IPA 组合
+    if (cleanIpas.isNotEmpty() || audios.isNotEmpty()) {
+        val ipa = cleanIpas.firstOrNull() ?: ""
+        val audio = audios.firstOrNull()
+        return listOf(PronunciationEntry("UK", ipa, audio))
     }
+
+    return emptyList()
 }
 
-private fun parseWordForm(content: String): WordFormEntry {
-    val word = extractHeadword(content)
-    val ipa = extractIpa(content)
-    val audio = extractSoundPath(content)
-    return WordFormEntry(word, ipa, audio)
+/** 提取 <span class="className">content</span> 的内容 */
+private fun extractSpanClass(content: String, className: String): String {
+    val pattern = Regex(
+        """<span[^>]*class=["'][^"']*\b$className\b[^"']*["'][^>]*>(.*?)</span>""",
+        RegexOption.DOT_MATCHES_ALL
+    )
+    return pattern.find(content)?.groupValues?.get(1)?.let { cleanText(it) } ?: ""
 }
 
 private fun extractHeadword(content: String): String {
@@ -880,12 +896,19 @@ private fun extractHeadword(content: String): String {
 }
 
 private fun extractIpa(content: String): String {
-    Regex("""<inf[^>]*>(.*?)</inf>""", RegexOption.DOT_MATCHES_ALL).find(content)?.let {
-        val t = cleanText(it.groupValues[1])
-        if (t.isNotEmpty()) return t
-    }
+    // <span class="phon">...</span>
+    extractSpanClass(content, "phon").takeIf { it.isNotEmpty() }?.let { return it }
+    // <span class="ipa">...</span>
+    extractSpanClass(content, "ipa").takeIf { it.isNotEmpty() }?.let { return it }
+    // <ipa>...</ipa>
     Regex("""<ipa[^>]*>(.*?)</ipa>""", RegexOption.DOT_MATCHES_ALL).find(content)?.let {
         return cleanText(it.groupValues[1])
+    }
+    // 文本中的 /IPA/ 模式
+    Regex("""/([^\s/<]+[^\s/<]*[^\s/<]*)/""").find(content)?.let {
+        val candidate = cleanText(it.groupValues[1])
+        // 确保看起来像 IPA（包含音标字符或纯字母）
+        if (candidate.isNotEmpty() && candidate.length < 50) return "/$candidate/"
     }
     return ""
 }
@@ -901,6 +924,7 @@ private fun cleanText(html: String): String {
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&nbsp;", " ")
+        .replace(Regex("\\s+"), " ")
         .trim()
 }
 
@@ -911,7 +935,8 @@ private fun hasReadingContent(definition: String): Boolean {
             definition.contains("panel", ignoreCase = true) ||
             definition.contains("<comment", ignoreCase = true) ||
             definition.contains("definition", ignoreCase = true) ||
-            definition.contains("class=\"def\"", ignoreCase = true)
+            definition.contains("class=\"def\"", ignoreCase = true) ||
+            definition.contains("class='def'", ignoreCase = true)
 }
 
 // endregion
