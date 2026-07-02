@@ -66,6 +66,7 @@ import io.github.gdict.core.Rating
 import io.github.gdict.core.SchedulingCard
 import io.github.gdict.core.model.BookmarkItem
 import io.github.gdict.core.model.ReviewStats
+import io.github.gdict.ui.components.acrylicAmbientBackground
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.viewmodel.BookmarkViewModel
 import io.github.gdict.viewmodel.FlashcardViewModel
@@ -137,7 +138,6 @@ fun FlashcardScreen(
     val sessionReviewed by flashcardViewModel.sessionReviewed.collectAsStateWithLifecycle()
     val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
     val bgGradient = if (darkMode) {
         Brush.verticalGradient(
             0.0f to GdictColors.DarkBackground,
@@ -150,9 +150,16 @@ fun FlashcardScreen(
             1.0f to Color(0xFFFFFFFF)
         )
     }
-    val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val titleColor = if (darkMode) GdictColors.DarkOnBackground else GdictColors.HeadingDark
+
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
 
     LaunchedEffect(bookmarks) {
         flashcardViewModel.refreshReviewStats()
@@ -161,10 +168,15 @@ fun FlashcardScreen(
     val isSessionActive = dueBookmarks.isNotEmpty()
     val isSessionComplete = currentCardIndex >= dueBookmarks.size && isSessionActive
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgGradient)
+            .acrylicAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
+    ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
             .statusBarsPadding()
     ) {
         Box(
@@ -174,16 +186,18 @@ fun FlashcardScreen(
         ) {
             Text(
                 stringResource(R.string.flashcard),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineLarge,
+                fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
-                color = textColor
+                color = titleColor
             )
         }
 
         when {
             !isSessionActive -> FlashcardStartView(
                 reviewStats = reviewStats,
-                cardColor = cardColor,
+                glassBg = glassBg,
+                glassBorder = glassBorder,
                 textColor = textColor,
                 subtitleColor = subtitleColor,
                 darkMode = darkMode,
@@ -192,7 +206,8 @@ fun FlashcardScreen(
             isSessionComplete -> FlashcardCompleteView(
                 reviewed = sessionReviewed,
                 total = dueBookmarks.size,
-                cardColor = cardColor,
+                glassBg = glassBg,
+                glassBorder = glassBorder,
                 textColor = textColor,
                 subtitleColor = subtitleColor,
                 darkMode = darkMode,
@@ -203,7 +218,8 @@ fun FlashcardScreen(
                 scheduling = currentScheduling,
                 currentIndex = currentCardIndex,
                 totalCount = dueBookmarks.size,
-                cardColor = cardColor,
+                glassBg = glassBg,
+                glassBorder = glassBorder,
                 textColor = textColor,
                 subtitleColor = subtitleColor,
                 darkMode = darkMode,
@@ -212,12 +228,14 @@ fun FlashcardScreen(
             )
         }
     }
+    }
 }
 
 @Composable
 private fun FlashcardStartView(
     reviewStats: ReviewStats,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
     subtitleColor: Color,
     darkMode: Boolean,
@@ -274,15 +292,14 @@ private fun FlashcardStartView(
             }
 
             if (hasDue) {
-                Card(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onStart),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        .shadow(2.dp, RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(0.5.dp, glassBorder, RoundedCornerShape(20.dp))
+                        .background(glassBg)
+                        .clickable(onClick = onStart)
                 ) {
                     Row(
                         modifier = Modifier
@@ -294,13 +311,13 @@ private fun FlashcardStartView(
                         Icon(
                             imageVector = Icons.Outlined.School,
                             contentDescription = null,
-                            tint = GdictColors.PrimarySoft,
+                            tint = GdictColors.Primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "Start Review (${reviewStats.new + reviewStats.due})",
-                            color = GdictColors.PrimarySoft,
+                            color = GdictColors.Primary,
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -340,7 +357,8 @@ private fun FlashcardReviewView(
     scheduling: Map<Rating, SchedulingCard>,
     currentIndex: Int,
     totalCount: Int,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
     subtitleColor: Color,
     darkMode: Boolean,
@@ -358,15 +376,6 @@ private fun FlashcardReviewView(
     val parsed = remember(item.definition) { parseDefinition(item.definition) }
     val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
 
-    val backCardColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-
-    // 闪卡专用玻璃：低透明度 + 淡蓝色调，在浅色背景上也能透出玻璃层次
-    val cardGlassBg = if (darkMode) {
-        Color(0xCC1A2A3A)
-    } else {
-        Color(0xFFE8F4FF).copy(alpha = 0.40f)
-    }
-    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val progress = (currentIndex + 1).toFloat() / totalCount
 
     Column(
@@ -380,7 +389,7 @@ private fun FlashcardReviewView(
                 .height(12.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, glassBorder, RoundedCornerShape(12.dp))
-                .background(cardGlassBg)
+                .background(glassBg)
         ) {
             Box(
                 modifier = Modifier
@@ -433,7 +442,7 @@ private fun FlashcardReviewView(
                     .shadow(16.dp, RoundedCornerShape(32.dp))
                     .clip(RoundedCornerShape(32.dp))
                     .border(1.5.dp, glassBorder, RoundedCornerShape(32.dp))
-                    .background(cardGlassBg)
+                    .background(glassBg)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { _, dragAmount ->
                             if (dragAmount < -100f && !isFlipped) isFlipped = true
@@ -449,7 +458,9 @@ private fun FlashcardReviewView(
                         dictName = dictName,
                         darkMode = darkMode,
                         textColor = textColor,
-                        subtitleColor = subtitleColor
+                        subtitleColor = subtitleColor,
+                        glassBg = glassBg,
+                        glassBorder = glassBorder
                     )
                 } else {
                     FlashcardBack(
@@ -486,11 +497,10 @@ private fun FlashcardFront(
     dictName: String,
     darkMode: Boolean,
     textColor: Color,
-    subtitleColor: Color
+    subtitleColor: Color,
+    glassBg: Color,
+    glassBorder: Color
 ) {
-    val cardGlassBg = if (darkMode) Color(0xCC1A2A3A) else Color(0xFFE8F4FF).copy(alpha = 0.40f)
-    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -533,7 +543,7 @@ private fun FlashcardFront(
                     .height(44.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .border(1.dp, glassBorder, RoundedCornerShape(22.dp))
-                    .background(cardGlassBg)
+                    .background(glassBg)
                     .padding(horizontal = 18.dp)
             ) {
                 Icon(
@@ -792,7 +802,8 @@ private fun RatingButton(
 private fun FlashcardCompleteView(
     reviewed: Int,
     total: Int,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
     subtitleColor: Color,
     darkMode: Boolean,
@@ -834,16 +845,15 @@ private fun FlashcardCompleteView(
                 color = subtitleColor
             )
 
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp)
-                    .clickable(onClick = onRestart),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .shadow(2.dp, RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(0.5.dp, glassBorder, RoundedCornerShape(20.dp))
+                    .background(glassBg)
+                    .clickable(onClick = onRestart)
             ) {
                 Row(
                     modifier = Modifier
@@ -855,13 +865,13 @@ private fun FlashcardCompleteView(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = null,
-                        tint = GdictColors.PrimarySoft,
+                        tint = GdictColors.Primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "Review Again",
-                        color = GdictColors.PrimarySoft,
+                        color = GdictColors.Primary,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium
                     )
