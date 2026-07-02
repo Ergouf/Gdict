@@ -112,7 +112,7 @@ fun PronunciationDetailContent(
     var contentScale by remember { mutableStateOf(1f) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else Color.White.copy(alpha = 0.72f)
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else Color.White.copy(alpha = 0.88f)
     val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
@@ -145,7 +145,7 @@ fun PronunciationDetailContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                GlassCircleButton(onClick = onBack, darkMode = darkMode) {
+                GlassCircleButton(onClick = onBack, glassBg = glassBg, glassBorder = glassBorder) {
                     Icon(
                         Icons.Default.ArrowBack,
                         contentDescription = cdBack,
@@ -159,7 +159,7 @@ fun PronunciationDetailContent(
                     fontWeight = FontWeight.Bold,
                     color = textColor
                 )
-                GlassCircleButton(onClick = onShare, darkMode = darkMode) {
+                GlassCircleButton(onClick = onShare, glassBg = glassBg, glassBorder = glassBorder) {
                     Icon(
                         Icons.Default.Share,
                         contentDescription = cdShare,
@@ -373,18 +373,17 @@ private fun FloatingSearchField(
 @Composable
 private fun GlassCircleButton(
     onClick: () -> Unit,
-    darkMode: Boolean,
+    glassBg: Color,
+    glassBorder: Color,
     content: @Composable () -> Unit
 ) {
-    val bg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
-    val border = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     Box(
         modifier = Modifier
             .size(44.dp)
             .shadow(2.dp, CircleShape)
             .clip(CircleShape)
-            .border(0.5.dp, border, CircleShape)
-            .background(bg)
+            .border(0.5.dp, glassBorder, CircleShape)
+            .background(glassBg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
