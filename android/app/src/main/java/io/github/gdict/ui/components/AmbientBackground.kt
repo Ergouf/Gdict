@@ -24,29 +24,25 @@ fun Modifier.acrylicAmbientBackground(
 ): Modifier {
     if (darkMode) return this
 
-    // 多个弥散光斑：不同位置、半径、透明度，叠加形成自然过渡
-    val ambientColor = GdictColors.AmbientLight
-    val lightBlue = Color(0xFF1E8CFF).copy(alpha = 0.04f)
-    val lightLavender = Color(0xFF7B9CFF).copy(alpha = 0.03f)
-
+    // 多个弥散光斑：模拟亚克力材质的自然浓淡过渡，参考设计稿的柔和漫射光
     val spot1 = Brush.radialGradient(
-        colors = listOf(ambientColor, Color.Transparent),
+        colors = listOf(Color(0xFF1E8CFF).copy(alpha = 0.07f), Color.Transparent),
         center = Offset(screenWidthPx * 0.1f, screenHeightPx * 0.08f),
         radius = screenHeightPx * 0.5f
     )
     val spot2 = Brush.radialGradient(
-        colors = listOf(lightBlue, Color.Transparent),
-        center = Offset(screenWidthPx * 0.9f, screenHeightPx * 0.3f),
+        colors = listOf(Color(0xFF7B9CFF).copy(alpha = 0.05f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.9f, screenHeightPx * 0.25f),
         radius = screenHeightPx * 0.45f
     )
     val spot3 = Brush.radialGradient(
-        colors = listOf(lightLavender, Color.Transparent),
+        colors = listOf(Color(0xFF5BA8E8).copy(alpha = 0.04f), Color.Transparent),
         center = Offset(screenWidthPx * 0.3f, screenHeightPx * 0.6f),
         radius = screenHeightPx * 0.4f
     )
     val spot4 = Brush.radialGradient(
-        colors = listOf(ambientColor.copy(alpha = 0.04f), Color.Transparent),
-        center = Offset(screenWidthPx * 0.8f, screenHeightPx * 0.85f),
+        colors = listOf(Color(0xFF1E8CFF).copy(alpha = 0.05f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.85f, screenHeightPx * 0.9f),
         radius = screenHeightPx * 0.5f
     )
 
