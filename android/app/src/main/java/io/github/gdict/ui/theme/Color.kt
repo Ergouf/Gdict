@@ -64,6 +64,11 @@ object GdictColors {
     val BlueBackgroundBottom = Color(0xFFFFFFFF) // 页面渐变底部
     val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.06f) // 环境光斑
 
+    // 路线图补充 token — 选中态胶囊背景 / 占位文字 / 标题色
+    val BluePrimaryLight = Color(0xFFB3D8FF) // 浅蓝玻璃胶囊背景、选中态背景
+    val BluePlaceholder = Color(0xFF1E8CFF).copy(alpha = 0.5f) // 搜索框占位文字（品牌蓝半透明）
+    val HeadingDark = Color(0xFF102A56) // 深蓝黑色标题
+
     // 深色主题
     val DarkBackground = Color(0xFF1F1F1F)
     val DarkSurface = Color(0xFF292929)

@@ -266,7 +266,7 @@ fun GdictBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(72.dp)
                 .shadow(4.dp, RoundedCornerShape(32.dp))
                 .clip(RoundedCornerShape(32.dp))
                 .border(0.5.dp, borderColor, RoundedCornerShape(32.dp))
@@ -296,7 +296,7 @@ fun GdictBottomNavItem(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val capsuleBg = if (isSelected) GdictColors.Primary.copy(alpha = 0.15f) else Color.Transparent
+    val capsuleBg = if (isSelected) GdictColors.BluePrimaryLight.copy(alpha = 0.35f) else Color.Transparent
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
