@@ -55,14 +55,14 @@ object GdictColors {
     val SubtleHover = Color(0xFFF4F4F4)
     val SubtleSelected = Color(0xFFEAEAEA)
 
-    // Acrylic Glass 玻璃材质 token
-    val BlueSurfaceGlass = Color.White.copy(alpha = 0.72f) // Acrylic 卡片/导航栏填充
+    // Acrylic Glass 玻璃材质 token — 参考设计稿：极淡蓝白、高透明度
+    val BlueSurfaceGlass = Color(0xFFF0F5FF).copy(alpha = 0.55f) // Acrylic 卡片/导航栏填充
     val BlueSurfaceGlassDark = Color(0xCC1A2A3A) // 深色模式 Acrylic 填充
-    val BlueHighlightBorder = Color.White.copy(alpha = 0.60f) // 1px 高光白边
-    val BlueCardBorder = Color(0x331E8CFF) // 浅蓝微描边
-    val BlueBackgroundTop = Color(0xFFF5FAFF) // 页面渐变顶部
+    val BlueHighlightBorder = Color.White.copy(alpha = 0.45f) // 1px 高光白边
+    val BlueCardBorder = Color(0x221E8CFF) // 浅蓝微描边
+    val BlueBackgroundTop = Color(0xFFDCEBFF) // 页面渐变顶部（更饱和蓝）
     val BlueBackgroundBottom = Color(0xFFFFFFFF) // 页面渐变底部
-    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.08f) // 环境光斑
+    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.06f) // 环境光斑
 
     // 深色主题
     val DarkBackground = Color(0xFF1F1F1F)

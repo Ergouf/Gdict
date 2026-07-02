@@ -129,9 +129,9 @@ fun SettingsScreen(
         )
     } else {
         Brush.verticalGradient(
-            0.0f to Color(0xFFD9E8FF),    // 顶部深一点的蓝
-            0.45f to Color(0xFFEDF5FF),   // 中段
-            1.0f to Color(0xFFFFFFFF)     // 底部白
+            0.0f to Color(0xFFDCEBFF),
+            0.6f to Color(0xFFEDF4FF),
+            1.0f to Color(0xFFFFFFFF)
         )
     }
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground

@@ -100,10 +100,10 @@ fun SearchScreen(
             1.0f to GdictColors.DarkSurfaceVariant
         )
     } else {
-        // 蓝白渐变：顶部明显蓝 → 底部白，对比度足够
+        // 蓝白渐变：顶部淡蓝 → 中下部缓慢过渡到白，蓝色更持久
         Brush.verticalGradient(
-            0.0f to Color(0xFFD9E8FF),
-            0.45f to Color(0xFFEDF5FF),
+            0.0f to Color(0xFFDCEBFF),
+            0.6f to Color(0xFFEDF4FF),
             1.0f to Color(0xFFFFFFFF)
         )
     }
@@ -281,9 +281,9 @@ private fun SearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp)
-            .shadow(2.dp, RoundedCornerShape(28.dp))
+            .shadow(1.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(28.dp))
             .background(searchBarBg)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -291,7 +291,7 @@ private fun SearchBar(
         Icon(
             Icons.Default.Search,
             contentDescription = stringResource(R.string.search_hint),
-            tint = GdictColors.Primary,
+            tint = Color(0xFF4A5568),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -343,7 +343,7 @@ private fun DraggableSearchResultCard(
     var isDragging by remember { mutableStateOf(false) }
     var dragOffset by remember { mutableStateOf(0f) }
     val animatedElevation by animateDpAsState(
-        targetValue = if (isDragging) 8.dp else 0.dp,
+        targetValue = if (isDragging) 8.dp else 1.dp,
         animationSpec = tween(200),
         label = "elevation"
     )
@@ -366,9 +366,9 @@ private fun DraggableSearchResultCard(
         modifier = Modifier
             .fillMaxWidth()
             .offset { IntOffset(0, dragOffset.roundToInt()) }
-            .shadow(animatedElevation.coerceAtLeast(4.dp), RoundedCornerShape(scaledCornerRadius))
+            .shadow(animatedElevation, RoundedCornerShape(scaledCornerRadius))
             .clip(RoundedCornerShape(scaledCornerRadius))
-            .border(1.dp, glassBorder, RoundedCornerShape(scaledCornerRadius))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(scaledCornerRadius))
             .background(glassBg)
             .graphicsLayer {
                 scaleX = if (isDragging) 1.02f else 1f
@@ -430,9 +430,9 @@ private fun DraggableSearchResultCard(
                 modifier = Modifier
                     .padding(start = (4.dp * contentScale), end = 2.dp)
                     .size(38.dp)
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
+                    .shadow(1.dp, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, glassBorder, RoundedCornerShape(12.dp))
+                    .border(0.5.dp, glassBorder, RoundedCornerShape(12.dp))
                     .background(glassBg)
                     .pointerInput(index, totalItems) {
                         detectDragGestures(
@@ -542,24 +542,20 @@ private fun RecentSearchSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(28.dp))
-                    .clip(RoundedCornerShape(28.dp))
-                    .border(1.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(28.dp))
-                    .background(GdictColors.BlueSurfaceGlass)
                     .clickable { onWordClick(item.word) }
-                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                    .padding(vertical = 14.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Outlined.History,
                     contentDescription = null,
                     tint = GdictColors.Primary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = item.word,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = textColor
                 )
             }
@@ -638,20 +634,20 @@ private fun WordOfDayCard(
 
     Card(
         modifier = Modifier
-            .width(180.dp)
-            .height(110.dp)
-            .shadow(4.dp, RoundedCornerShape(20.dp))
+            .width(200.dp)
+            .height(130.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = glassBg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.Bottom
+            verticalArrangement = Arrangement.Top
         ) {
             Text(
                 text = word,
@@ -664,7 +660,7 @@ private fun WordOfDayCard(
                 text = meaning,
                 style = MaterialTheme.typography.bodySmall,
                 color = subtitleColor,
-                maxLines = 2,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
         }

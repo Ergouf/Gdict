@@ -28,9 +28,9 @@ fun AcrylicCard(
     val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     Box(
         modifier = modifier
-            .shadow(4.dp, shape)
+            .shadow(2.dp, shape)
             .clip(shape)
-            .border(1.dp, borderColor, shape)
+            .border(0.5.dp, borderColor, shape)
             .background(glassBg)
     ) {
         content()
@@ -48,9 +48,9 @@ fun AcrylicCapsule(
     val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     Row(
         modifier = modifier
-            .shadow(2.dp, RoundedCornerShape(28.dp))
+            .shadow(1.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(28.dp))
             .background(glassBg)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,

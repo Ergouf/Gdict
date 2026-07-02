@@ -267,9 +267,9 @@ fun GdictBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .shadow(8.dp, RoundedCornerShape(32.dp))
+                .shadow(4.dp, RoundedCornerShape(32.dp))
                 .clip(RoundedCornerShape(32.dp))
-                .border(1.dp, borderColor, RoundedCornerShape(32.dp))
+                .border(0.5.dp, borderColor, RoundedCornerShape(32.dp))
                 .background(glassBg)
                 .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceAround,
