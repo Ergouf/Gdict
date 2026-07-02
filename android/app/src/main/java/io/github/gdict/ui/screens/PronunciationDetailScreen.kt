@@ -31,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -61,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.gdict.R
 import io.github.gdict.data.AndroidDictionaryRepository
-import io.github.gdict.ui.components.acrylicAmbientBackground
 import io.github.gdict.ui.components.pageEnterAnimation
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.ui.webview.MdxWebView
@@ -84,14 +84,17 @@ private data class PronunciationData(
     val word: String,
     val pronunciations: List<PronunciationEntry>,
     val wordForms: List<WordFormEntry>,
-    val hasReadingContent: Boolean
+    val hasReadingContent: Boolean,
+    val parsedOk: Boolean
 )
 
 /**
  * 发音词典详情页（Cambridge EPD）—— Fluent Design 2 / Acrylic Glass。
  *
- * 拦截原 WebView 渲染：单词、IPA、英/美发音、词形变化均以原生 Compose 玻璃材质组件呈现，
- * 释义/例句等阅读内容仍由 MdxWebView 承载（注入 CSS 隐藏已原生渲染的重复部分）。
+ * 原生渲染：Blue Frost 渐变背景 + 弥散光斑、Floating 搜索栏、Acrylic Card、
+ * 单词视觉中心、Pronunciation Chip（英/美水平排列）、Word Form Chip。
+ * 释义/例句等阅读内容由 MdxWebView 承载。
+ * 当发音数据解析失败时，回退为 WebView 渲染全部内容（仍保留原生 Acrylic 框架）。
  */
 @Composable
 fun PronunciationDetailContent(
@@ -109,35 +112,18 @@ fun PronunciationDetailContent(
 ) {
     val data = remember(definition, word) { parsePronunciationData(definition, word) }
     var contentScale by remember { mutableStateOf(1f) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
     val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
+    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val primaryTint = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
-
-    val bgGradient = if (darkMode) {
-        Brush.verticalGradient(
-            0.0f to GdictColors.DarkBackground,
-            1.0f to GdictColors.DarkSurfaceVariant
-        )
-    } else {
-        Brush.verticalGradient(
-            0.0f to GdictColors.BlueBackgroundTop,
-            0.6f to Color(0xFFEDF4FF),
-            1.0f to GdictColors.BlueBackgroundBottom
-        )
-    }
-
-    val displayWord = data.word.ifEmpty { word }
-
-    // 隐藏 WebView 中已原生渲染的部分（主词头、IPA、发音组、词形表），仅保留释义/例句阅读内容
-    val overrideCss = "\n.cpepd .main-headword,.cpepd .main-ipa,.cpepd .main-pronunciation,.cpepd .main-audio-btns,.cpepd .cepd-forms-section{display:none !important;}"
-    val webViewCss = css + overrideCss
 
     val cdBack = stringResource(R.string.cd_back)
     val cdShare = stringResource(R.string.cd_share)
@@ -148,8 +134,8 @@ fun PronunciationDetailContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgGradient)
-            .acrylicAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
+            .background(pronunciationBgGradient(darkMode))
+            .pronunciationAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Floating Navigation Header
@@ -185,6 +171,15 @@ fun PronunciationDetailContent(
                 }
             }
 
+            // Floating Search Field
+            FloatingSearchField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                darkMode = darkMode,
+                glassBg = glassBg,
+                glassBorder = glassBorder
+            )
+
             // 可缩放 + 滚动的主体
             Box(
                 modifier = Modifier
@@ -199,7 +194,7 @@ fun PronunciationDetailContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 24.dp)
                 ) {
                     // 功能按钮区
                     Row(
@@ -226,84 +221,178 @@ fun PronunciationDetailContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // 大型 Floating Acrylic Card
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(4.dp, RoundedCornerShape(28.dp))
-                            .clip(RoundedCornerShape(28.dp))
-                            .border(1.dp, glassBorder, RoundedCornerShape(28.dp))
+                            .shadow(6.dp, RoundedCornerShape(32.dp))
+                            .clip(RoundedCornerShape(32.dp))
+                            .border(1.dp, glassBorder, RoundedCornerShape(32.dp))
                             .background(glassBg)
                             .pageEnterAnimation()
                     ) {
-                        Column(modifier = Modifier.padding(24.dp)) {
-                            // 单词展示
-                            Text(
-                                displayWord,
-                                fontSize = 44.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                lineHeight = 50.sp
-                            )
+                        Column(modifier = Modifier.padding(28.dp)) {
+                            val displayWord = data.word.ifEmpty { word }
 
-                            // 发音区域
-                            if (data.pronunciations.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                SectionHeader(cdPron, darkMode)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                PronunciationChipsRow(
-                                    pronunciations = data.pronunciations,
-                                    darkMode = darkMode,
-                                    glassBorder = glassBorder
-                                ) { entry ->
-                                    playAudio(entry.audioPath, displayWord)
+                            if (data.parsedOk && data.pronunciations.isNotEmpty()) {
+                                // —— 原生渲染：单词 + Pronunciation Chip + Word Forms + 阅读区 ——
+                                Text(
+                                    displayWord,
+                                    fontSize = 52.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    lineHeight = 58.sp
+                                )
+
+                                if (data.pronunciations.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    SectionHeader(cdPron, darkMode)
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    PronunciationChipsRow(
+                                        pronunciations = data.pronunciations,
+                                        darkMode = darkMode,
+                                        glassBorder = glassBorder
+                                    ) { entry ->
+                                        playAudio(entry.audioPath, displayWord)
+                                    }
                                 }
-                            }
 
-                            // 词形变化
-                            if (data.wordForms.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                SectionHeader("Word Forms", darkMode)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    data.wordForms.forEach { form ->
-                                        WordFormChip(
-                                            form = form,
-                                            darkMode = darkMode,
-                                            glassBorder = glassBorder,
-                                            onEntryClick = onEntryClick
-                                        ) {
-                                            playAudio(form.audioPath, form.word.ifEmpty { displayWord })
+                                if (data.wordForms.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    SectionHeader("Word Forms", darkMode)
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        data.wordForms.forEach { form ->
+                                            WordFormChip(
+                                                form = form,
+                                                darkMode = darkMode,
+                                                glassBorder = glassBorder,
+                                                onEntryClick = onEntryClick
+                                            ) {
+                                                playAudio(form.audioPath, form.word.ifEmpty { displayWord })
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // 阅读区域（释义/例句，仅当存在阅读内容时展示）
-                            if (data.hasReadingContent) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                SectionHeader("Definitions", darkMode)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                MdxWebView(
+                                if (data.hasReadingContent) {
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    SectionHeader("Definitions", darkMode)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    PronunciationWebView(
+                                        definition = definition,
+                                        css = css + HIDE_PRON_CSS,
+                                        darkMode = darkMode,
+                                        contentScale = contentScale,
+                                        dictionaryRepository = dictionaryRepository,
+                                        onEntryClick = onEntryClick,
+                                        playAudio = playAudio,
+                                        displayWord = displayWord
+                                    )
+                                }
+                            } else {
+                                // —— 回退：WebView 渲染全部内容（保留原生 Acrylic 卡片框架）——
+                                PronunciationWebView(
                                     definition = definition,
-                                    css = webViewCss,
+                                    css = css,
                                     darkMode = darkMode,
                                     contentScale = contentScale,
                                     dictionaryRepository = dictionaryRepository,
                                     onEntryClick = onEntryClick,
-                                    onPlayAudio = { audioPath ->
-                                        playAudio(audioPath, displayWord)
-                                    }
+                                    playAudio = playAudio,
+                                    displayWord = displayWord
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PronunciationWebView(
+    definition: String,
+    css: String,
+    darkMode: Boolean,
+    contentScale: Float,
+    dictionaryRepository: AndroidDictionaryRepository,
+    onEntryClick: (String) -> Unit,
+    playAudio: (String?, String) -> Unit,
+    displayWord: String
+) {
+    MdxWebView(
+        definition = definition,
+        css = css,
+        darkMode = darkMode,
+        contentScale = contentScale,
+        dictionaryRepository = dictionaryRepository,
+        onEntryClick = onEntryClick,
+        onPlayAudio = { audioPath ->
+            playAudio(audioPath, displayWord)
+        }
+    )
+}
+
+@Composable
+private fun FloatingSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    darkMode: Boolean,
+    glassBg: Color,
+    glassBorder: Color
+) {
+    val placeholderColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 4.dp)
+            .shadow(3.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .border(1.dp, glassBorder, RoundedCornerShape(28.dp))
+            .background(glassBg)
+            .height(56.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                tint = GdictColors.Primary.copy(alpha = 0.7f),
+                modifier = Modifier.size(22.dp)
+            )
+            androidx.compose.material3.TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text("搜索单词", color = placeholderColor, fontSize = 16.sp)
+                },
+                singleLine = true,
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    cursorColor = GdictColors.Primary
+                ),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 16.sp,
+                    color = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
+                )
+            )
         }
     }
 }
@@ -337,7 +426,7 @@ private fun SectionHeader(title: String, darkMode: Boolean) {
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(20.dp)
+                .height(22.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     Brush.verticalGradient(listOf(GdictColors.PrimarySoft, GdictColors.Primary))
@@ -346,7 +435,7 @@ private fun SectionHeader(title: String, darkMode: Boolean) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             title,
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = accent
         )
@@ -461,8 +550,8 @@ private fun SpeakerButton(onPlay: () -> Unit) {
     val scope = rememberCoroutineScope()
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.65f,
+        initialValue = 0.25f,
+        targetValue = 0.7f,
         animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
         label = "pulseAlpha"
     )
@@ -506,9 +595,9 @@ private fun PronActionButton(
     Box(
         modifier = modifier
             .height(52.dp)
-            .shadow(2.dp, RoundedCornerShape(22.dp))
-            .clip(RoundedCornerShape(22.dp))
-            .border(0.5.dp, glassBorder, RoundedCornerShape(22.dp))
+            .shadow(2.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(24.dp))
             .background(glassBg)
             .clickable(onClick = onClick)
     ) {
@@ -584,14 +673,92 @@ private fun FlagBadge(region: String, size: Dp = 26.dp) {
     }
 }
 
+// region 背景
+
+private fun pronunciationBgGradient(darkMode: Boolean): Brush = if (darkMode) {
+    Brush.verticalGradient(
+        0.0f to GdictColors.DarkBackground,
+        0.5f to GdictColors.DarkSurface,
+        1.0f to GdictColors.DarkSurfaceVariant
+    )
+} else {
+    Brush.verticalGradient(
+        0.0f to Color(0xFFDCEBFF),
+        0.4f to Color(0xFFEDF4FF),
+        0.75f to Color(0xFFF7FAFF),
+        1.0f to Color(0xFFFFFFFF)
+    )
+}
+
+/**
+ * 发音页专属弥散背景：比通用版更明显，模拟 Windows 11 Acrylic 漫射光。
+ * 多个不规则径向光斑叠加，浓度足以在浅色背景上可见。
+ */
+@Composable
+private fun Modifier.pronunciationAmbientBackground(
+    darkMode: Boolean,
+    screenWidthPx: Float,
+    screenHeightPx: Float
+): Modifier {
+    if (darkMode) {
+        val d1 = Brush.radialGradient(
+            colors = listOf(Color(0xFF1E8CFF).copy(alpha = 0.10f), Color.Transparent),
+            center = Offset(screenWidthPx * 0.15f, screenHeightPx * 0.1f),
+            radius = screenHeightPx * 0.55f
+        )
+        val d2 = Brush.radialGradient(
+            colors = listOf(Color(0xFF4DA3FF).copy(alpha = 0.08f), Color.Transparent),
+            center = Offset(screenWidthPx * 0.85f, screenHeightPx * 0.85f),
+            radius = screenHeightPx * 0.5f
+        )
+        return this.background(d1).background(d2)
+    }
+
+    val spot1 = Brush.radialGradient(
+        colors = listOf(Color(0xFF1E8CFF).copy(alpha = 0.14f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.12f, screenHeightPx * 0.08f),
+        radius = screenHeightPx * 0.55f
+    )
+    val spot2 = Brush.radialGradient(
+        colors = listOf(Color(0xFF7B9CFF).copy(alpha = 0.11f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.88f, screenHeightPx * 0.22f),
+        radius = screenHeightPx * 0.5f
+    )
+    val spot3 = Brush.radialGradient(
+        colors = listOf(Color(0xFF5BA8E8).copy(alpha = 0.09f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.3f, screenHeightPx * 0.65f),
+        radius = screenHeightPx * 0.45f
+    )
+    val spot4 = Brush.radialGradient(
+        colors = listOf(Color(0xFF1E8CFF).copy(alpha = 0.10f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.82f, screenHeightPx * 0.92f),
+        radius = screenHeightPx * 0.5f
+    )
+    val spot5 = Brush.radialGradient(
+        colors = listOf(Color(0xFFA8C8FF).copy(alpha = 0.08f), Color.Transparent),
+        center = Offset(screenWidthPx * 0.5f, screenHeightPx * 0.4f),
+        radius = screenHeightPx * 0.6f
+    )
+    return this
+        .background(spot1)
+        .background(spot2)
+        .background(spot3)
+        .background(spot4)
+        .background(spot5)
+}
+
+// endregion
+
 // region 发音词典 HTML 解析
+
+private const val HIDE_PRON_CSS = "\n.cpepd .main-headword,.cpepd .main-ipa,.cpepd .main-pronunciation,.cpepd .main-audio-btns,.cpepd .cepd-forms-section{display:none !important;}"
 
 private fun parsePronunciationData(definition: String, fallbackWord: String): PronunciationData {
     val arlPattern = Regex("""<arl[^>]*>(.*?)</arl>""", RegexOption.DOT_MATCHES_ALL)
     val arlMatches = arlPattern.findAll(definition).toList()
 
     if (arlMatches.isEmpty()) {
-        return PronunciationData(fallbackWord, emptyList(), emptyList(), hasReadingContent(definition))
+        return PronunciationData(fallbackWord, emptyList(), emptyList(), hasReadingContent(definition), parsedOk = false)
     }
 
     val mainContent = arlMatches.last().groupValues[1]
@@ -601,7 +768,8 @@ private fun parsePronunciationData(definition: String, fallbackWord: String): Pr
     val pronunciations = parsePronunciations(mainContent)
     val wordForms = formsContents.map { parseWordForm(it) }
 
-    return PronunciationData(word, pronunciations, wordForms, hasReadingContent(definition))
+    val parsedOk = pronunciations.isNotEmpty() || wordForms.isNotEmpty()
+    return PronunciationData(word, pronunciations, wordForms, hasReadingContent(definition), parsedOk)
 }
 
 private fun parsePronunciations(content: String): List<PronunciationEntry> {
