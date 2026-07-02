@@ -28,9 +28,9 @@ fun AcrylicCard(
     val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     Box(
         modifier = modifier
-            .shadow(1.dp, shape)
+            .shadow(4.dp, shape)
             .clip(shape)
-            .border(1.dp, GdictColors.BlueCardBorder, shape)
+            .border(1.dp, borderColor, shape)
             .background(glassBg)
     ) {
         content()

@@ -315,9 +315,9 @@ private fun ProfileHero(
         Box(
             modifier = Modifier
                 .size(72.dp)
-                .shadow(1.dp, CircleShape)
+                .shadow(8.dp, CircleShape)
                 .clip(CircleShape)
-                .border(1.dp, GdictColors.BlueCardBorder, CircleShape)
+                .border(1.dp, borderColor, CircleShape)
                 .background(glassBg),
             contentAlignment = Alignment.Center
         ) {
@@ -409,9 +409,9 @@ private fun SettingsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(28.dp))
+            .shadow(4.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, GdictColors.BlueCardBorder, RoundedCornerShape(28.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
             .background(glassBg)
     ) {
         Column(
