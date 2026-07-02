@@ -236,16 +236,17 @@ fun PronunciationDetailContent(
                         Column(modifier = Modifier.padding(28.dp)) {
                             val displayWord = data.word.ifEmpty { word }
 
-                            if (data.parsedOk && data.pronunciations.isNotEmpty()) {
-                                // —— 原生渲染：单词 + Pronunciation Chip + Word Forms + 阅读区 ——
-                                Text(
-                                    displayWord,
-                                    fontSize = 52.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                    lineHeight = 58.sp
-                                )
+                            // 始终原生渲染单词标题（即使解析失败）
+                            Text(
+                                displayWord,
+                                fontSize = 52.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = textColor,
+                                lineHeight = 58.sp
+                            )
 
+                            if (data.parsedOk && data.pronunciations.isNotEmpty()) {
+                                // —— 原生渲染：Pronunciation Chip + Word Forms + 阅读区 ——
                                 if (data.pronunciations.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(24.dp))
                                     SectionHeader(cdPron, darkMode)
@@ -293,7 +294,8 @@ fun PronunciationDetailContent(
                                     )
                                 }
                             } else {
-                                // —— 回退：WebView 渲染全部内容（保留原生 Acrylic 卡片框架）——
+                                // —— 回退：WebView 渲染全部内容（保留原生单词标题 + Acrylic 卡片框架）——
+                                Spacer(modifier = Modifier.height(16.dp))
                                 PronunciationWebView(
                                     definition = definition,
                                     css = css,
@@ -766,10 +768,27 @@ private fun parsePronunciationData(definition: String, fallbackWord: String): Pr
 
     val word = extractHeadword(mainContent).ifEmpty { fallbackWord }
     val pronunciations = parsePronunciations(mainContent)
-    val wordForms = formsContents.map { parseWordForm(it) }
+    val wordForms = formsContents.map { parseWordForm(it) }.toMutableList()
+    wordForms.addAll(parseInflections(mainContent))
 
     val parsedOk = pronunciations.isNotEmpty() || wordForms.isNotEmpty()
     return PronunciationData(word, pronunciations, wordForms, hasReadingContent(definition), parsedOk)
+}
+
+private fun parseInflections(content: String): List<WordFormEntry> {
+    val inflPattern = Regex("""<inflection[^>]*>(.*?)</inflection>""", RegexOption.DOT_MATCHES_ALL)
+    return inflPattern.findAll(content).map { infl ->
+        val inner = infl.groupValues[1]
+        val labelMatch = Regex("""<label[^>]*>(.*?)</label>""", RegexOption.DOT_MATCHES_ALL).find(inner)
+        val label = cleanText(labelMatch?.groupValues?.get(1) ?: "")
+        val inflWord = extractHeadword(inner).ifEmpty { cleanText(inner).substringBefore(":").trim() }
+        val ipa = extractIpa(inner).ifEmpty {
+            Regex("""<inf[^>]*>(.*?)</inf>""", RegexOption.DOT_MATCHES_ALL).find(inner)?.let { cleanText(it.groupValues[1]) } ?: ""
+        }
+        val audio = extractSoundPath(inner)
+        val displayWord = if (label.isNotEmpty()) "$inflWord ($label)" else inflWord
+        WordFormEntry(displayWord, ipa, audio)
+    }.toList()
 }
 
 private fun parsePronunciations(content: String): List<PronunciationEntry> {
