@@ -323,8 +323,9 @@ fun CollinsDetailContent(
                                     contentScale = contentScale,
                                     dictionaryRepository = dictionaryRepository,
                                     onEntryClick = onEntryClick,
-                                    playAudio = playAudio,
-                                    displayWord = displayWord
+                                    onPlayAudio = { audioPath ->
+                                        playAudio(audioPath, displayWord)
+                                    }
                                 )
                             }
                         }
