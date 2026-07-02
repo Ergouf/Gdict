@@ -125,6 +125,64 @@ fun WordDetailScreen(
         }
     }
 
+    val playPronunciationAudio: (String?, String) -> Unit = { audioPath, fallbackWord ->
+        coroutineScope.launch {
+            try {
+                var played = false
+                if (audioPath != null) {
+                    val mddAudio = withContext(Dispatchers.IO) {
+                        dictionaryRepository.getAudioResourceByPath(audioPath)
+                    }
+                    if (mddAudio != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, mddAudio) }
+                    }
+                }
+                if (!played) {
+                    val mddAudio = withContext(Dispatchers.IO) {
+                        dictionaryRepository.getAudioResource(fallbackWord)
+                    }
+                    if (mddAudio != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, mddAudio) }
+                    }
+                }
+                if (!played) {
+                    val edgeTtsData = withContext(Dispatchers.IO) { EdgeTtsClient.synthesize(fallbackWord) }
+                    if (edgeTtsData != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, edgeTtsData) }
+                    }
+                }
+                if (!played) {
+                    val engine = tts
+                    if (engine != null && ttsReady) {
+                        engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "pron_${System.currentTimeMillis()}")
+                    }
+                }
+            } catch (_: Exception) {
+                val engine = tts
+                if (engine != null && ttsReady) {
+                    engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "pron_${System.currentTimeMillis()}")
+                }
+            }
+        }
+    }
+
+    if (isPronunciationDict) {
+        PronunciationDetailContent(
+            word = word,
+            definition = definition,
+            css = css,
+            isBookmarked = isBookmarked,
+            darkMode = darkMode,
+            dictionaryRepository = dictionaryRepository,
+            onBack = onBack,
+            onToggleBookmark = onToggleBookmark,
+            onEntryClick = onEntryClick,
+            onShare = { },
+            playAudio = playPronunciationAudio
+        )
+        return
+    }
+
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val density = androidx.compose.ui.platform.LocalDensity.current
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
