@@ -69,6 +69,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.gdict.R
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
+import io.github.gdict.ui.components.acrylicAmbientBackground
 import io.github.gdict.ui.components.pageEnterAnimation
 import io.github.gdict.ui.components.pressScale
 import io.github.gdict.ui.components.staggerEnterAnimation
@@ -114,40 +115,22 @@ fun SearchScreen(
             1.0f to Color(0xFFFFFFFF)
         )
     }
-    // 环境光斑：左上、右下两个径向蓝色光斑，营造空间层次
-    val ambientBrush1 = Brush.radialGradient(
-        colors = listOf(GdictColors.AmbientLight, Color.Transparent),
-        center = Offset(0f, 200f),
-        radius = 500f
-    )
-    val ambientBrush2 = Brush.radialGradient(
-        colors = listOf(GdictColors.AmbientLight, Color.Transparent),
-        center = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-        radius = 600f
-    )
     val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val titleColor = if (darkMode) GdictColors.DarkOnBackground else GdictColors.HeadingDark
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgGradient)
+            .acrylicAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
     ) {
-        // 环境光斑层（仅浅色模式）
-        if (!darkMode) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(ambientBrush1)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(ambientBrush2)
-            )
-        }
         Column(
             modifier = Modifier
             .fillMaxSize()
