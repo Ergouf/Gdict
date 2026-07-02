@@ -87,7 +87,17 @@ fun WordDetailScreen(
             definition.contains("<arl", ignoreCase = true) ||
             definition.contains("<prongrp", ignoreCase = true) ||
             definition.contains("<soundfile", ignoreCase = true)
-    android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict word=$word defHead=${definition.take(200)}")
+
+    // 柯林斯词典检测：通过词典名、CSS引用、HTML特征识别
+    val isCollinsDict = dictionaryName.contains("collins", ignoreCase = true) ||
+            dictionaryName.contains("柯林斯", ignoreCase = true) ||
+            dictionaryName.contains("cobuild", ignoreCase = true) ||
+            css.contains("collins", ignoreCase = true) ||
+            css.contains("ccald", ignoreCase = true) ||
+            css.contains("cobuild", ignoreCase = true) ||
+            definition.contains("ccald", ignoreCase = true) ||
+            definition.contains("cobuild", ignoreCase = true)
+    android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict isCollinsDict=$isCollinsDict dict=$dictionaryName word=$word cssHead=${css.take(100)} defHead=${definition.take(300)}")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgGradient = if (darkMode) {
@@ -175,6 +185,24 @@ fun WordDetailScreen(
             word = word,
             definition = definition,
             css = css,
+            isBookmarked = isBookmarked,
+            darkMode = darkMode,
+            dictionaryRepository = dictionaryRepository,
+            onBack = onBack,
+            onToggleBookmark = onToggleBookmark,
+            onEntryClick = onEntryClick,
+            onShare = { },
+            playAudio = playPronunciationAudio
+        )
+        return
+    }
+
+    if (isCollinsDict) {
+        CollinsDetailContent(
+            word = word,
+            definition = definition,
+            css = css,
+            dictionaryName = dictionaryName,
             isBookmarked = isBookmarked,
             darkMode = darkMode,
             dictionaryRepository = dictionaryRepository,

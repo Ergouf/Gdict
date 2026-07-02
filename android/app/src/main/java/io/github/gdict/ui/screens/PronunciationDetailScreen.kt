@@ -371,7 +371,7 @@ private fun FloatingSearchField(
 }
 
 @Composable
-private fun GlassCircleButton(
+internal fun GlassCircleButton(
     onClick: () -> Unit,
     glassBg: Color,
     glassBorder: Color,
@@ -533,7 +533,7 @@ private fun WordFormChip(
 }
 
 @Composable
-private fun SpeakerButton(onPlay: () -> Unit, size: Dp = 40.dp) {
+internal fun SpeakerButton(onPlay: () -> Unit, size: Dp = 40.dp) {
     var playing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -570,7 +570,7 @@ private fun SpeakerButton(onPlay: () -> Unit, size: Dp = 40.dp) {
 }
 
 @Composable
-private fun PronActionButton(
+internal fun PronActionButton(
     icon: ImageVector,
     text: String,
     glassBg: Color,
@@ -663,7 +663,7 @@ private fun FlagBadge(region: String, size: Dp = 26.dp) {
 
 // region 背景
 
-private fun pronunciationBgGradient(darkMode: Boolean): Brush = if (darkMode) {
+internal fun pronunciationBgGradient(darkMode: Boolean): Brush = if (darkMode) {
     Brush.verticalGradient(
         0.0f to GdictColors.DarkBackground,
         0.5f to GdictColors.DarkSurface,
@@ -683,7 +683,7 @@ private fun pronunciationBgGradient(darkMode: Boolean): Brush = if (darkMode) {
  * 多个不规则径向光斑叠加，浓度足以在浅色背景上可见。
  */
 @Composable
-private fun Modifier.pronunciationAmbientBackground(
+internal fun Modifier.pronunciationAmbientBackground(
     darkMode: Boolean,
     screenWidthPx: Float,
     screenHeightPx: Float
