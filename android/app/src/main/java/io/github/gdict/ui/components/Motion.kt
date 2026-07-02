@@ -7,7 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.unit.dp
 
 private const val ENTER_DURATION = 250
@@ -16,6 +16,7 @@ private const val MAX_STAGGER_ITEMS = 8
 
 /**
  * 页面进入动效：Fade + 上浮 16dp（250ms）。
+ * 使用单个 graphicsLayer 合并 alpha 和 translationY，避免多层离屏渲染。
  */
 @Composable
 fun Modifier.pageEnterAnimation(): Modifier {
@@ -27,13 +28,15 @@ fun Modifier.pageEnterAnimation(): Modifier {
     LaunchedEffect(Unit) {
         offsetY.animateTo(0f, tween(ENTER_DURATION))
     }
-    return this
-        .alpha(alphaAnim.value)
-        .graphicsLayer { translationY = offsetY.value.dp.toPx() }
+    return this.graphicsLayer {
+        alpha = alphaAnim.value
+        translationY = offsetY.value.dp.toPx()
+    }
 }
 
 /**
  * 列表项 Stagger 淡入：按 index 延迟入场（间隔 50ms，最多 8 项后不再延迟）。
+ * 使用单个 graphicsLayer 合并 alpha 和 translationY，避免多层离屏渲染。
  */
 @Composable
 fun Modifier.staggerEnterAnimation(index: Int): Modifier {
@@ -46,9 +49,10 @@ fun Modifier.staggerEnterAnimation(index: Int): Modifier {
     LaunchedEffect(Unit) {
         offsetY.animateTo(0f, tween(ENTER_DURATION, delayMillis = delay))
     }
-    return this
-        .alpha(alphaAnim.value)
-        .graphicsLayer { translationY = offsetY.value.dp.toPx() }
+    return this.graphicsLayer {
+        alpha = alphaAnim.value
+        translationY = offsetY.value.dp.toPx()
+    }
 }
 
 /**
