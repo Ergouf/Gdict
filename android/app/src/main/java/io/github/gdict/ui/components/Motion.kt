@@ -7,7 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
 private const val ENTER_DURATION = 250
@@ -19,17 +19,17 @@ private const val MAX_STAGGER_ITEMS = 8
  */
 @Composable
 fun Modifier.pageEnterAnimation(): Modifier {
-    val alpha = remember { Animatable(0f) }
-    val translationY = remember { Animatable(16f) }
+    val alphaAnim = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(16f) }
     LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(ENTER_DURATION))
+        alphaAnim.animateTo(1f, tween(ENTER_DURATION))
     }
     LaunchedEffect(Unit) {
-        translationY.animateTo(0f, tween(ENTER_DURATION))
+        offsetY.animateTo(0f, tween(ENTER_DURATION))
     }
     return this
-        .alpha(alpha.value)
-        .graphicsLayer { translationY = translationY.value.dp.toPx() }
+        .alpha(alphaAnim.value)
+        .graphicsLayer { translationY = offsetY.value.dp.toPx() }
 }
 
 /**
@@ -37,18 +37,18 @@ fun Modifier.pageEnterAnimation(): Modifier {
  */
 @Composable
 fun Modifier.staggerEnterAnimation(index: Int): Modifier {
-    val alpha = remember { Animatable(0f) }
-    val translationY = remember { Animatable(16f) }
+    val alphaAnim = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(16f) }
     val delay = index.coerceAtMost(MAX_STAGGER_ITEMS) * STAGGER_INTERVAL
     LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(ENTER_DURATION, delayMillis = delay))
+        alphaAnim.animateTo(1f, tween(ENTER_DURATION, delayMillis = delay))
     }
     LaunchedEffect(Unit) {
-        translationY.animateTo(0f, tween(ENTER_DURATION, delayMillis = delay))
+        offsetY.animateTo(0f, tween(ENTER_DURATION, delayMillis = delay))
     }
     return this
-        .alpha(alpha.value)
-        .graphicsLayer { translationY = translationY.value.dp.toPx() }
+        .alpha(alphaAnim.value)
+        .graphicsLayer { translationY = offsetY.value.dp.toPx() }
 }
 
 /**
