@@ -83,7 +83,11 @@ fun WordDetailScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf(stringResource(R.string.tab_origin), stringResource(R.string.tab_examples), stringResource(R.string.tab_synonyms))
-    val isPronunciationDict = definition.contains("cepd18.css")
+    val isPronunciationDict = definition.contains("cepd18.css", ignoreCase = true) ||
+            definition.contains("<arl", ignoreCase = true) ||
+            definition.contains("<prongrp", ignoreCase = true) ||
+            definition.contains("<soundfile", ignoreCase = true)
+    android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict word=$word defHead=${definition.take(200)}")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val bgGradient = if (darkMode) {

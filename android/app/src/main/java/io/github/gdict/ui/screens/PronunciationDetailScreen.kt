@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.gdict.BuildConfig
 import io.github.gdict.R
 import io.github.gdict.data.AndroidDictionaryRepository
 import io.github.gdict.ui.components.pageEnterAnimation
@@ -178,6 +179,14 @@ fun PronunciationDetailContent(
                 darkMode = darkMode,
                 glassBg = glassBg,
                 glassBorder = glassBorder
+            )
+
+            // 版本标记（调试用，确认实际运行版本）
+            Text(
+                "v${BuildConfig.VERSION_NAME} · pron-native",
+                fontSize = 10.sp,
+                color = subtitleColor.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 2.dp)
             )
 
             // 可缩放 + 滚动的主体
