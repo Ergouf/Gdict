@@ -13,8 +13,6 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -114,7 +112,7 @@ fun PronunciationDetailContent(
     var contentScale by remember { mutableStateOf(1f) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else Color.White.copy(alpha = 0.72f)
     val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
@@ -221,42 +219,41 @@ fun PronunciationDetailContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // 大型 Floating Acrylic Card
+                    // Floating Acrylic Card — 紧凑布局
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(8.dp, RoundedCornerShape(32.dp), ambientColor = GdictColors.Primary.copy(alpha = 0.12f), spotColor = GdictColors.Primary.copy(alpha = 0.08f))
-                            .clip(RoundedCornerShape(32.dp))
-                            .border(1.dp, glassBorder, RoundedCornerShape(32.dp))
+                            .shadow(6.dp, RoundedCornerShape(28.dp), ambientColor = GdictColors.Primary.copy(alpha = 0.10f), spotColor = GdictColors.Primary.copy(alpha = 0.06f))
+                            .clip(RoundedCornerShape(28.dp))
+                            .border(1.dp, glassBorder, RoundedCornerShape(28.dp))
                             .background(glassBg)
                             .pageEnterAnimation()
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(28.dp)
+                                .padding(24.dp)
                         ) {
                             val displayWord = data.word.ifEmpty { word }
 
                             if (data.parsedOk && data.pronunciations.isNotEmpty()) {
-                                // —— 原生渲染：单词 + 发音 ——
+                                // —— 原生渲染：单词 + 紧凑发音行 ——
                                 Text(
                                     displayWord,
-                                    fontSize = 56.sp,
+                                    fontSize = 40.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = textColor,
-                                    lineHeight = 62.sp
+                                    lineHeight = 46.sp
                                 )
 
-                                Spacer(modifier = Modifier.height(28.dp))
-                                SectionHeader(cdPron, darkMode)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                PronunciationChipsRow(
+
+                                // 紧凑发音行：每行一对 UK/US，国旗+IPA+喇叭同一行
+                                PronunciationRows(
                                     pronunciations = data.pronunciations,
-                                    darkMode = darkMode,
-                                    glassBorder = glassBorder
+                                    darkMode = darkMode
                                 ) { entry ->
                                     playAudio(entry.audioPath, displayWord)
                                 }
@@ -264,12 +261,12 @@ fun PronunciationDetailContent(
                                 // —— 回退：WebView 渲染全部内容 ——
                                 Text(
                                     displayWord,
-                                    fontSize = 56.sp,
+                                    fontSize = 40.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = textColor,
-                                    lineHeight = 62.sp
+                                    lineHeight = 46.sp
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 PronunciationWebView(
                                     definition = definition,
                                     css = css,
@@ -418,34 +415,30 @@ private fun SectionHeader(title: String, darkMode: Boolean) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PronunciationChipsRow(
+private fun PronunciationRows(
     pronunciations: List<PronunciationEntry>,
     darkMode: Boolean,
-    glassBorder: Color,
     onPlay: (PronunciationEntry) -> Unit
 ) {
-    // 按 region 分组：UK 一列，US 一列，整齐排列
+    // 按 region 分组：UK 一列，US 一列
     val ukProns = pronunciations.filter { it.region.equals("UK", true) }
     val usProns = pronunciations.filter { it.region.equals("US", true) }
     val maxRows = maxOf(ukProns.size, usProns.size)
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         for (i in 0 until maxRows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // UK 列
                 if (i < ukProns.size) {
-                    PronunciationChip(ukProns[i], darkMode, glassBorder, Modifier.weight(1f)) { onPlay(ukProns[i]) }
+                    CompactPronunciationRow(ukProns[i], darkMode, Modifier.weight(1f)) { onPlay(ukProns[i]) }
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }
-                // US 列
                 if (i < usProns.size) {
-                    PronunciationChip(usProns[i], darkMode, glassBorder, Modifier.weight(1f)) { onPlay(usProns[i]) }
+                    CompactPronunciationRow(usProns[i], darkMode, Modifier.weight(1f)) { onPlay(usProns[i]) }
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -455,58 +448,39 @@ private fun PronunciationChipsRow(
 }
 
 @Composable
-private fun PronunciationChip(
+private fun CompactPronunciationRow(
     pron: PronunciationEntry,
     darkMode: Boolean,
-    glassBorder: Color,
     modifier: Modifier = Modifier,
     onPlay: () -> Unit
 ) {
-    // 亚克力质感：半透明渐变背景 + 高光边框 + 柔和阴影
-    val chipBg = if (darkMode) {
-        Brush.linearGradient(
-            colors = listOf(GdictColors.DarkSubtleHover.copy(alpha = 0.7f), GdictColors.BlueSurfaceGlassDark.copy(alpha = 0.5f))
-        )
-    } else {
-        Brush.linearGradient(
-            colors = listOf(Color.White.copy(alpha = 0.6f), GdictColors.BluePrimaryLight.copy(alpha = 0.22f))
-        )
-    }
-    val highlightBorder = if (darkMode) {
-        Color.White.copy(alpha = 0.15f)
-    } else {
-        Color.White.copy(alpha = 0.7f)
-    }
     val ipaColor = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
 
-    Box(
+    Row(
         modifier = modifier
-            .shadow(3.dp, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, highlightBorder, RoundedCornerShape(20.dp))
-            .background(chipBg)
+            .clip(RoundedCornerShape(14.dp))
+            .border(0.5.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(14.dp))
+            .background(
+                if (darkMode) GdictColors.DarkSubtleHover.copy(alpha = 0.4f)
+                else GdictColors.BluePrimaryLight.copy(alpha = 0.12f)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FlagBadge(pron.region, size = 28.dp)
-            if (pron.ipa.isNotEmpty()) {
-                Text(
-                    pron.ipa,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = ipaColor,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-            SpeakerButton(onPlay)
+        FlagBadge(pron.region, size = 22.dp)
+        if (pron.ipa.isNotEmpty()) {
+            Text(
+                pron.ipa,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = ipaColor,
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
         }
+        SpeakerButton(onPlay, size = 32.dp)
     }
 }
 
@@ -560,7 +534,7 @@ private fun WordFormChip(
 }
 
 @Composable
-private fun SpeakerButton(onPlay: () -> Unit) {
+private fun SpeakerButton(onPlay: () -> Unit, size: Dp = 40.dp) {
     var playing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -572,7 +546,7 @@ private fun SpeakerButton(onPlay: () -> Unit) {
     )
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(size)
             .clip(CircleShape)
             .background(GdictColors.Primary.copy(alpha = if (playing) pulseAlpha else 0.14f))
             .border(0.5.dp, GdictColors.BlueHighlightBorder, CircleShape)
@@ -591,7 +565,7 @@ private fun SpeakerButton(onPlay: () -> Unit) {
             Icons.Default.VolumeUp,
             contentDescription = null,
             tint = GdictColors.OnPrimary,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size((size.value * 0.5f).dp)
         )
     }
 }
