@@ -375,6 +375,10 @@ private fun FlashcardReviewView(
 
     val parsed = remember(item.definition) { parseDefinition(item.definition) }
     val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
+    // 柯林斯3rd：用原生解析 + 共享释义渲染（与详情页一致）
+    val collinsEntry = remember(item.definition, item.word) {
+        if (isCollins3rdEntry(item.definition)) parseCollinsEntry(item.definition, item.word) else null
+    }
 
     val progress = (currentIndex + 1).toFloat() / totalCount
 
@@ -467,6 +471,8 @@ private fun FlashcardReviewView(
                         word = item.word,
                         dictName = dictName,
                         parsed = parsed,
+                        collinsEntry = collinsEntry,
+                        darkMode = darkMode,
                         textColor = textColor,
                         subtitleColor = subtitleColor
                     )
@@ -574,9 +580,12 @@ private fun FlashcardBack(
     word: String,
     dictName: String,
     parsed: ParsedDefinition,
+    collinsEntry: CollinsEntry?,
+    darkMode: Boolean,
     textColor: Color,
     subtitleColor: Color
 ) {
+    val primaryTint = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -608,70 +617,100 @@ private fun FlashcardBack(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            if (parsed.wordForms.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(GdictColors.PrimarySoft.copy(alpha = 0.08f))
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
+            if (collinsEntry != null && collinsEntry.parsedOk) {
+                // —— 柯林斯3rd：原生渲染（与详情页一致）——
+                // 词频棱形
+                if (collinsEntry.frequency > 0) {
+                    FrequencyDiamondsBlue(frequency = collinsEntry.frequency, primaryTint = primaryTint)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                // 词形变化
+                if (collinsEntry.wordForms.isNotEmpty()) {
                     Text(
-                        text = parsed.wordForms.joinToString(" "),
+                        text = collinsEntry.wordForms,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = textColor,
+                        color = subtitleColor,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+                // 释义列表（编号圆形 + POS 徽标 + 词头高亮 + 例句）
+                if (collinsEntry.definitions.isNotEmpty()) {
+                    CollinsSensesList(
+                        definitions = collinsEntry.definitions,
+                        headword = collinsEntry.word.ifEmpty { word },
+                        textColor = textColor,
+                        subtitleColor = subtitleColor,
+                        primaryTint = primaryTint
+                    )
+                }
+            } else {
+                // —— 通用渲染（原有逻辑）——
+                if (parsed.wordForms.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(GdictColors.PrimarySoft.copy(alpha = 0.08f))
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = parsed.wordForms.joinToString(" "),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
-            if (parsed.posTags.isNotEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    parsed.posTags.forEach { tag ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .border(
-                                    width = 1.5.dp,
-                                    color = GdictColors.TealAccent.copy(alpha = 0.65f),
-                                    shape = RoundedCornerShape(6.dp)
+                if (parsed.posTags.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        parsed.posTags.forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = GdictColors.TealAccent.copy(alpha = 0.65f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "[$tag]",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = GdictColors.TealAccent
                                 )
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (parsed.definitions.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        parsed.definitions.forEachIndexed { index, def ->
                             Text(
-                                text = "[$tag]",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = GdictColors.TealAccent
+                                text = def,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (index == 0) textColor else subtitleColor,
+                                lineHeight = 26.sp,
+                                textAlign = TextAlign.Start
                             )
                         }
                     }
+                } else {
+                    Text(
+                        text = "(No definition)",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = subtitleColor,
+                        lineHeight = 26.sp
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            if (parsed.definitions.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    parsed.definitions.forEachIndexed { index, def ->
-                        Text(
-                            text = def,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (index == 0) textColor else subtitleColor,
-                            lineHeight = 26.sp,
-                            textAlign = TextAlign.Start
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    text = "(No definition)",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = subtitleColor,
-                    lineHeight = 26.sp
-                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

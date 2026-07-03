@@ -90,11 +90,9 @@ fun WordDetailScreen(
 
     // 柯林斯3rd词典检测：只有 HTML 含 ◆◇ 词频棱形 或 <font...669900...> 绿色词性标签
     // 的才是柯林斯3rd（ccald/css 名仅供参考）。COBUILD等同义词页结构不同，回退 WebView。
-    val hasCollinsFreq = definition.contains("◆") || definition.contains("◇")
-    val hasCollinsGreenPos = definition.contains("669900", ignoreCase = true)
     val isCollinsDict = (dictionaryName.contains("collins", ignoreCase = true) ||
             dictionaryName.contains("柯林斯", ignoreCase = true)) &&
-            (hasCollinsFreq || hasCollinsGreenPos)
+            isCollins3rdEntry(definition)
     android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict isCollinsDict=$isCollinsDict dict=$dictionaryName word=$word cssHead=${css.take(100)} defHead=${definition.take(300)}")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)

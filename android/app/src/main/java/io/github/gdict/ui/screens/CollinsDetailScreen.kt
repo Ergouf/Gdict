@@ -231,7 +231,7 @@ fun CollinsDetailContent(
                             // 词频棱形（◆◇◇◇◇ = 1 星低频词），品牌蓝主题色
                             if (data.frequency > 0) {
                                 Spacer(modifier = Modifier.height(6.dp))
-                                FrequencyDiamonds(
+                                FrequencyDiamondsBlue(
                                     frequency = data.frequency,
                                     primaryTint = primaryTint
                                 )
@@ -250,88 +250,13 @@ fun CollinsDetailContent(
 
                             // 释义区域（按设计稿：编号圆形 + 词性徽标 + 释义 + 例句）
                             if (data.definitions.isNotEmpty()) {
-                                data.definitions.forEachIndexed { index, def ->
-                                    Spacer(modifier = Modifier.height(18.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        // 编号圆形（品牌蓝边框 + 蓝字）
-                                        Box(
-                                            modifier = Modifier
-                                                .size(22.dp)
-                                                .clip(RoundedCornerShape(11.dp))
-                                                .border(1.dp, primaryTint, RoundedCornerShape(11.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "${index + 1}",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = primaryTint
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            // [POS] 徽标（蓝色 pill）
-                                            if (def.pos.isNotEmpty()) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(6.dp))
-                                                        .background(GdictColors.Primary.copy(alpha = 0.12f))
-                                                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                                                ) {
-                                                    Text(
-                                                        def.pos,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = primaryTint
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            // 释义文本（词头加粗高亮）
-                                            if (def.definition.isNotEmpty()) {
-                                                val annotated = remember(def.definition, displayWord) {
-                                                    buildAnnotatedDef(def.definition, displayWord, textColor, primaryTint)
-                                                }
-                                                Text(
-                                                    annotated,
-                                                    fontSize = 15.sp,
-                                                    lineHeight = 22.sp
-                                                )
-                                            }
-                                            // 例句（蓝色圆点 + 斜体，词头加粗）
-                                            def.examples.forEach { ex ->
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(start = 2.dp, top = 6.dp),
-                                                    verticalAlignment = Alignment.Top
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .padding(top = 7.dp)
-                                                            .size(5.dp)
-                                                            .clip(RoundedCornerShape(2.5.dp))
-                                                            .background(primaryTint)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    val annotatedEx = remember(ex, displayWord) {
-                                                        buildAnnotatedDef(ex, displayWord, subtitleColor, primaryTint)
-                                                    }
-                                                    Text(
-                                                        annotatedEx,
-                                                        fontSize = 14.sp,
-                                                        fontStyle = FontStyle.Italic,
-                                                        lineHeight = 20.sp,
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                CollinsSensesList(
+                                    definitions = data.definitions,
+                                    headword = displayWord,
+                                    textColor = textColor,
+                                    subtitleColor = subtitleColor,
+                                    primaryTint = primaryTint
+                                )
                             } else {
                                 // 回退：WebView 渲染全部内容
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -415,9 +340,10 @@ private fun buildAnnotatedDef(
 /**
  * Collins 词频棱形显示：5 个位置，前 [frequency] 个为实心 ◆，其余为空心 ◇。
  * 实心用品牌蓝，空心用品牌蓝 25% 透明度（替代原黑色的 ◆◇）。
+ * 详情页与闪卡背面共用。
  */
 @Composable
-private fun FrequencyDiamonds(
+internal fun FrequencyDiamondsBlue(
     frequency: Int,
     primaryTint: Color,
     total: Int = 5
@@ -434,7 +360,106 @@ private fun FrequencyDiamonds(
     }
 }
 
-// endregion
+/**
+ * 判断 HTML 是否为柯林斯3rd词条（含 ◆◇ 词频棱形 或 绿色 669900 词性标签）。
+ * 供 WordDetailScreen / FlashcardScreen 共用，确保路由判断一致。
+ */
+fun isCollins3rdEntry(definition: String): Boolean {
+    return definition.contains("◆") || definition.contains("◇") ||
+            definition.contains("669900", ignoreCase = true)
+}
+
+/**
+ * 柯林斯3rd释义列表渲染（编号圆形 + POS 徽标 + 词头高亮释义 + 圆点例句）。
+ * 详情页和闪卡背面共用，确保视觉一致。
+ */
+@Composable
+fun CollinsSensesList(
+    definitions: List<CollinsDefinition>,
+    headword: String,
+    textColor: Color,
+    subtitleColor: Color,
+    primaryTint: Color
+) {
+    definitions.forEachIndexed { index, def ->
+        Spacer(modifier = Modifier.height(18.dp))
+        // 编号圆形 + 词性徽标（同一水平线）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .border(1.dp, primaryTint, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "${index + 1}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = primaryTint
+                )
+            }
+            if (def.pos.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(GdictColors.Primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        def.pos,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryTint
+                    )
+                }
+            }
+        }
+        // 释义文本 + 例句（编号下方，左侧缩进对齐编号宽度）
+        if (def.definition.isNotEmpty() || def.examples.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Column(modifier = Modifier.padding(start = 32.dp)) {
+                if (def.definition.isNotEmpty()) {
+                    val annotated = remember(def.definition, headword) {
+                        buildAnnotatedDef(def.definition, headword, textColor, primaryTint)
+                    }
+                    Text(annotated, fontSize = 15.sp, lineHeight = 22.sp)
+                }
+                def.examples.forEach { ex ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 2.dp, top = 6.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 7.dp)
+                                .size(5.dp)
+                                .clip(RoundedCornerShape(2.5.dp))
+                                .background(primaryTint)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        val annotatedEx = remember(ex, headword) {
+                            buildAnnotatedDef(ex, headword, subtitleColor, primaryTint)
+                        }
+                        Text(
+                            annotatedEx,
+                            fontSize = 14.sp,
+                            fontStyle = FontStyle.Italic,
+                            lineHeight = 20.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 // region 柯林斯 HTML 解析
 
@@ -447,7 +472,7 @@ private fun FrequencyDiamonds(
  *   <img src="bullet.png"><font color="#004080"><i>例句</i></font>  ← 例句（蓝色斜体）
  *   +<b>read </b><font color="#669900">[N-SING...]</font> ...       ← 下一释义由 +<b> 分隔
  */
-private fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
+internal fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
     // 0. 词频棱形：HTML 开头的 ◆◇◇◇◇ 序列，◆ 实心数 = 词频星级
     val freqMatch = Regex("""^[◆◇]+""").find(definition)
     val frequency = freqMatch?.value?.count { it == '◆' } ?: 0
