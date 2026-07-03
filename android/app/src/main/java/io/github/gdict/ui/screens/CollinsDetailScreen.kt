@@ -244,33 +244,6 @@ fun CollinsDetailContent(
                                 )
                             }
 
-                            // 诊断面板
-                            Spacer(modifier = Modifier.height(16.dp))
-                            val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    "[DIAG] parsedOk=${data.parsedOk} defs=${data.definitions.size} freq=${data.frequency} forms='${data.wordForms.take(40)}' audio=${audioPath != null}",
-                                    fontSize = 10.sp,
-                                    color = diagColor,
-                                    lineHeight = 14.sp
-                                )
-                                data.definitions.forEachIndexed { i, d ->
-                                    Text(
-                                        "[S$i] pos='${d.pos}' def='${d.definition.take(60)}' ex=${d.examples.size}",
-                                        fontSize = 9.sp,
-                                        color = diagColor.copy(alpha = 0.85f),
-                                        lineHeight = 12.sp
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "[HTML] ${definition.take(800)}",
-                                    fontSize = 9.sp,
-                                    color = diagColor.copy(alpha = 0.7f),
-                                    lineHeight = 12.sp
-                                )
-                            }
-
                             // 释义区域
                             if (data.definitions.isNotEmpty()) {
                                 data.definitions.forEach { def ->

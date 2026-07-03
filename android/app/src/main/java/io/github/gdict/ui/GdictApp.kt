@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Person
@@ -256,10 +257,24 @@ fun GdictBottomBar(
 ) {
     val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
     val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    // 底栏区域背景：与各页面渐变底部一致，遮住窗口白色背景（主题为 Material.Light，
+    // 窗口始终白底，浮动导航栏周围的透明区会露出白色，夜间模式下尤其突兀）。
+    val barAreaGradient = if (darkMode) {
+        Brush.verticalGradient(
+            0.0f to GdictColors.DarkBackground,
+            1.0f to GdictColors.DarkSurfaceVariant
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to GdictColors.Background,
+            1.0f to Color.White
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .background(barAreaGradient)
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 12.dp)
     ) {
