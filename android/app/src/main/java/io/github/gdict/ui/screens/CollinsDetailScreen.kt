@@ -244,6 +244,14 @@ fun CollinsDetailContent(
                                     color = diagColor,
                                     lineHeight = 14.sp
                                 )
+                                data.definitions.forEachIndexed { i, d ->
+                                    Text(
+                                        "[S$i] pos='${d.pos}' def='${d.definition.take(60)}' ex=${d.examples.size}",
+                                        fontSize = 9.sp,
+                                        color = diagColor.copy(alpha = 0.85f),
+                                        lineHeight = 12.sp
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     "[HTML] ${definition.take(800)}",
@@ -349,18 +357,19 @@ private fun parseCollinsEntry(definition: String, fallbackWord: String): Collins
     val word = tokens.firstOrNull()?.ifEmpty { fallbackWord } ?: fallbackWord
     val wordForms = cleanedBold
 
-    // 2. 按 +<b> 切分多释义
-    val senseParts = Regex("""\+<b>""").split(definition)
+    // 2. 以释义头 <b>...</b><font...669900...> 为边界切分多释义。
+    //    兼容 "+<b>..." 与 "<img>+<b>..." 两种分隔方式；
+    //    "=<b>同义词</b>" 后面没有绿色词性，不会被误判为释义头。
+    val senseHeaderPattern = Regex(
+        """<b>.*?</b>\s*<font[^>]*color=#?"?669900"?[^>]*>""",
+        RegexOption.DOT_MATCHES_ALL
+    )
+    val headers = senseHeaderPattern.findAll(definition).toList()
     val senses = mutableListOf<String>()
-    senseParts.forEachIndexed { i, part ->
-        if (i == 0) {
-            // 第一段：从第一个 <b> 开始（跳过节字母头部）
-            val firstB = part.indexOf("<b>")
-            if (firstB >= 0) senses.add(part.substring(firstB))
-        } else {
-            // 后续段：补回 <b> 前缀
-            senses.add("<b>" + part)
-        }
+    headers.forEachIndexed { i, m ->
+        val start = m.range.first
+        val end = if (i + 1 < headers.size) headers[i + 1].range.first else definition.length
+        if (start < end) senses.add(definition.substring(start, end))
     }
 
     // 3. 逐释义解析 POS / 释义 / 例句
@@ -386,14 +395,15 @@ private fun parseCollinsSense(html: String): CollinsDefinition? {
     return CollinsDefinition(pos, defText, examples)
 }
 
-/** 提取绿色词性标签 <font color=#669900>[VB]</font> */
+/** 提取绿色词性标签 <font color=#669900>[VB]</font>，取冒号前的主词性 */
 private fun extractGreenPos(html: String): String {
     val match = Regex(
         """<font[^>]*color=#?"?669900"?[^>]*>(.*?)</font>""",
         RegexOption.DOT_MATCHES_ALL
     ).find(html) ?: return ""
     val raw = cleanCollinsText(match.groupValues[1])
-    return raw.removePrefix("[").removeSuffix("]").trim()
+        .removePrefix("[").removeSuffix("]").trim()
+    return raw.substringBefore(":").trim()
 }
 
 /** 提取蓝色斜体例句 <font color="#004080"><i>...</i></font> */
@@ -407,7 +417,7 @@ private fun extractBlueExamples(html: String): List<String> {
         .toList()
 }
 
-/** 提取释义文本：POS 标签之后、第一个 <img（例句图标）或 +<b>（下一释义）之前 */
+/** 提取释义文本：POS 标签之后、第一个 <img（例句图标）/ +<b>（下一释义）/ =<b>（同义词）之前 */
 private fun extractSenseDefinition(html: String, pos: String): String {
     val startPos = if (pos.isNotEmpty()) {
         Regex("""<font[^>]*color=#?"?669900"?[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
@@ -419,19 +429,23 @@ private fun extractSenseDefinition(html: String, pos: String): String {
     val afterPos = if (startPos < html.length) html.substring(startPos) else ""
     val imgIdx = afterPos.indexOf("<img")
     val plusIdx = afterPos.indexOf("+<b>")
-    val endIdx = listOf(imgIdx, plusIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
+    val eqIdx = afterPos.indexOf("=<b>")
+    val endIdx = listOf(imgIdx, plusIdx, eqIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
     val defRegion = afterPos.substring(0, endIdx.coerceAtLeast(0).coerceAtMost(afterPos.length))
     return cleanCollinsText(defRegion).trim()
 }
 
 private fun cleanCollinsText(html: String): String {
     return html.replace(Regex("<[^>]+>"), "")
+        // Collins 数据中部分内联加粗/斜体被损坏为 ^bp...^/by / ^ip...^/iy 形式，按伪标签清除
+        .replace(Regex("""\^/?[biu][a-z]?"""), "")
         .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&nbsp;", " ")
         .replace("&#39;", "'")
         .replace("&quot;", "\"")
+        .replace("^", "")
         .replace(Regex("\\s+"), " ")
         .trim()
 }
