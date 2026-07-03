@@ -163,7 +163,7 @@ fun CollinsDetailContent(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp)
                 ) {
-                    // 功能按钮区
+                    // 功能按钮区（两端间距与中间间距一致）
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -174,7 +174,9 @@ fun CollinsDetailContent(
                             glassBg = glassBg,
                             glassBorder = glassBorder,
                             darkMode = darkMode,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 6.dp),
                             onClick = onToggleBookmark
                         )
                         PronActionButton(
@@ -183,12 +185,14 @@ fun CollinsDetailContent(
                             glassBg = glassBg,
                             glassBorder = glassBorder,
                             darkMode = darkMode,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 6.dp),
                             onClick = onShare
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Floating Acrylic Card
                     Box(

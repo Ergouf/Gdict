@@ -194,6 +194,9 @@ fun PronunciationDetailContent(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp)
                 ) {
+                    // 顶部间距：与搜索框底部 6dp 合计 12dp，统一各段间距
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     // 功能按钮区（两端间距与中间间距一致）
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -223,7 +226,7 @@ fun PronunciationDetailContent(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Floating Acrylic Card — 紧凑布局
                     Box(
@@ -328,7 +331,7 @@ private fun FloatingSearchField(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp)
+            .padding(horizontal = 24.dp, vertical = 6.dp)
             .shadow(3.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
             .border(1.dp, glassBorder, RoundedCornerShape(28.dp))
