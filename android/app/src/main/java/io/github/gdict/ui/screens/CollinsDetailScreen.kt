@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,7 +53,6 @@ import io.github.gdict.ui.webview.MdxWebView
 
 data class CollinsEntry(
     val word: String,
-    val partOfSpeech: String,
     val pronunciations: List<CollinsPronunciation>,
     val definitions: List<CollinsDefinition>,
     val wordForms: String,
@@ -61,22 +60,23 @@ data class CollinsEntry(
 )
 
 data class CollinsPronunciation(
-    val region: String, // "UK" or "US"
+    val region: String,
     val ipa: String,
     val audioPath: String?
 )
 
 data class CollinsDefinition(
+    val pos: String,
     val definition: String,
-    val examples: List<String>,
-    val grammarNote: String
+    val examples: List<String>
 )
 
 // endregion
 
 /**
  * 柯林斯3rd词典详情页 —— Fluent Design 2 / Acrylic Glass 原生渲染。
- * 诊断模式：显示HTML结构帮助定位解析逻辑。
+ * HTML 结构： <b>word forms</b><font color=#669900>[POS]</font> 释义 <img><font color=#004080><i>例句</i></font>
+ * 多释义由 +<b> 分隔。
  */
 @Composable
 fun CollinsDetailContent(
@@ -201,46 +201,36 @@ fun CollinsDetailContent(
                                 .padding(24.dp)
                         ) {
                             val displayWord = data.word.ifEmpty { word }
+                            val audioPath = data.pronunciations.firstOrNull()?.audioPath
 
-                            // 单词标题
-                            Text(
-                                displayWord,
-                                fontSize = 40.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                                lineHeight = 46.sp
-                            )
-
-                            // 词性
-                            if (data.partOfSpeech.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(4.dp))
+                            // 单词标题 + 发音按钮
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    data.partOfSpeech,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = primaryTint,
-                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                    displayWord,
+                                    fontSize = 40.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                    lineHeight = 46.sp,
+                                    modifier = Modifier.weight(1f)
                                 )
-                            }
-
-                            // 发音
-                            if (data.pronunciations.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                CollinsPronunciationRows(
-                                    pronunciations = data.pronunciations,
-                                    darkMode = darkMode
-                                ) { entry ->
-                                    playAudio(entry.audioPath, displayWord)
-                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                SpeakerButton(
+                                    onPlay = { playAudio(audioPath, displayWord) },
+                                    size = 44.dp
+                                )
                             }
 
                             // 词形变化
                             if (data.wordForms.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     data.wordForms,
-                                    fontSize = 14.sp,
-                                    color = subtitleColor
+                                    fontSize = 15.sp,
+                                    color = subtitleColor,
+                                    fontStyle = FontStyle.Italic
                                 )
                             }
 
@@ -249,64 +239,65 @@ fun CollinsDetailContent(
                             val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    "[DIAG] parsedOk=${data.parsedOk} prons=${data.pronunciations.size} defs=${data.definitions.size} pos='${data.partOfSpeech}' forms='${data.wordForms.take(30)}'",
+                                    "[DIAG] parsedOk=${data.parsedOk} defs=${data.definitions.size} forms='${data.wordForms.take(40)}' audio=${audioPath != null}",
                                     fontSize = 10.sp,
                                     color = diagColor,
                                     lineHeight = 14.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "[CSS] ${css.take(200)}",
-                                    fontSize = 9.sp,
-                                    color = diagColor.copy(alpha = 0.7f),
-                                    lineHeight = 12.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "[HTML] ${definition.take(1000)}",
+                                    "[HTML] ${definition.take(800)}",
                                     fontSize = 9.sp,
                                     color = diagColor.copy(alpha = 0.7f),
                                     lineHeight = 12.sp
                                 )
                             }
 
-                            // 释义区域（如果有原生解析的释义）
+                            // 释义区域
                             if (data.definitions.isNotEmpty()) {
-                                data.definitions.forEachIndexed { index, def ->
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    // Accent Bar + 释义
-                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                data.definitions.forEach { def ->
+                                    Spacer(modifier = Modifier.height(18.dp))
+                                    // [POS] 徽标
+                                    if (def.pos.isNotEmpty()) {
                                         Box(
                                             modifier = Modifier
-                                                .width(3.dp)
-                                                .height(20.dp)
-                                                .clip(RoundedCornerShape(2.dp))
-                                                .background(GdictColors.Primary)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(GdictColors.Primary.copy(alpha = 0.12f))
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(
+                                                def.pos,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = primaryTint
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                    // 释义文本
+                                    if (def.definition.isNotEmpty()) {
                                         Text(
-                                            "${index + 1}. ${def.definition}",
+                                            def.definition,
                                             fontSize = 15.sp,
                                             color = textColor,
-                                            lineHeight = 22.sp,
-                                            modifier = Modifier.weight(1f)
+                                            lineHeight = 22.sp
                                         )
                                     }
+                                    // 例句
                                     def.examples.forEach { ex ->
-                                        Row(modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 12.dp, top = 4.dp)) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(4.dp)
-                                                    .clip(CircleShape)
-                                                    .background(GdictColors.Primary.copy(alpha = 0.5f))
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 4.dp, top = 6.dp),
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Text("•", fontSize = 14.sp, color = primaryTint)
+                                            Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 ex,
                                                 fontSize = 14.sp,
                                                 color = subtitleColor,
+                                                fontStyle = FontStyle.Italic,
                                                 lineHeight = 20.sp,
                                                 modifier = Modifier.weight(1f)
                                             )
@@ -338,217 +329,99 @@ fun CollinsDetailContent(
     }
 }
 
-// region 柯林斯发音行
-
-@Composable
-private fun CollinsPronunciationRows(
-    pronunciations: List<CollinsPronunciation>,
-    darkMode: Boolean,
-    onPlay: (CollinsPronunciation) -> Unit
-) {
-    val ukProns = pronunciations.filter { it.region.equals("UK", true) }
-    val usProns = pronunciations.filter { it.region.equals("US", true) }
-    val allProns = if (ukProns.isEmpty() && usProns.isEmpty()) pronunciations else ukProns + usProns
-
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        allProns.forEach { pron ->
-            val ipaColor = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .border(0.5.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(14.dp))
-                    .background(
-                        if (darkMode) GdictColors.DarkSubtleHover.copy(alpha = 0.4f)
-                        else GdictColors.BluePrimaryLight.copy(alpha = 0.12f)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (pron.region.isNotEmpty()) {
-                    Text(
-                        pron.region,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ipaColor,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(GdictColors.Primary.copy(alpha = 0.1f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                if (pron.ipa.isNotEmpty()) {
-                    Text(
-                        pron.ipa,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = ipaColor,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-                SpeakerButton(onPlay = { onPlay(pron) }, size = 32.dp)
-            }
-        }
-    }
-}
-
-// endregion
-
 // region 柯林斯 HTML 解析
 
+/**
+ * 柯林斯3rd HTML 结构：
+ *   C <br><img src="audio.png">              ← 节字母 + 音频图标
+ *   <b>read reads reading read </b>          ← 单词 + 词形变化
+ *   <font color=#669900">[VB]</font>         ← 词性（绿色方括号）
+ *   <br> 释义文本 <br>                         ← 释义
+ *   <img src="bullet.png"><font color="#004080"><i>例句</i></font>  ← 例句（蓝色斜体）
+ *   +<b>read </b><font color="#669900">[N-SING...]</font> ...       ← 下一释义由 +<b> 分隔
+ */
 private fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
-    val word = extractCollinsWord(definition).ifEmpty { fallbackWord }
-    val partOfSpeech = extractCollinsPos(definition)
-    val pronunciations = extractCollinsPronunciations(definition)
-    val definitions = extractCollinsDefinitions(definition)
-    val wordForms = extractCollinsWordForms(definition)
-    val parsedOk = word.isNotEmpty() && (pronunciations.isNotEmpty() || definitions.isNotEmpty() || partOfSpeech.isNotEmpty())
-    return CollinsEntry(word, partOfSpeech, pronunciations, definitions, wordForms, parsedOk)
-}
+    // 1. 第一个 <b>...</b> = 单词 + 词形变化
+    val firstBoldMatch = Regex("""<b>(.*?)</b>""", RegexOption.DOT_MATCHES_ALL).find(definition)
+    val firstBoldRaw = firstBoldMatch?.groupValues?.get(1) ?: ""
+    val cleanedBold = cleanCollinsText(firstBoldRaw)
+    val tokens = cleanedBold.split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val word = tokens.firstOrNull()?.ifEmpty { fallbackWord } ?: fallbackWord
+    val wordForms = cleanedBold
 
-private fun extractCollinsWord(definition: String): String {
-    // 尝试多种柯林斯HTML格式
-    // 1. <span class="HWD">word</span> (Collins 大写类名)
-    extractSpanClass(definition, "HWD").takeIf { it.isNotEmpty() }?.let { return it }
-    // 2. <span class="hw">word</span>
-    extractSpanClass(definition, "hw").takeIf { it.isNotEmpty() }?.let { return it }
-    // 3. <hw>word</hw>
-    Regex("""<hw[^>]*>(.*?)</hw>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.let {
-        return cleanCollinsText(it.groupValues[1]).replace("|", "")
+    // 2. 按 +<b> 切分多释义
+    val senseParts = Regex("""\+<b>""").split(definition)
+    val senses = mutableListOf<String>()
+    senseParts.forEachIndexed { i, part ->
+        if (i == 0) {
+            // 第一段：从第一个 <b> 开始（跳过节字母头部）
+            val firstB = part.indexOf("<b>")
+            if (firstB >= 0) senses.add(part.substring(firstB))
+        } else {
+            // 后续段：补回 <b> 前缀
+            senses.add("<b>" + part)
+        }
     }
-    // 4. <span class="headword">word</span>
-    extractSpanClass(definition, "headword").takeIf { it.isNotEmpty() }?.let { return it }
-    // 5. <h2>word</h2> 或 <h3>word</h3>
-    Regex("""<h[1-4][^>]*>(.*?)</h[1-4]>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.let {
-        val w = cleanCollinsText(it.groupValues[1])
-        if (w.length < 50) return w
-    }
-    return ""
-}
 
-private fun extractCollinsPos(definition: String): String {
-    // <span class="POS">noun</span>
-    extractSpanClass(definition, "POS").takeIf { it.isNotEmpty() }?.let { return it }
-    // <span class="pos">noun</span>
-    extractSpanClass(definition, "pos").takeIf { it.isNotEmpty() }?.let { return it }
-    // <pos>noun</pos>
-    Regex("""<pos[^>]*>(.*?)</pos>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.let {
-        return cleanCollinsText(it.groupValues[1])
-    }
-    // <span class="wordclass">verb</span>
-    extractSpanClass(definition, "wordclass").takeIf { it.isNotEmpty() }?.let { return it }
-    // <gram>verb</gram>
-    Regex("""<gram[^>]*>(.*?)</gram>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.let {
-        return cleanCollinsText(it.groupValues[1])
-    }
-    return ""
-}
+    // 3. 逐释义解析 POS / 释义 / 例句
+    val definitions = senses.mapNotNull { parseCollinsSense(it) }
 
-private fun extractCollinsPronunciations(definition: String): List<CollinsPronunciation> {
-    val result = mutableListOf<CollinsPronunciation>()
-
-    // 搜索国旗图片
-    val flagPattern = Regex(
-        """<img[^>]*src=["'][^"']*(uk_sound|us_sound|uk|us|gb|american)\.png[^"']*["'][^>]*>""",
-        RegexOption.IGNORE_CASE
+    // 4. 音频：sound:// 链接（若有）
+    val audioPath = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+        .find(definition)?.groupValues?.get(1)
+    val pronunciations = listOfNotNull(
+        if (audioPath != null) CollinsPronunciation("", "", audioPath) else null
     )
-    val flags = flagPattern.findAll(definition).toList()
 
-    // 搜索所有 IPA
-    val ipas = mutableListOf<Pair<String, String>>() // (region, ipa)
-    // <span class="PRON">...</span>
-    Regex("""<span[^>]*class=["'][^"']*\bPRON\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add("UK" to cleanCollinsText(it.groupValues[1])) }
-    // <span class="pron">...</span>
-    Regex("""<span[^>]*class=["'][^"']*\bpron\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add("UK" to cleanCollinsText(it.groupValues[1])) }
-    // <span class="pho">...</span>
-    Regex("""<span[^>]*class=["'][^"']*\bpho\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add("UK" to cleanCollinsText(it.groupValues[1])) }
-    // <phon>...</phon>
-    Regex("""<phon[^>]*>(.*?)</phon>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.let {
-        ipas.add("UK" to cleanCollinsText(it.groupValues[1]))
-    }
-    // 文本中的 /IPA/ 模式
-    Regex("""/([a-zA-Zˈˌːɪiːæɑːʌʊuːeɛəɜːɔːɒːθðʃʒŋəˈˌː]+)/""").findAll(definition).forEach {
-        ipas.add("UK" to "/${it.groupValues[1]}/")
-    }
-
-    // 音频链接
-    val audios = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
-        .findAll(definition).map { it.groupValues[1] }.toList()
-
-    if (flags.isNotEmpty()) {
-        flags.forEachIndexed { i, flag ->
-            val region = if (flag.groupValues[1].lowercase().let { it.contains("uk") || it.contains("gb") }) "UK" else "US"
-            val segStart = flag.range.last + 1
-            val segEnd = if (i + 1 < flags.size) flags[i + 1].range.first else definition.length
-            val segment = definition.substring(segStart, segEnd)
-            var ipa = ""
-            Regex("""/([a-zA-Zˈˌːɪiːæɑːʌʊuːeɛəɜːɔːɒːθðʃʒŋəˈˌː]+)/""").find(segment)?.let {
-                ipa = "/${it.groupValues[1]}/"
-            }
-            if (ipa.isEmpty() && i < ipas.size) ipa = ipas[i].second
-            val audio = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE).find(segment)?.groupValues?.get(1)
-                ?: audios.getOrNull(i)
-            result.add(CollinsPronunciation(region, ipa, audio))
-        }
-    } else if (ipas.isNotEmpty()) {
-        ipas.forEachIndexed { i, (region, ipa) ->
-            result.add(CollinsPronunciation(region, ipa, audios.getOrNull(i)))
-        }
-    }
-
-    return result.distinctBy { it.region + it.ipa }
+    val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
+    return CollinsEntry(word, pronunciations, definitions, wordForms, parsedOk)
 }
 
-private fun extractCollinsDefinitions(definition: String): List<CollinsDefinition> {
-    val result = mutableListOf<CollinsDefinition>()
-    // <span class="DEF">definition</span>
-    val defPattern = Regex("""<span[^>]*class=["'][^"']*\bDEF\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-    defPattern.findAll(definition).forEach { match ->
-        val defText = cleanCollinsText(match.groupValues[1])
-        if (defText.isNotEmpty()) {
-            result.add(CollinsDefinition(defText, emptyList(), ""))
-        }
-    }
-    // <def>definition</def>
-    if (result.isEmpty()) {
-        Regex("""<def[^>]*>(.*?)</def>""", RegexOption.DOT_MATCHES_ALL).findAll(definition).forEach { match ->
-            val defText = cleanCollinsText(match.groupValues[1])
-            if (defText.isNotEmpty()) {
-                result.add(CollinsDefinition(defText, emptyList(), ""))
-            }
-        }
-    }
-    // <span class="definition">definition</span>
-    if (result.isEmpty()) {
-        extractSpanClass(definition, "definition").takeIf { it.isNotEmpty() }?.let {
-            result.add(CollinsDefinition(it, emptyList(), ""))
-        }
-    }
-    return result
+private fun parseCollinsSense(html: String): CollinsDefinition? {
+    val pos = extractGreenPos(html)
+    val examples = extractBlueExamples(html)
+    val defText = extractSenseDefinition(html, pos)
+
+    if (defText.isEmpty() && examples.isEmpty() && pos.isEmpty()) return null
+    return CollinsDefinition(pos, defText, examples)
 }
 
-private fun extractCollinsWordForms(definition: String): String {
-    // <span class="INFLX">...</span> 或 <span class="inflections">...</span>
-    val inflx = extractSpanClass(definition, "INFLX").ifEmpty { extractSpanClass(definition, "inflections") }
-    if (inflx.isNotEmpty()) return inflx
-    // <span class="forms">...</span>
-    extractSpanClass(definition, "forms").takeIf { it.isNotEmpty() }?.let { return it }
-    // 搜索 word+s, word+ed, word+ing 模式
-    return ""
-}
-
-private fun extractSpanClass(content: String, className: String): String {
-    val pattern = Regex(
-        """<span[^>]*class=["'][^"']*\b$className\b[^"']*["'][^>]*>(.*?)</span>""",
+/** 提取绿色词性标签 <font color=#669900>[VB]</font> */
+private fun extractGreenPos(html: String): String {
+    val match = Regex(
+        """<font[^>]*color=#?"?669900"?[^>]*>(.*?)</font>""",
         RegexOption.DOT_MATCHES_ALL
-    )
-    return pattern.find(content)?.groupValues?.get(1)?.let { cleanCollinsText(it) } ?: ""
+    ).find(html) ?: return ""
+    val raw = cleanCollinsText(match.groupValues[1])
+    return raw.removePrefix("[").removeSuffix("]").trim()
+}
+
+/** 提取蓝色斜体例句 <font color="#004080"><i>...</i></font> */
+private fun extractBlueExamples(html: String): List<String> {
+    return Regex(
+        """<font[^>]*color=#?"?004080"?[^>]*>\s*<i>(.*?)</i>\s*</font>""",
+        RegexOption.DOT_MATCHES_ALL
+    ).findAll(html)
+        .map { cleanCollinsText(it.groupValues[1]) }
+        .filter { it.isNotEmpty() }
+        .toList()
+}
+
+/** 提取释义文本：POS 标签之后、第一个 <img（例句图标）或 +<b>（下一释义）之前 */
+private fun extractSenseDefinition(html: String, pos: String): String {
+    val startPos = if (pos.isNotEmpty()) {
+        Regex("""<font[^>]*color=#?"?669900"?[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
+            .find(html)?.range?.last?.plus(1) ?: 0
+    } else {
+        // 无 POS：跳过开头的 <b>...</b>
+        Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL).find(html)?.range?.last?.plus(1) ?: 0
+    }
+    val afterPos = if (startPos < html.length) html.substring(startPos) else ""
+    val imgIdx = afterPos.indexOf("<img")
+    val plusIdx = afterPos.indexOf("+<b>")
+    val endIdx = listOf(imgIdx, plusIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
+    val defRegion = afterPos.substring(0, endIdx.coerceAtLeast(0).coerceAtMost(afterPos.length))
+    return cleanCollinsText(defRegion).trim()
 }
 
 private fun cleanCollinsText(html: String): String {
