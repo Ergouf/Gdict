@@ -39,8 +39,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.gdict.R
@@ -244,54 +248,87 @@ fun CollinsDetailContent(
                                 )
                             }
 
-                            // 释义区域
+                            // 释义区域（按设计稿：编号圆形 + 词性徽标 + 释义 + 例句）
                             if (data.definitions.isNotEmpty()) {
-                                data.definitions.forEach { def ->
+                                data.definitions.forEachIndexed { index, def ->
                                     Spacer(modifier = Modifier.height(18.dp))
-                                    // [POS] 徽标
-                                    if (def.pos.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        // 编号圆形（品牌蓝边框 + 蓝字）
                                         Box(
                                             modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(GdictColors.Primary.copy(alpha = 0.12f))
-                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                .size(22.dp)
+                                                .clip(RoundedCornerShape(11.dp))
+                                                .border(1.dp, primaryTint, RoundedCornerShape(11.dp)),
+                                            contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                def.pos,
+                                                "${index + 1}",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = primaryTint
                                             )
                                         }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                    }
-                                    // 释义文本
-                                    if (def.definition.isNotEmpty()) {
-                                        Text(
-                                            def.definition,
-                                            fontSize = 15.sp,
-                                            color = textColor,
-                                            lineHeight = 22.sp
-                                        )
-                                    }
-                                    // 例句
-                                    def.examples.forEach { ex ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(start = 4.dp, top = 6.dp),
-                                            verticalAlignment = Alignment.Top
-                                        ) {
-                                            Text("•", fontSize = 14.sp, color = primaryTint)
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                ex,
-                                                fontSize = 14.sp,
-                                                color = subtitleColor,
-                                                fontStyle = FontStyle.Italic,
-                                                lineHeight = 20.sp,
-                                                modifier = Modifier.weight(1f)
-                                            )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            // [POS] 徽标（蓝色 pill）
+                                            if (def.pos.isNotEmpty()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(GdictColors.Primary.copy(alpha = 0.12f))
+                                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                ) {
+                                                    Text(
+                                                        def.pos,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = primaryTint
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+                                            // 释义文本（词头加粗高亮）
+                                            if (def.definition.isNotEmpty()) {
+                                                val annotated = remember(def.definition, displayWord) {
+                                                    buildAnnotatedDef(def.definition, displayWord, textColor, primaryTint)
+                                                }
+                                                Text(
+                                                    annotated,
+                                                    fontSize = 15.sp,
+                                                    lineHeight = 22.sp
+                                                )
+                                            }
+                                            // 例句（蓝色圆点 + 斜体，词头加粗）
+                                            def.examples.forEach { ex ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(start = 2.dp, top = 6.dp),
+                                                    verticalAlignment = Alignment.Top
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .padding(top = 7.dp)
+                                                            .size(5.dp)
+                                                            .clip(RoundedCornerShape(2.5.dp))
+                                                            .background(primaryTint)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    val annotatedEx = remember(ex, displayWord) {
+                                                        buildAnnotatedDef(ex, displayWord, subtitleColor, primaryTint)
+                                                    }
+                                                    Text(
+                                                        annotatedEx,
+                                                        fontSize = 14.sp,
+                                                        fontStyle = FontStyle.Italic,
+                                                        lineHeight = 20.sp,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -319,6 +356,59 @@ fun CollinsDetailContent(
         }
     }
 }
+
+// region 释义文本高亮（词头加粗着色）
+
+/**
+ * 构建带词头高亮的 AnnotatedString：在 [text] 中找到 [headword] 的所有出现，
+ * 用 [highlightColor] + Bold 渲染，其余用 [baseColor]。
+ * 大小写不敏感匹配整词。
+ */
+private fun buildAnnotatedDef(
+    text: String,
+    headword: String,
+    baseColor: Color,
+    highlightColor: Color
+): AnnotatedString {
+    if (headword.isEmpty()) {
+        return buildAnnotatedString { append(text) }
+    }
+    return buildAnnotatedString {
+        var idx = 0
+        val lowerText = text.lowercase()
+        val lowerHead = headword.lowercase()
+        while (idx <= text.length - headword.length) {
+            val found = lowerText.indexOf(lowerHead, idx)
+            if (found < 0) {
+                append(text.substring(idx))
+                break
+            }
+            // 整词边界检查：前/后字符（如有）须为非字母
+            val before = if (found > 0) text[found - 1] else ' '
+            val afterIdx = found + headword.length
+            val after = if (afterIdx < text.length) text[afterIdx] else ' '
+            val isWordBoundary = !before.isLetter() && !after.isLetter()
+            if (isWordBoundary) {
+                if (found > idx) {
+                    withStyle(SpanStyle(color = baseColor)) {
+                        append(text.substring(idx, found))
+                    }
+                }
+                withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) {
+                    append(text.substring(found, afterIdx))
+                }
+                idx = afterIdx
+            } else {
+                withStyle(SpanStyle(color = baseColor)) {
+                    append(text.substring(idx, found + 1))
+                }
+                idx = found + 1
+            }
+        }
+    }
+}
+
+// endregion
 
 // region 词频棱形
 
