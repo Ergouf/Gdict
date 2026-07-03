@@ -357,25 +357,32 @@ private fun parseCollinsEntry(definition: String, fallbackWord: String): Collins
     val word = tokens.firstOrNull()?.ifEmpty { fallbackWord } ?: fallbackWord
     val wordForms = cleanedBold
 
-    // 2. 以释义头 <b>...</b><font...669900...> 为边界切分多释义。
-    //    兼容 "+<b>..." 与 "<img>+<b>..." 两种分隔方式；
-    //    "=<b>同义词</b>" 后面没有绿色词性，不会被误判为释义头。
-    val senseHeaderPattern = Regex(
-        """<b>.*?</b>\s*<font[^>]*color=#?"?669900"?[^>]*>""",
-        RegexOption.DOT_MATCHES_ALL
-    )
-    val headers = senseHeaderPattern.findAll(definition).toList()
-    val senses = mutableListOf<String>()
-    headers.forEachIndexed { i, m ->
-        val start = m.range.first
-        val end = if (i + 1 < headers.size) headers[i + 1].range.first else definition.length
-        if (start < end) senses.add(definition.substring(start, end))
+    // 2. 以绿色词性标签 <font...669900...>...</font> 为释义锚点（鲁棒：只要 font 标签内
+    //    出现 669900 即认定，避免 color="#669900 / color=#669900" 等引号缺失变体导致漏匹配）。
+    //    每个释义的起点 = 该绿色标签之前最近的 <b>（词头）；终点 = 下一个释义的 <b> 起点（或末尾）。
+    val posFontPattern = Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
+    val posFonts = posFontPattern.findAll(definition).toList()
+
+    val definitions: List<CollinsDefinition> = if (posFonts.isEmpty()) {
+        // 无绿色词性：整体作为单个释义（回退）
+        val firstB = definition.indexOf("<b>")
+        val senseHtml = if (firstB >= 0) definition.substring(firstB) else definition
+        listOfNotNull(parseCollinsSense(senseHtml))
+    } else {
+        // 计算每个释义的起点（绿色标签前最近的 <b>）
+        val senseStarts = posFonts.map { pf ->
+            val bIdx = definition.lastIndexOf("<b>", pf.range.first)
+            if (bIdx >= 0) bIdx else pf.range.first
+        }
+        posFonts.mapIndexed { i, _ ->
+            val start = senseStarts[i]
+            val end = if (i + 1 < senseStarts.size) senseStarts[i + 1] else definition.length
+            val senseHtml = if (start < end) definition.substring(start, end) else ""
+            parseCollinsSense(senseHtml)
+        }.filterNotNull()
     }
 
-    // 3. 逐释义解析 POS / 释义 / 例句
-    val definitions = senses.mapNotNull { parseCollinsSense(it) }
-
-    // 4. 音频：sound:// 链接（若有）
+    // 3. 音频：sound:// 链接（若有）
     val audioPath = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
         .find(definition)?.groupValues?.get(1)
     val pronunciations = listOfNotNull(
@@ -395,43 +402,47 @@ private fun parseCollinsSense(html: String): CollinsDefinition? {
     return CollinsDefinition(pos, defText, examples)
 }
 
-/** 提取绿色词性标签 <font color=#669900>[VB]</font>，取冒号前的主词性 */
+/** 提取绿色词性标签 <font...669900...>[VB]</font>，取冒号前的主词性。鲁棒匹配 669900 色值。 */
 private fun extractGreenPos(html: String): String {
-    val match = Regex(
-        """<font[^>]*color=#?"?669900"?[^>]*>(.*?)</font>""",
-        RegexOption.DOT_MATCHES_ALL
-    ).find(html) ?: return ""
+    val match = Regex("""<font[^>]*669900[^>]*>(.*?)</font>""", RegexOption.DOT_MATCHES_ALL)
+        .find(html) ?: return ""
     val raw = cleanCollinsText(match.groupValues[1])
         .removePrefix("[").removeSuffix("]").trim()
     return raw.substringBefore(":").trim()
 }
 
-/** 提取蓝色斜体例句 <font color="#004080"><i>...</i></font> */
+/** 提取蓝色斜体例句 <font...004080...><i>...</i></font>。鲁棒匹配 004080 色值。 */
 private fun extractBlueExamples(html: String): List<String> {
-    return Regex(
-        """<font[^>]*color=#?"?004080"?[^>]*>\s*<i>(.*?)</i>\s*</font>""",
-        RegexOption.DOT_MATCHES_ALL
-    ).findAll(html)
+    return Regex("""<font[^>]*004080[^>]*>\s*<i>(.*?)</i>\s*</font>""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(html)
         .map { cleanCollinsText(it.groupValues[1]) }
         .filter { it.isNotEmpty() }
         .toList()
 }
 
-/** 提取释义文本：POS 标签之后、第一个 <img（例句图标）/ +<b>（下一释义）/ =<b>（同义词）之前 */
+/**
+ * 提取释义文本：POS 标签之后、首个例句图标 <img / 下一释义 +<b> / 同义词 =<b> /
+ * 独立成行的同义词条 <br><b>word</b><br> 之前。
+ * 独立同义词判断：单独一行、内容为单个无空格词、紧接 <br> ——
+ * 这样可保留句中内联的 <b>scrum</b>，只截断 <br><b>scrummage</b><br> 这类交叉引用。
+ */
 private fun extractSenseDefinition(html: String, pos: String): String {
     val startPos = if (pos.isNotEmpty()) {
-        Regex("""<font[^>]*color=#?"?669900"?[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
+        Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
             .find(html)?.range?.last?.plus(1) ?: 0
     } else {
-        // 无 POS：跳过开头的 <b>...</b>
         Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL).find(html)?.range?.last?.plus(1) ?: 0
     }
     val afterPos = if (startPos < html.length) html.substring(startPos) else ""
+
     val imgIdx = afterPos.indexOf("<img")
     val plusIdx = afterPos.indexOf("+<b>")
     val eqIdx = afterPos.indexOf("=<b>")
-    val endIdx = listOf(imgIdx, plusIdx, eqIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
-    val defRegion = afterPos.substring(0, endIdx.coerceAtLeast(0).coerceAtMost(afterPos.length))
+    // 独立同义词条：<br><b>单词</b><br>（单词不含空格）
+    val synonymIdx = Regex("""<br><b>(\w+)</b><br>""").find(afterPos)?.range?.first ?: -1
+
+    val endIdx = listOf(imgIdx, plusIdx, eqIdx, synonymIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
+    val defRegion = afterPos.substring(0, endIdx.coerceIn(0, afterPos.length))
     return cleanCollinsText(defRegion).trim()
 }
 
