@@ -56,6 +56,7 @@ data class CollinsEntry(
     val pronunciations: List<CollinsPronunciation>,
     val definitions: List<CollinsDefinition>,
     val wordForms: String,
+    val frequency: Int, // 词频星级 0-5（◆ 实心数）
     val parsedOk: Boolean
 )
 
@@ -223,6 +224,15 @@ fun CollinsDetailContent(
                                 )
                             }
 
+                            // 词频棱形（◆◇◇◇◇ = 1 星低频词），品牌蓝主题色
+                            if (data.frequency > 0) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                FrequencyDiamonds(
+                                    frequency = data.frequency,
+                                    primaryTint = primaryTint
+                                )
+                            }
+
                             // 词形变化
                             if (data.wordForms.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -239,7 +249,7 @@ fun CollinsDetailContent(
                             val diagColor = if (darkMode) Color(0xFFFFA500) else Color(0xFFCC6600)
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    "[DIAG] parsedOk=${data.parsedOk} defs=${data.definitions.size} forms='${data.wordForms.take(40)}' audio=${audioPath != null}",
+                                    "[DIAG] parsedOk=${data.parsedOk} defs=${data.definitions.size} freq=${data.frequency} forms='${data.wordForms.take(40)}' audio=${audioPath != null}",
                                     fontSize = 10.sp,
                                     color = diagColor,
                                     lineHeight = 14.sp
@@ -337,6 +347,32 @@ fun CollinsDetailContent(
     }
 }
 
+// region 词频棱形
+
+/**
+ * Collins 词频棱形显示：5 个位置，前 [frequency] 个为实心 ◆，其余为空心 ◇。
+ * 实心用品牌蓝，空心用品牌蓝 25% 透明度（替代原黑色的 ◆◇）。
+ */
+@Composable
+private fun FrequencyDiamonds(
+    frequency: Int,
+    primaryTint: Color,
+    total: Int = 5
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        for (i in 0 until total) {
+            val filled = i < frequency
+            Text(
+                if (filled) "◆" else "◇",
+                fontSize = 14.sp,
+                color = if (filled) primaryTint else primaryTint.copy(alpha = 0.25f)
+            )
+        }
+    }
+}
+
+// endregion
+
 // region 柯林斯 HTML 解析
 
 /**
@@ -349,6 +385,10 @@ fun CollinsDetailContent(
  *   +<b>read </b><font color="#669900">[N-SING...]</font> ...       ← 下一释义由 +<b> 分隔
  */
 private fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
+    // 0. 词频棱形：HTML 开头的 ◆◇◇◇◇ 序列，◆ 实心数 = 词频星级
+    val freqMatch = Regex("""^[◆◇]+""").find(definition)
+    val frequency = freqMatch?.value?.count { it == '◆' } ?: 0
+
     // 1. 第一个 <b>...</b> = 单词 + 词形变化
     val firstBoldMatch = Regex("""<b>(.*?)</b>""", RegexOption.DOT_MATCHES_ALL).find(definition)
     val firstBoldRaw = firstBoldMatch?.groupValues?.get(1) ?: ""
@@ -390,7 +430,7 @@ private fun parseCollinsEntry(definition: String, fallbackWord: String): Collins
     )
 
     val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
-    return CollinsEntry(word, pronunciations, definitions, wordForms, parsedOk)
+    return CollinsEntry(word, pronunciations, definitions, wordForms, frequency, parsedOk)
 }
 
 private fun parseCollinsSense(html: String): CollinsDefinition? {
@@ -450,6 +490,9 @@ private fun cleanCollinsText(html: String): String {
     return html.replace(Regex("<[^>]+>"), "")
         // Collins 数据中部分内联加粗/斜体被损坏为 ^bp...^/by / ^ip...^/iy 形式，按伪标签清除
         .replace(Regex("""\^/?[biu][a-z]?"""), "")
+        // 词频棱形字符（◆◇）不应出现在释义/词形文本中
+        .replace("◆", "")
+        .replace("◇", "")
         .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
