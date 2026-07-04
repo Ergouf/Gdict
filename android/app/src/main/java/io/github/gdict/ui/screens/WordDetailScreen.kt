@@ -1,14 +1,10 @@
 package io.github.gdict.ui.screens
 
 import android.speech.tts.TextToSpeech
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,8 +29,6 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +57,7 @@ import androidx.compose.ui.res.stringResource
 import io.github.gdict.R
 import io.github.gdict.data.AndroidDictionaryRepository
 import io.github.gdict.tts.EdgeTtsClient
+import io.github.gdict.ui.components.acrylicAmbientBackground
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.ui.webview.AudioPlayer
 import io.github.gdict.ui.webview.MdxWebView
@@ -86,12 +83,35 @@ fun WordDetailScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf(stringResource(R.string.tab_origin), stringResource(R.string.tab_examples), stringResource(R.string.tab_synonyms))
-    val isPronunciationDict = definition.contains("cepd18.css")
+    val isPronunciationDict = definition.contains("cepd18.css", ignoreCase = true) ||
+            definition.contains("<arl", ignoreCase = true) ||
+            definition.contains("<prongrp", ignoreCase = true) ||
+            definition.contains("<soundfile", ignoreCase = true)
+
+    // 柯林斯3rd词典检测：只有 HTML 含 ◆◇ 词频棱形 或 <font...669900...> 绿色词性标签
+    // 的才是柯林斯3rd（ccald/css 名仅供参考）。COBUILD等同义词页结构不同，回退 WebView。
+    val isCollinsDict = (dictionaryName.contains("collins", ignoreCase = true) ||
+            dictionaryName.contains("柯林斯", ignoreCase = true)) &&
+            isCollins3rdEntry(definition)
+    android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict isCollinsDict=$isCollinsDict dict=$dictionaryName word=$word cssHead=${css.take(100)} defHead=${definition.take(300)}")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
-    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
-    val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val bgGradient = if (darkMode) {
+        Brush.verticalGradient(
+            0.0f to GdictColors.DarkBackground,
+            1.0f to GdictColors.DarkSurfaceVariant
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to Color(0xFFDCEBFF),
+            0.6f to Color(0xFFEDF4FF),
+            1.0f to Color(0xFFFFFFFF)
+        )
+    }
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -115,10 +135,96 @@ fun WordDetailScreen(
         }
     }
 
+    val playPronunciationAudio: (String?, String) -> Unit = { audioPath, fallbackWord ->
+        coroutineScope.launch {
+            try {
+                var played = false
+                if (audioPath != null) {
+                    val mddAudio = withContext(Dispatchers.IO) {
+                        dictionaryRepository.getAudioResourceByPath(audioPath)
+                    }
+                    if (mddAudio != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, mddAudio) }
+                    }
+                }
+                if (!played) {
+                    val mddAudio = withContext(Dispatchers.IO) {
+                        dictionaryRepository.getAudioResource(fallbackWord)
+                    }
+                    if (mddAudio != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, mddAudio) }
+                    }
+                }
+                if (!played) {
+                    val edgeTtsData = withContext(Dispatchers.IO) { EdgeTtsClient.synthesize(fallbackWord) }
+                    if (edgeTtsData != null) {
+                        played = withContext(Dispatchers.IO) { AudioPlayer.play(context, edgeTtsData) }
+                    }
+                }
+                if (!played) {
+                    val engine = tts
+                    if (engine != null && ttsReady) {
+                        engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "pron_${System.currentTimeMillis()}")
+                    }
+                }
+            } catch (_: Exception) {
+                val engine = tts
+                if (engine != null && ttsReady) {
+                    engine.speak(fallbackWord, TextToSpeech.QUEUE_FLUSH, null, "pron_${System.currentTimeMillis()}")
+                }
+            }
+        }
+    }
+
+    if (isPronunciationDict) {
+        PronunciationDetailContent(
+            word = word,
+            definition = definition,
+            css = css,
+            isBookmarked = isBookmarked,
+            darkMode = darkMode,
+            dictionaryRepository = dictionaryRepository,
+            onBack = onBack,
+            onToggleBookmark = onToggleBookmark,
+            onEntryClick = onEntryClick,
+            onShare = { },
+            playAudio = playPronunciationAudio
+        )
+        return
+    }
+
+    if (isCollinsDict) {
+        CollinsDetailContent(
+            word = word,
+            definition = definition,
+            css = css,
+            dictionaryName = dictionaryName,
+            isBookmarked = isBookmarked,
+            darkMode = darkMode,
+            dictionaryRepository = dictionaryRepository,
+            onBack = onBack,
+            onToggleBookmark = onToggleBookmark,
+            onEntryClick = onEntryClick,
+            onShare = { },
+            playAudio = playPronunciationAudio
+        )
+        return
+    }
+
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgGradient)
+            .acrylicAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
     ) {
         Column(
             modifier = Modifier
@@ -132,17 +238,7 @@ fun WordDetailScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val backInteractionSource = remember { MutableInteractionSource() }
-                val isBackHovered by backInteractionSource.collectIsHoveredAsState()
-                val backHoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isBackHovered) backHoverColor else Color.Transparent)
-                        .hoverable(backInteractionSource)
-                ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Default.ArrowBack,
                         contentDescription = stringResource(R.string.cd_back),
@@ -156,17 +252,7 @@ fun WordDetailScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = textColor
                 )
-                val shareInteractionSource = remember { MutableInteractionSource() }
-                val isShareHovered by shareInteractionSource.collectIsHoveredAsState()
-                val shareHoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-                IconButton(
-                    onClick = { },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isShareHovered) shareHoverColor else Color.Transparent)
-                        .hoverable(shareInteractionSource)
-                ) {
+                IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Default.Share,
                         contentDescription = stringResource(R.string.cd_share),
@@ -176,15 +262,14 @@ fun WordDetailScreen(
                 }
             }
 
-            val headerStroke = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .border(1.dp, headerStroke, RoundedCornerShape(8.dp)),
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .shadow(2.dp, RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(0.5.dp, glassBorder, RoundedCornerShape(20.dp))
+                    .background(glassBg)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp)
@@ -200,14 +285,14 @@ fun WordDetailScreen(
                                 word,
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = textColor
+                                color = GdictColors.Primary
                             )
                             val partOfSpeech = remember(definition) { extractPartOfSpeech(definition) }
                             if (partOfSpeech.isNotEmpty()) {
                                 Text(
                                     partOfSpeech,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = GdictColors.OnSurfaceVariant
+                                    color = subtitleColor
                                 )
                             }
                         }
@@ -312,7 +397,8 @@ fun WordDetailScreen(
             ) {
                 ActionButtonsRow(
                     isBookmarked = isBookmarked,
-                    cardColor = cardColor,
+                    glassBg = glassBg,
+                    glassBorder = glassBorder,
                     darkMode = darkMode,
                     onToggleBookmark = onToggleBookmark
                 )
@@ -323,7 +409,8 @@ fun WordDetailScreen(
                     0 -> DefinitionCard(
                         definition = definition,
                         css = css,
-                        cardColor = cardColor,
+                        glassBg = glassBg,
+                        glassBorder = glassBorder,
                         textColor = textColor,
                         darkMode = darkMode,
                         contentScale = contentScale,
@@ -378,47 +465,49 @@ fun WordDetailScreen(
                 )
                     1 -> {
                         val examples = remember(definition) { dictionaryRepository.extractExamples(definition) }
-                        ExamplesCard(examples = examples, cardColor = cardColor, textColor = textColor, darkMode = darkMode)
+                        ExamplesCard(examples = examples, glassBg = glassBg, glassBorder = glassBorder, textColor = textColor, subtitleColor = subtitleColor, darkMode = darkMode)
                     }
                     2 -> {
                         val synonyms = remember(definition) { dictionaryRepository.extractSynonyms(definition) }
-                        SynonymsCard(synonyms = synonyms, cardColor = cardColor, textColor = textColor, darkMode = darkMode, onEntryClick = onEntryClick)
+                        SynonymsCard(synonyms = synonyms, glassBg = glassBg, glassBorder = glassBorder, textColor = textColor, subtitleColor = subtitleColor, darkMode = darkMode, onEntryClick = onEntryClick)
                     }
                 }
             }
         }
+    }
     }
 }
 
 @Composable
 private fun ExamplesCard(
     examples: List<String>,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
+    subtitleColor: Color,
     darkMode: Boolean
 ) {
-    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, strokeColor, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(20.dp))
+            .background(glassBg)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 stringResource(R.string.tab_examples),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = textColor
+                color = GdictColors.Primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             if (examples.isEmpty()) {
                 Text(
                     "暂无例句",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+                    color = subtitleColor
                 )
             } else {
                 examples.forEach { example ->
@@ -438,35 +527,34 @@ private fun ExamplesCard(
 @Composable
 private fun SynonymsCard(
     synonyms: List<String>,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
+    subtitleColor: Color,
     darkMode: Boolean,
     onEntryClick: (String) -> Unit = {}
 ) {
-    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-    val chipHover = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-    val chipContainer = if (darkMode) GdictColors.DarkPrimaryContainer else GdictColors.PrimaryContainer
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, strokeColor, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(20.dp))
+            .background(glassBg)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 stringResource(R.string.tab_synonyms),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = textColor
+                color = GdictColors.Primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             if (synonyms.isEmpty()) {
                 Text(
                     "暂无同义词",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+                    color = subtitleColor
                 )
             } else {
                 FlowRow(
@@ -474,21 +562,16 @@ private fun SynonymsCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     synonyms.forEach { synonym ->
-                        val chipInteractionSource = remember { MutableInteractionSource() }
-                        val isChipHovered by chipInteractionSource.collectIsHoveredAsState()
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isChipHovered) chipHover else chipContainer,
-                            border = BorderStroke(1.dp, strokeColor),
-                            modifier = Modifier
-                                .hoverable(chipInteractionSource)
-                                .clickable(interactionSource = chipInteractionSource, indication = null) { onEntryClick(synonym) }
+                            shape = RoundedCornerShape(12.dp),
+                            color = GdictColors.BluePrimaryLight.copy(alpha = 0.25f),
+                            modifier = Modifier.clickable { onEntryClick(synonym) }
                         ) {
                             Text(
                                 synonym,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (darkMode) GdictColors.DarkOnSurface else GdictColors.PrimarySoft,
+                                color = GdictColors.Primary,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -506,25 +589,15 @@ private fun TabButton(
     darkMode: Boolean = false,
     onClick: () -> Unit
 ) {
-    val selectedBg = if (darkMode) GdictColors.DarkSubtleSelected else GdictColors.SubtleSelected
-    val hoverBg = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-    val selectedColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.PrimarySoft
+    val selectedBg = GdictColors.BluePrimaryLight.copy(alpha = 0.25f)
+    val selectedColor = GdictColors.Primary
     val unselectedColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                when {
-                    isSelected -> selectedBg
-                    isHovered -> hoverBg
-                    else -> Color.Transparent
-                }
-            )
-            .hoverable(interactionSource)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isSelected) selectedBg else Color.Transparent)
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         Text(
@@ -539,7 +612,8 @@ private fun TabButton(
 @Composable
 private fun ActionButtonsRow(
     isBookmarked: Boolean,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     darkMode: Boolean = false,
     onToggleBookmark: () -> Unit
 ) {
@@ -550,7 +624,8 @@ private fun ActionButtonsRow(
         ActionButton(
             icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
             text = if (isBookmarked) stringResource(R.string.saved) else stringResource(R.string.add_to_favorites),
-            cardColor = cardColor,
+            glassBg = glassBg,
+            glassBorder = glassBorder,
             darkMode = darkMode,
             modifier = Modifier.weight(1f),
             onClick = onToggleBookmark
@@ -558,7 +633,8 @@ private fun ActionButtonsRow(
         ActionButton(
             icon = Icons.Default.Share,
             text = "Share",
-            cardColor = cardColor,
+            glassBg = glassBg,
+            glassBorder = glassBorder,
             darkMode = darkMode,
             modifier = Modifier.weight(1f),
             onClick = { }
@@ -570,34 +646,23 @@ private fun ActionButtonsRow(
 private fun ActionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     darkMode: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val iconTint = if (darkMode) GdictColors.DarkOnSurface else GdictColors.PrimarySoft
-    val textTint = if (darkMode) GdictColors.DarkOnSurface else GdictColors.PrimarySoft
-    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val containerColor = if (isHovered) hoverColor else cardColor
+    val iconTint = GdictColors.Primary
+    val textTint = GdictColors.Primary
 
-    Card(
+    Box(
         modifier = modifier
             .height(44.dp)
-            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
-            .hoverable(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(1.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(16.dp))
+            .background(glassBg)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -627,7 +692,8 @@ private fun ActionButton(
 private fun DefinitionCard(
     definition: String,
     css: String,
-    cardColor: Color,
+    glassBg: Color,
+    glassBorder: Color,
     textColor: Color,
     darkMode: Boolean,
     contentScale: Float = 1f,
@@ -639,18 +705,15 @@ private fun DefinitionCard(
     val scaledTitleFontSize = (14.sp * contentScale)
     val scaledTitleLineHeight = (20.sp * contentScale)
     val scaledSpacerHeight = (12.dp * contentScale)
-    val scaledCornerRadius = (8.dp * contentScale).coerceIn(8.dp, 16.dp)
-    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
+    val scaledCornerRadius = (20.dp * contentScale).coerceIn(8.dp, 24.dp)
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, strokeColor, RoundedCornerShape(scaledCornerRadius)),
-        shape = RoundedCornerShape(scaledCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .shadow(2.dp, RoundedCornerShape(scaledCornerRadius))
+            .clip(RoundedCornerShape(scaledCornerRadius))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(scaledCornerRadius))
+            .background(glassBg)
     ) {
         Column(
             modifier = Modifier.padding(scaledPadding)
@@ -662,7 +725,7 @@ private fun DefinitionCard(
                     lineHeight = scaledTitleLineHeight
                 ),
                 fontWeight = FontWeight.Bold,
-                color = textColor
+                color = GdictColors.Primary
             )
             Spacer(modifier = Modifier.height(scaledSpacerHeight))
             MdxWebView(

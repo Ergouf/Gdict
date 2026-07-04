@@ -8,14 +8,13 @@ description: Gdict 项目全局规则，AI 助手在编辑代码时必须遵循
 
 Gdict 是一款跨平台词典应用（Android + Desktop），支持 MDX/MDD 词典格式，内置 FSRS 间隔重复算法。包名 `io.github.gdict`。
 
-### 设计系统（双端统一 Fluent 风格）
+### 设计系统（双端差异）
 
-- **Android 端与 Desktop 端均采用 Fluent Design 风格**（通过 MD3 `colorScheme` 承载 Fluent 色板），双端视效保持一致
-- Fluent 规范统一遵循：8dp 圆角、1px `GdictColors.CardStroke` 描边、0 elevation（靠描边分层）、`SubtleHover` 悬停态、`indication = null` 去 ripple
-- 两端共享同一套 `GdictColors` 色值定义（品牌绿色 accent + Fluent 中性色）
-- 平台差异仅限"背景透明度"：Desktop 端背景半透明以透出 Windows 11 Mica/Acrylic 系统材料；Android 端无系统材料概念，背景不透明
-- 底栏（如复习评分栏）采用 Liquid Glass 风格：半透明背景 + 顶部边缘高光渐变 + CardStroke 边界线
-- 品牌主色（accent）固定为绿色 `#5D8A6B`，不得切换为 Fluent 默认蓝
+- **Android 端**：Material Design 3（遵循 Material You 平台惯例）+ Fluent Design 2 / Acrylic Glass 视觉
+- **Desktop 端**：Fluent Design 2 风格（通过 MD3 `colorScheme` 承载 Fluent 色板，复用 Mica/Acrylic 系统材料）
+- 两端共享同一套 `GdictColors` 色值定义（品牌蓝 accent + Fluent 中性色 + Acrylic Glass token），仅"应用层背景透明度"等平台特性有差异
+- 品牌主色（accent）固定为蓝色 `#1E8CFF`（Logo 同款蓝），全面采用 Fluent Design 2 / Windows 11 Acrylic Glass 视觉规范
+- 详细 UI 规范见 `docs/ui-redesign-roadmap.md`
 
 ## 架构
 
@@ -65,7 +64,7 @@ Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 ### 语言与框架
 
 - 100% Kotlin，UI 使用 Jetpack Compose
-- Android 端与 Desktop 端均使用 Fluent Design 风格（通过 MD3 `colorScheme` token 承载 Fluent 色值，不引入第三方 Fluent 库）
+- Android 端使用 Material Design 3；Desktop 端使用 Fluent Design 风格（通过 MD3 `colorScheme` token 承载 Fluent 色值，不引入第三方 Fluent 库）
 - 禁止使用 XML 布局，所有 UI 必须用 Compose 编写
 - 状态管理使用 ViewModel + StateFlow，禁止 LiveData
 - 导航使用 Navigation Compose

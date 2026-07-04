@@ -2,14 +2,13 @@ package io.github.gdict.ui.screens
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,7 +69,14 @@ import androidx.compose.ui.res.stringResource
 import io.github.gdict.R
 import io.github.gdict.core.model.HistoryItem
 import io.github.gdict.core.model.SearchResultItem
+import io.github.gdict.ui.components.acrylicAmbientBackground
+import io.github.gdict.ui.components.pageEnterAnimation
+import io.github.gdict.ui.components.pressScale
+import io.github.gdict.ui.components.staggerEnterAnimation
 import io.github.gdict.ui.theme.GdictColors
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import io.github.gdict.viewmodel.SearchViewModel
 import io.github.gdict.viewmodel.SettingsViewModel
 import io.github.gdict.util.HtmlUtils
@@ -96,26 +102,52 @@ fun SearchScreen(
     }
 
     val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+    val bgGradient = if (darkMode) {
+        Brush.verticalGradient(
+            0.0f to GdictColors.DarkBackground,
+            1.0f to GdictColors.DarkSurfaceVariant
+        )
+    } else {
+        // 蓝白渐变：顶部淡蓝 → 中下部缓慢过渡到白，蓝色更持久
+        Brush.verticalGradient(
+            0.0f to Color(0xFFDCEBFF),
+            0.6f to Color(0xFFEDF4FF),
+            1.0f to Color(0xFFFFFFFF)
+        )
+    }
     val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val titleColor = if (darkMode) GdictColors.DarkOnBackground else GdictColors.HeadingDark
 
-    Column(
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(bgGradient)
+            .acrylicAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
     ) {
+        Column(
+            modifier = Modifier
+            .fillMaxSize()
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
+                .pageEnterAnimation()
         ) {
             Text(
                 stringResource(R.string.nav_search),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineLarge,
+                fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
-                color = textColor
+                color = titleColor
             )
             Spacer(modifier = Modifier.height(12.dp))
             SearchBar(
@@ -134,17 +166,14 @@ fun SearchScreen(
         }
 
         errorMessage?.let { msg ->
-            val errorStroke = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .border(1.dp, errorStroke, RoundedCornerShape(8.dp)),
-                colors = CardDefaults.cardColors(
-                    containerColor = GdictColors.CoralAccent.copy(alpha = 0.1f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                shape = RoundedCornerShape(8.dp)
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .shadow(2.dp, RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(0.5.dp, GdictColors.BlueHighlightBorder, RoundedCornerShape(18.dp))
+                    .background(GdictColors.BlueSurfaceGlass)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -182,8 +211,8 @@ fun SearchScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     itemsIndexed(
                         items = reorderedResults,
@@ -199,6 +228,7 @@ fun SearchScreen(
                             contentScale = contentScale,
                             index = index,
                             totalItems = reorderedResults.size,
+                            darkMode = darkMode,
                             onReorder = { fromIndex, toIndex ->
                                 if (fromIndex != toIndex && fromIndex in reorderedResults.indices && toIndex in reorderedResults.indices) {
                                     val mutable = reorderedResults.toMutableList()
@@ -256,6 +286,7 @@ fun SearchScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -266,21 +297,36 @@ private fun SearchBar(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit
 ) {
-    val searchBarBg = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    val searchBarBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val focusInteractionSource = remember { MutableInteractionSource() }
+    val isFocused by focusInteractionSource.collectIsFocusedAsState()
+    val focusedBorder by animateColorAsState(
+        targetValue = if (isFocused) GdictColors.Primary.copy(alpha = 0.6f) else borderColor,
+        animationSpec = tween(200),
+        label = "focusBorder"
+    )
+    val focusedBorderWidth by animateDpAsState(
+        targetValue = if (isFocused) 1.2.dp else 0.5.dp,
+        animationSpec = tween(200),
+        label = "focusBorderWidth"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .height(52.dp)
+            .shadow(1.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .border(focusedBorderWidth, focusedBorder, RoundedCornerShape(28.dp))
             .background(searchBarBg)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             Icons.Default.Search,
             contentDescription = stringResource(R.string.search_hint),
-            tint = GdictColors.OnSurfaceVariant,
+            tint = Color(0xFF4A5568),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -291,11 +337,12 @@ private fun SearchBar(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            interactionSource = focusInteractionSource,
             decorationBox = { innerTextField ->
                 if (query.isEmpty()) {
                     Text(
                         stringResource(R.string.search_hint),
-                        color = GdictColors.OnSurfaceVariant,
+                        color = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.BluePlaceholder,
                         fontSize = 16.sp
                     )
                 }
@@ -303,12 +350,28 @@ private fun SearchBar(
             }
         )
         if (query.isNotEmpty()) {
-            IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
+            val clearPressed = remember { MutableInteractionSource() }
+            val clearIsPressed by clearPressed.collectIsPressedAsState()
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .pressScale(clearIsPressed, 0.95f)
+                    .shadow(1.dp, androidx.compose.foundation.shape.CircleShape)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .border(0.5.dp, borderColor, androidx.compose.foundation.shape.CircleShape)
+                    .background(searchBarBg)
+                    .clickable(
+                        interactionSource = clearPressed,
+                        indication = null,
+                        onClick = { onQueryChange("") }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = stringResource(R.string.cancel),
-                    tint = GdictColors.OnSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
@@ -326,68 +389,65 @@ private fun DraggableSearchResultCard(
     contentScale: Float,
     index: Int,
     totalItems: Int,
+    darkMode: Boolean,
     onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
     onClick: () -> Unit
 ) {
     var isDragging by remember { mutableStateOf(false) }
+    val pressInteractionSource = remember { MutableInteractionSource() }
+    val isPressed by pressInteractionSource.collectIsPressedAsState()
     var dragOffset by remember { mutableStateOf(0f) }
     val animatedElevation by animateDpAsState(
-        targetValue = if (isDragging) 8.dp else 0.dp,
+        targetValue = if (isDragging) 8.dp else 1.dp,
         animationSpec = tween(200),
         label = "elevation"
     )
 
-    val scaledHorizontalPadding = (16.dp * contentScale)
-    val scaledVerticalPadding = (16.dp * contentScale)
-    val scaledWordFontSize = (16.sp * contentScale)
+    val scaledHorizontalPadding = (18.dp * contentScale)
+    val scaledVerticalPadding = (18.dp * contentScale)
+    val scaledWordFontSize = (28.sp * contentScale)
     val scaledDictFontSize = (12.sp * contentScale)
     val scaledDefFontSize = (14.sp * contentScale)
-    val scaledCornerRadius = (8.dp * contentScale).coerceIn(8.dp, 16.dp)
+    val scaledCornerRadius = (24.dp * contentScale).coerceIn(16.dp, 24.dp)
     val scaledDragIconSize = (20.dp * contentScale).coerceIn(14.dp, 28.dp)
-    val scaledSpacing = (8.dp * contentScale)
-    val scaledWordLineHeight = (22.sp * contentScale)
+    val scaledSpacing = (10.dp * contentScale)
+    val scaledWordLineHeight = (34.sp * contentScale)
     val scaledDictLineHeight = (16.sp * contentScale)
-    val scaledDefLineHeight = (20.sp * contentScale)
+    val scaledDefLineHeight = (21.sp * contentScale)
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
 
-    val cardInteractionSource = remember { MutableInteractionSource() }
-    val isHovered by cardInteractionSource.collectIsHoveredAsState()
-    val cardContainerColor = if (isHovered) MaterialTheme.colorScheme.surfaceVariant else cardColor
-
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .staggerEnterAnimation(index)
             .offset { IntOffset(0, dragOffset.roundToInt()) }
             .shadow(animatedElevation, RoundedCornerShape(scaledCornerRadius))
+            .clip(RoundedCornerShape(scaledCornerRadius))
+            .border(0.5.dp, glassBorder, RoundedCornerShape(scaledCornerRadius))
+            .background(glassBg)
             .graphicsLayer {
-                scaleX = if (isDragging) 1.03f else 1f
-                scaleY = if (isDragging) 1.03f else 1f
+                scaleX = if (isDragging) 1.02f else 1f
+                scaleY = if (isDragging) 1.02f else 1f
             }
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(scaledCornerRadius))
-            .hoverable(cardInteractionSource)
+            .pressScale(isPressed)
             .clickable(
-                interactionSource = cardInteractionSource,
+                interactionSource = pressInteractionSource,
                 indication = null,
                 onClick = onClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(scaledCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) cardContainerColor.copy(alpha = 0.95f) else cardContainerColor
-        )
+        contentAlignment = Alignment.Center
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = scaledHorizontalPadding / 2),
+                .padding(start = scaledHorizontalPadding, end = (scaledHorizontalPadding / 3)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(
-                        horizontal = scaledHorizontalPadding,
-                        vertical = scaledVerticalPadding
-                    )
+                    .padding(vertical = scaledVerticalPadding)
             ) {
                 Text(
                     text = word,
@@ -396,7 +456,7 @@ private fun DraggableSearchResultCard(
                         lineHeight = scaledWordLineHeight
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = GdictColors.PrimarySoft
+                    color = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
                 )
                 if (dictionaryName.isNotEmpty()) {
                     Text(
@@ -406,7 +466,7 @@ private fun DraggableSearchResultCard(
                             lineHeight = scaledDictLineHeight
                         ),
                         color = subtitleColor,
-                        modifier = Modifier.padding(top = (2.dp * contentScale))
+                        modifier = Modifier.padding(top = (3.dp * contentScale))
                     )
                 }
                 if (definition.isNotEmpty()) {
@@ -419,7 +479,7 @@ private fun DraggableSearchResultCard(
                                 fontSize = scaledDefFontSize,
                                 lineHeight = scaledDefLineHeight
                             ),
-                            color = textColor,
+                            color = textColor.copy(alpha = 0.95f),
                             maxLines = (3 * contentScale).roundToInt().coerceIn(2, 6),
                             overflow = TextOverflow.Ellipsis
                         )
@@ -429,8 +489,12 @@ private fun DraggableSearchResultCard(
 
             Box(
                 modifier = Modifier
-                    .padding(end = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .padding(start = (4.dp * contentScale), end = 2.dp)
+                    .size(38.dp)
+                    .shadow(1.dp, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(0.5.dp, glassBorder, RoundedCornerShape(12.dp))
+                    .background(glassBg)
                     .pointerInput(index, totalItems) {
                         detectDragGestures(
                             onDragStart = {
@@ -454,14 +518,13 @@ private fun DraggableSearchResultCard(
                                 dragOffset += dragAmount.y
                             }
                         )
-                    }
-                    .padding(8.dp),
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.DragHandle,
                     contentDescription = "Drag to reorder",
-                    tint = if (isDragging) GdictColors.PrimarySoft else subtitleColor,
+                    tint = if (isDragging) GdictColors.Primary else GdictColors.OnSurfaceVariant,
                     modifier = Modifier.size(scaledDragIconSize)
                 )
             }
@@ -504,28 +567,14 @@ private fun EmptySearchResult(
             )
             Spacer(modifier = Modifier.height(8.dp))
             suggestions.take(5).forEach { suggestion ->
-                val suggestionInteractionSource = remember { MutableInteractionSource() }
-                val isSuggestionHovered by suggestionInteractionSource.collectIsHoveredAsState()
-                val suggestionBg = if (isSuggestionHovered) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
-                Box(
+                Text(
+                    text = suggestion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GdictColors.PrimarySoft,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(suggestionBg)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .hoverable(suggestionInteractionSource)
-                        .clickable(
-                            interactionSource = suggestionInteractionSource,
-                            indication = null
-                        ) { onSuggestionClick(suggestion) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = suggestion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = GdictColors.PrimarySoft
-                    )
-                }
+                        .clickable { onSuggestionClick(suggestion) }
+                        .padding(vertical = 4.dp)
+                )
             }
         }
     }
@@ -554,21 +603,20 @@ private fun RecentSearchSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
                     .clickable { onWordClick(item.word) }
-                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                    .padding(vertical = 14.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Outlined.History,
                     contentDescription = null,
-                    tint = subtitleColor,
-                    modifier = Modifier.size(16.dp)
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = item.word,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = textColor
                 )
             }
@@ -640,48 +688,40 @@ private fun WordOfDayCard(
     darkMode: Boolean,
     onClick: () -> Unit
 ) {
-    val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
     val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
-    val strokeColor = if (darkMode) GdictColors.DarkCardStroke else GdictColors.CardStroke
-    val hoverColor = if (darkMode) GdictColors.DarkSubtleHover else GdictColors.SubtleHover
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val containerColor = if (isHovered) hoverColor else cardColor
 
     Card(
         modifier = Modifier
-            .width(180.dp)
-            .height(110.dp)
-            .border(1.dp, strokeColor, RoundedCornerShape(8.dp))
-            .hoverable(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
+            .width(200.dp)
+            .height(130.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = glassBg),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.Bottom
+            verticalArrangement = Arrangement.Top
         ) {
             Text(
                 text = word,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = GdictColors.PrimarySoft
+                color = GdictColors.Primary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = meaning,
                 style = MaterialTheme.typography.bodySmall,
                 color = subtitleColor,
-                maxLines = 2,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
         }

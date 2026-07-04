@@ -5,9 +5,6 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,8 +32,6 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -53,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -62,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gdict.BuildConfig
@@ -80,36 +78,37 @@ private val GitHubMark: ImageVector by lazy {
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {
+        // 官方 GitHub Octocat mark 路径（24x24 viewBox）
         path(
             fill = SolidColor(Color.Black),
             pathFillType = PathFillType.NonZero
         ) {
             moveTo(12f, 0.297f)
-            curveToRelative(-6.63f, 0f, -12f, 5.373f, -12f, 12f)
-            curveToRelative(0f, 5.303f, 3.438f, 9.8f, 8.205f, 11.385f)
-            curveToRelative(0.6f, 0.113f, 0.82f, -0.258f, 0.82f, -0.577f)
-            curveToRelative(0f, -0.285f, -0.01f, -1.04f, -0.015f, -2.04f)
-            curveToRelative(-3.338f, 0.724f, -4.042f, -1.61f, -4.042f, -1.61f)
-            curveTo(4.422f, 18.07f, 3.633f, 17.7f, 3.633f, 17.7f)
-            curveToRelative(-1.087f, -0.744f, 0.084f, -0.729f, 0.084f, -0.729f)
-            curveToRelative(1.205f, 0.084f, 1.838f, 1.236f, 1.838f, 1.236f)
-            curveToRelative(1.07f, 1.835f, 2.809f, 1.305f, 3.495f, 0.998f)
-            curveToRelative(0.108f, -0.776f, 0.417f, -1.305f, 0.76f, -1.605f)
-            curveToRelative(-2.665f, -0.3f, -5.466f, -1.332f, -5.466f, -5.93f)
-            curveToRelative(0f, -1.31f, 0.465f, -2.38f, 1.235f, -3.22f)
-            curveToRelative(-0.135f, -0.303f, -0.54f, -1.523f, 0.105f, -3.176f)
-            curveToRelative(0f, 0f, 1.005f, -0.322f, 3.3f, 1.23f)
-            curveToRelative(0.96f, -0.267f, 1.98f, -0.399f, 3f, -0.405f)
-            curveToRelative(1.02f, 0.006f, 2.04f, 0.138f, 3f, 0.405f)
-            curveToRelative(2.28f, -1.552f, 3.285f, -1.23f, 3.285f, -1.23f)
-            curveToRelative(0.645f, 1.653f, 0.24f, 2.873f, 0.12f, 3.176f)
-            curveToRelative(0.765f, 0.84f, 1.23f, 1.91f, 1.23f, 3.22f)
-            curveToRelative(0f, 4.61f, -2.805f, 5.625f, -5.475f, 5.92f)
-            curveToRelative(0.42f, 0.36f, 0.81f, 1.096f, 0.81f, 2.22f)
-            curveToRelative(0f, 1.605f, -0.015f, 2.905f, -0.015f, 3.3f)
-            curveToRelative(0f, 0.315f, 0.21f, 0.69f, 0.825f, 0.57f)
-            curveTo(20.565f, 21.795f, 24f, 17.295f, 24f, 12f)
-            curveToRelative(0f, -6.627f, -5.373f, -11.703f, -12f, -11.703f)
+            curveTo(5.37f, 0.297f, 0f, 5.67f, 0f, 12f)
+            curveTo(0f, 17.303f, 3.438f, 21.8f, 8.205f, 23.385f)
+            curveTo(8.805f, 23.498f, 9.025f, 23.127f, 9.025f, 22.808f)
+            curveTo(9.025f, 22.523f, 9.015f, 21.768f, 9.01f, 20.768f)
+            curveTo(5.672f, 21.492f, 4.968f, 19.159f, 4.968f, 19.159f)
+            curveTo(4.421f, 17.77f, 3.634f, 17.4f, 3.634f, 17.4f)
+            curveTo(2.546f, 16.656f, 3.718f, 16.671f, 3.718f, 16.671f)
+            curveTo(4.922f, 16.756f, 5.555f, 17.908f, 5.555f, 17.908f)
+            curveTo(6.626f, 19.766f, 8.303f, 19.228f, 8.964f, 18.915f)
+            curveTo(9.069f, 18.135f, 9.386f, 17.597f, 9.735f, 17.29f)
+            curveTo(7.062f, 16.979f, 4.247f, 15.946f, 4.247f, 11.333f)
+            curveTo(4.247f, 10.018f, 4.714f, 8.941f, 5.575f, 8.093f)
+            curveTo(5.455f, 7.782f, 5.044f, 6.552f, 5.687f, 4.887f)
+            curveTo(5.687f, 4.887f, 6.701f, 4.562f, 8.997f, 6.13f)
+            curveTo(9.953f, 5.864f, 10.98f, 5.731f, 12f, 5.726f)
+            curveTo(13.02f, 5.731f, 14.047f, 5.864f, 15.003f, 6.13f)
+            curveTo(17.299f, 4.562f, 18.313f, 4.887f, 18.313f, 4.887f)
+            curveTo(18.956f, 6.552f, 18.545f, 7.782f, 18.425f, 8.093f)
+            curveTo(19.286f, 8.941f, 19.753f, 10.018f, 19.753f, 11.333f)
+            curveTo(19.753f, 15.956f, 16.933f, 16.976f, 14.253f, 17.28f)
+            curveTo(14.693f, 17.66f, 15.085f, 18.41f, 15.085f, 19.547f)
+            curveTo(15.085f, 21.197f, 15.07f, 22.527f, 15.07f, 22.937f)
+            curveTo(15.07f, 23.252f, 15.285f, 23.627f, 15.895f, 23.512f)
+            curveTo(20.566f, 21.833f, 24f, 17.33f, 24f, 12f)
+            curveTo(24f, 5.67f, 18.63f, 0.297f, 12f, 0.297f)
             close()
         }
     }.build()
@@ -123,9 +122,21 @@ fun SettingsScreen(
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle()
     val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
     val currentLanguage by settingsViewModel.language.collectAsStateWithLifecycle()
-    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
-    val cardColor = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
-    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.BlueBackgroundTop
+    // 真实渐变：顶部明显蓝 → 中段浅蓝 → 底部接近白，对比度足够在浅色背景上能看出来
+    val bgGradient = if (darkMode) {
+        Brush.verticalGradient(
+            0.0f to GdictColors.DarkBackground,
+            1.0f to GdictColors.DarkSurfaceVariant
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to Color(0xFFDCEBFF),
+            0.6f to Color(0xFFEDF4FF),
+            1.0f to Color(0xFFFFFFFF)
+        )
+    }
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
     val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -133,116 +144,103 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
+            .background(bgGradient)
             .verticalScroll(rememberScrollState())
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(GdictColors.PrimarySoft.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = GdictColors.PrimarySoft,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        stringResource(R.string.profile),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                    Text(
-                        stringResource(R.string.manage_your_settings),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = subtitleColor
-                    )
-                }
-            }
-        }
+        ProfileHero(
+            darkMode = darkMode,
+            textColor = textColor,
+            subtitleColor = subtitleColor
+        )
 
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
-            SettingsSection(title = stringResource(R.string.section_dictionaries), cardColor = cardColor, textColor = textColor) {
+            SettingsSection(
+                title = stringResource(R.string.section_dictionaries),
+                darkMode = darkMode,
+                textColor = textColor
+            ) {
                 SettingsButtonItem(
                     title = stringResource(R.string.dictionary_management),
                     description = stringResource(R.string.dictionary_management_desc),
                     icon = Icons.Outlined.MenuBook,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onClick = onNavigateToDictionaries
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            SettingsSection(title = stringResource(R.string.section_appearance), cardColor = cardColor, textColor = textColor) {
+            SettingsSection(
+                title = stringResource(R.string.section_appearance),
+                darkMode = darkMode,
+                textColor = textColor
+            ) {
                 SettingsSwitchItem(
                     title = stringResource(R.string.dark_mode),
                     description = stringResource(R.string.dark_mode_desc),
                     icon = Icons.Outlined.DarkMode,
                     checked = darkMode,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onCheckedChange = { settingsViewModel.setDarkMode(it) }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 SettingsButtonItem(
                     title = stringResource(R.string.language),
                     description = stringResource(R.string.language_desc),
                     icon = Icons.Outlined.Language,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onClick = { showLanguageDialog = true }
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            SettingsSection(title = stringResource(R.string.section_features), cardColor = cardColor, textColor = textColor) {
+            SettingsSection(
+                title = stringResource(R.string.section_features),
+                darkMode = darkMode,
+                textColor = textColor
+            ) {
                 SettingsSwitchItem(
                     title = stringResource(R.string.scan_popup),
                     description = stringResource(R.string.scan_popup_desc),
                     icon = Icons.Outlined.QrCodeScanner,
                     checked = scanPopup,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onCheckedChange = { settingsViewModel.setScanPopup(it) }
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            SettingsSection(title = stringResource(R.string.section_about), cardColor = cardColor, textColor = textColor) {
+            SettingsSection(
+                title = stringResource(R.string.section_about),
+                darkMode = darkMode,
+                textColor = textColor
+            ) {
                 SettingsButtonItem(
                     title = stringResource(R.string.version_info),
                     description = "Gdict v${BuildConfig.VERSION_NAME}",
                     icon = Icons.Outlined.Info,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
+                    badgeText = "v${BuildConfig.VERSION_NAME}",
                     onClick = { }
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 SettingsButtonItem(
                     title = stringResource(R.string.project_repository),
                     description = GITHUB_REPO_URL,
                     icon = GitHubMark,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onClick = {
@@ -250,12 +248,12 @@ fun SettingsScreen(
                         context.startActivity(intent)
                     }
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 var showClearDialog by remember { mutableStateOf(false) }
                 SettingsButtonItem(
                     title = stringResource(R.string.clear_data),
                     description = stringResource(R.string.clear_data_desc),
                     icon = Icons.Outlined.DeleteOutline,
+                    darkMode = darkMode,
                     textColor = textColor,
                     subtitleColor = subtitleColor,
                     onClick = { showClearDialog = true }
@@ -263,7 +261,6 @@ fun SettingsScreen(
                 if (showClearDialog) {
                     AlertDialog(
                         onDismissRequest = { showClearDialog = false },
-                        shape = RoundedCornerShape(8.dp),
                         title = { Text(stringResource(R.string.confirm_clear)) },
                         text = { Text(stringResource(R.string.confirm_clear_message)) },
                         confirmButton = {
@@ -301,6 +298,55 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun ProfileHero(
+    darkMode: Boolean,
+    textColor: Color,
+    subtitleColor: Color
+) {
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 24.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .shadow(8.dp, CircleShape)
+                .clip(CircleShape)
+                .border(1.dp, borderColor, CircleShape)
+                .background(glassBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = null,
+                tint = GdictColors.Primary,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+        Column {
+            Text(
+                stringResource(R.string.profile),
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+            Text(
+                stringResource(R.string.manage_your_settings),
+                style = MaterialTheme.typography.bodyMedium,
+                color = subtitleColor
+            )
+        }
+    }
+}
+
+@Composable
 private fun LanguageSelectionDialog(
     currentLanguage: String,
     onSelect: (String) -> Unit,
@@ -315,7 +361,6 @@ private fun LanguageSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(8.dp),
         title = { Text(stringResource(R.string.select_language)) },
         text = {
             Column {
@@ -323,7 +368,7 @@ private fun LanguageSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { onSelect(tag) }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -332,7 +377,7 @@ private fun LanguageSelectionDialog(
                             selected = tag == currentLanguage,
                             onClick = { onSelect(tag) },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = GdictColors.PrimarySoft
+                                selectedColor = GdictColors.Primary
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -356,30 +401,43 @@ private fun LanguageSelectionDialog(
 @Composable
 private fun SettingsSection(
     title: String,
-    cardColor: Color,
+    darkMode: Boolean,
     textColor: Color,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        )
+            .shadow(4.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
+            .background(glassBg)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(24.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(GdictColors.Primary)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+            }
             content()
         }
     }
@@ -391,12 +449,17 @@ private fun SettingsSwitchItem(
     description: String,
     icon: ImageVector,
     checked: Boolean,
+    darkMode: Boolean,
     textColor: Color,
     subtitleColor: Color,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val iconContainerBg = GdictColors.Primary.copy(alpha = 0.12f)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -404,18 +467,26 @@ private fun SettingsSwitchItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (checked) GdictColors.PrimarySoft else subtitleColor,
-                modifier = Modifier.size(22.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(iconContainerBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Bold,
                     color = textColor
                 )
                 Text(
@@ -429,10 +500,10 @@ private fun SettingsSwitchItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = GdictColors.OnPrimary,
-                checkedTrackColor = GdictColors.PrimarySoft,
-                uncheckedThumbColor = GdictColors.OnPrimary,
-                uncheckedTrackColor = GdictColors.SurfaceVariant
+                checkedThumbColor = Color.White,
+                checkedTrackColor = GdictColors.Primary,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
             )
         )
     }
@@ -443,25 +514,19 @@ private fun SettingsButtonItem(
     title: String,
     description: String,
     icon: ImageVector,
+    darkMode: Boolean,
     textColor: Color,
     subtitleColor: Color,
+    badgeText: String? = null,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val background = if (isHovered) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+    val iconContainerBg = GdictColors.Primary.copy(alpha = 0.12f)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(background)
-            .hoverable(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -470,32 +535,57 @@ private fun SettingsButtonItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = subtitleColor,
-                modifier = Modifier.size(22.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(iconContainerBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = GdictColors.Primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Bold,
                     color = textColor
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = subtitleColor
+                    color = if (badgeText != null) GdictColors.Primary else subtitleColor
                 )
             }
+        }
+        if (badgeText != null) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, GdictColors.Primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .background(GdictColors.Primary.copy(alpha = 0.08f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = badgeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = GdictColors.Primary
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = subtitleColor,
-            modifier = Modifier.size(20.dp)
+            tint = GdictColors.Primary.copy(alpha = 0.6f),
+            modifier = Modifier.size(22.dp)
         )
     }
 }
