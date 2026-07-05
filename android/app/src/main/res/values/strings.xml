@@ -43,6 +43,8 @@
     <string name="section_features">Features</string>
     <string name="scan_popup">Scan Popup</string>
     <string name="scan_popup_desc">Enable scan popup feature</string>
+    <string name="section_support">Support</string>
+    <string name="support_developer_desc">If you find Gdict helpful, consider supporting development</string>
     <string name="section_about">About</string>
     <string name="version_info">Version Info</string>
     <string name="project_repository">Project Repository</string>
@@ -113,4 +115,6 @@
     <string name="diagnostic_result">Dictionary diagnostics</string>
     <string name="diagnostic_clip_label">Diagnostics result</string>
     <string name="add">Add</string>
+    <string name="donation_alipay">Donate via Alipay</string>
+    <string name="donation_wechat">Donate via WeChat</string>
 </resources>

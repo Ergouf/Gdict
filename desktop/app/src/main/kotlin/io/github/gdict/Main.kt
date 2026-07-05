@@ -1,15 +1,17 @@
 package io.github.gdict
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import androidx.compose.runtime.LaunchedEffect
 import io.github.gdict.core.DesktopLogger
-import io.github.gdict.platform.WindowsBackdrop
 import io.github.gdict.core.DictFileImporter
 import io.github.gdict.core.DictPersistence
 import io.github.gdict.core.DictionaryManager
@@ -19,14 +21,16 @@ import io.github.gdict.data.DesktopDictionaryRepository
 import io.github.gdict.data.DesktopHistoryRepository
 import io.github.gdict.data.DesktopSettingsRepository
 import io.github.gdict.data.JsonFileStorageBackend
-import io.github.gdict.ui.DesktopApp
-import io.github.gdict.ui.webview.preInitCef
-import io.github.gdict.ui.webview.preCreateBrowserPanel
+import io.github.gdict.platform.WindowsBackdrop
+import io.github.gdict.tts.TtsManager
 import io.github.gdict.ui.AppLanguage
+import io.github.gdict.ui.DesktopApp
+import io.github.gdict.ui.components.WindowTitleBar
 import io.github.gdict.ui.getStringResourcesForLanguage
 import io.github.gdict.ui.resolveEffectiveLanguage
 import io.github.gdict.ui.theme.GdictTheme
-import io.github.gdict.tts.TtsManager
+import io.github.gdict.ui.webview.preCreateBrowserPanel
+import io.github.gdict.ui.webview.preInitCef
 import io.github.gdict.viewmodel.BookmarkViewModel
 import io.github.gdict.viewmodel.DictionaryViewModel
 import io.github.gdict.viewmodel.FlashcardViewModel
@@ -153,7 +157,7 @@ fun main() = application {
         title = "Gdict Desktop",
         icon = painterResource("icon.png"),
         state = rememberWindowState(width = 1200.dp, height = 800.dp),
-        undecorated = false
+        undecorated = true
     ) {
         window.minimumSize = Dimension(800, 600)
 
@@ -168,34 +172,7 @@ fun main() = application {
                     "cef=${(tCefEnd - tReposAndVmsEnd) / 1_000_000} " +
                     "firstFrame=${(nowNs - processStartNanos) / 1_000_000}"
             )
-            // Enable window dragging from any point on the window (when over
-            // non-interactive areas we still want to be able to drag the frame).
-            val dragHandler = object : java.awt.event.MouseAdapter() {
-                var dragStartX = 0
-                var dragStartY = 0
-                var winStartX = 0
-                var winStartY = 0
-
-                override fun mousePressed(e: java.awt.event.MouseEvent) {
-                    // Only drag from top 32px (title bar area)
-                    if (e.y <= 32) {
-                        dragStartX = e.xOnScreen
-                        dragStartY = e.yOnScreen
-                        winStartX = window.x
-                        winStartY = window.y
-                    }
-                }
-
-                override fun mouseDragged(e: java.awt.event.MouseEvent) {
-                    if (e.y <= 48) { // Allow slight margin during drag
-                        val dx = e.xOnScreen - dragStartX
-                        val dy = e.yOnScreen - dragStartY
-                        window.location = java.awt.Point(winStartX + dx, winStartY + dy)
-                    }
-                }
-            }
-            window.addMouseListener(dragHandler)
-            window.addMouseMotionListener(dragHandler)
+            WindowsBackdrop.applyMica(window)
         }
 
         val languageCode by settingsViewModel.language.collectAsState()
@@ -203,22 +180,21 @@ fun main() = application {
         val strings = getStringResourcesForLanguage(effectiveLanguage)
         val darkMode by settingsViewModel.darkMode.collectAsState()
 
-        // Apply / refresh Mica backdrop whenever dark mode changes
-        LaunchedEffect(darkMode) {
-            WindowsBackdrop.applyMica(window, darkMode = darkMode)
-        }
-
         GdictTheme(darkTheme = darkMode) {
-            DesktopApp(
-                searchViewModel = searchViewModel,
-                bookmarkViewModel = bookmarkViewModel,
-                dictionaryViewModel = dictionaryViewModel,
-                flashcardViewModel = flashcardViewModel,
-                settingsViewModel = settingsViewModel,
-                dictionaryRepository = dictionaryRepo,
-                strings = strings,
-                awtWindow = window
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                WindowTitleBar(window = window)
+                DesktopApp(
+                    searchViewModel = searchViewModel,
+                    bookmarkViewModel = bookmarkViewModel,
+                    dictionaryViewModel = dictionaryViewModel,
+                    flashcardViewModel = flashcardViewModel,
+                    settingsViewModel = settingsViewModel,
+                    dictionaryRepository = dictionaryRepo,
+                    strings = strings,
+                    awtWindow = window,
+                    darkMode = darkMode
+                )
+            }
         }
     }
 }

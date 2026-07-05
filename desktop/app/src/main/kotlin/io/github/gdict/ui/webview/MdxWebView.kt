@@ -399,6 +399,8 @@ private object GlobalBrowserManager {
     var browser: CefBrowser? = null
     var messageRouter: CefMessageRouter? = null
     var currentTempFile: File? = null
+    var errorPanel: JPanel? = null
+    var browserComponent: java.awt.Component? = null
     @Volatile var browserReady = false
     val lock = Any()
 
@@ -412,12 +414,13 @@ private object GlobalBrowserManager {
 
             if (!ensureCefInitialized()) {
                 log.e("MdxWebView", "GlobalBrowserManager: JCEF init failed")
-                val errorPanel = JPanel(BorderLayout())
-                errorPanel.background = java.awt.Color(0xF5, 0xF5, 0xF5)
+                val ep = JPanel(BorderLayout())
+                ep.background = java.awt.Color(0xF5, 0xF5, 0xF5)
+                errorPanel = ep
                 val errorLabel = JLabel("Browser engine failed to initialize.")
                 errorLabel.horizontalAlignment = SwingConstants.CENTER
-                errorPanel.add(errorLabel, BorderLayout.CENTER)
-                return errorPanel
+                ep.add(errorLabel, BorderLayout.CENTER)
+                return ep
             }
 
             val client = cefClient!!
@@ -526,9 +529,10 @@ private object GlobalBrowserManager {
 
             val p = JPanel(BorderLayout())
             p.background = java.awt.Color(0xF5, 0xF5, 0xF5)
-            val browserComponent = cefBrowser.uiComponent
-            browserComponent.background = java.awt.Color(0xF5, 0xF5, 0xF5)
-            p.add(browserComponent, BorderLayout.CENTER)
+            val bc = cefBrowser.uiComponent
+            bc.background = java.awt.Color(0xF5, 0xF5, 0xF5)
+            browserComponent = bc
+            p.add(bc, BorderLayout.CENTER)
             panel = p
 
             log.i("MdxWebView", "GlobalBrowserManager: Panel created successfully")
@@ -621,6 +625,23 @@ private object GlobalBrowserManager {
             }
         }
     }
+
+    /**
+     * Update the AWT panel/browser component backgrounds so transparent HTML
+     * regions show a dark color instead of the hardcoded light gray.
+     */
+    fun updatePanelTheme(dark: Boolean) {
+        val bgColor = if (dark) java.awt.Color(0x1F, 0x1F, 0x1F) else java.awt.Color(0xF5, 0xF5, 0xF5)
+        SwingUtilities.invokeLater {
+            try {
+                panel?.background = bgColor
+                errorPanel?.background = bgColor
+                browserComponent?.background = bgColor
+            } catch (e: Throwable) {
+                log.e("MdxWebView", "updatePanelTheme failed: ${e.message}")
+            }
+        }
+    }
 }
 
 @Composable
@@ -685,6 +706,7 @@ fun MdxWebView(
     // Theme toggle is independent of the content; calling JS is much cheaper
     // than rebuilding and reloading the entire HTML.
     LaunchedEffect(darkMode) {
+        GlobalBrowserManager.updatePanelTheme(darkMode)
         if (definition.isEmpty()) return@LaunchedEffect
         if (!GlobalBrowserManager.isBrowserReady()) {
             while (!GlobalBrowserManager.isBrowserReady()) {

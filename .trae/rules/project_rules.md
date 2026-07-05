@@ -1,6 +1,5 @@
 ---
-alwaysApply: false
-description: Gdict 项目全局规则，AI 助手在编辑代码时必须遵循
+alwaysApply: true
 ---
 # Gdict 项目规则
 

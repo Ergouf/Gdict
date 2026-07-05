@@ -1,0 +1,12 @@
+# Checklist
+- [x] 桌面 `GlassCircleButton` 的 `Box` 修饰符链包含 `.clickable(onClick = onClick)`
+- [x] Windows 桌面端 `PronunciationDetailScreen` 返回按钮可点击并触发 `onBack`
+- [x] Windows 桌面端 `CollinsDetailScreen` 返回按钮可点击并触发 `onBack`
+- [x] 桌面 `WordDetailScreen` 的 `isPronunciationDict` 不再因通用 MDict 标签（`<arl>`、`<soundfile>`、`<prongrp>`）误判
+- [x] Android `WordDetailScreen` 的 `isPronunciationDict` 判定逻辑与桌面同步收紧
+- [x] Cambridge EPD 词典（含 `cepd18.css` 或 `uk_sound.png`/`us_sound.png`+`<prongrp>`）仍路由到 `PronunciationDetailContent`
+- [x] `DefaultRenderer` 分支在词典 CSS 之前注入 `BASE_CSS`
+- [x] 注入 `BASE_CSS` 后词典自带 CSS 仍能覆盖默认样式（CSS 顺序正确）
+- [x] WebView 透明背景在亮/暗模式下均保持生效
+- [x] 牛津高阶词典（第7版双解版）词条在 Windows 桌面端显示完整 CSS 样式
+- [x] 未引入 Collins / Cambridge EPD 等其他词典的回归问题

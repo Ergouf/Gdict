@@ -198,12 +198,12 @@ class DictionaryManager(
                     log().i("DictMgr", "  Loading MDD: '${mddFile.name}' size=${mddFile.length()} bytes...")
                     val mddParser = MdxParser(mddFile)
                     log().i("DictMgr", "  MDD parsed: wordCount=${mddParser.wordCount} title='${mddParser.title}'")
-                    if (mddParser.wordCount > 0) {
+                    if (mddParser.wordCount > 0 || mddParser.isResourceMode) {
                         loadedMdds.remove(entry.id)?.close()
                         loadedMdds[entry.id] = mddParser
-                        log().i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount}")
+                        log().i("DictMgr", "  MDD loaded: '${mddFile.name}' resources=${mddParser.wordCount} resourceMode=${mddParser.isResourceMode}")
                     } else {
-                        log().w("DictMgr", "  MDD '${mddFile.name}' has wordCount=0, treating as empty")
+                        log().w("DictMgr", "  MDD '${mddFile.name}' has wordCount=0 and not resourceMode, treating as empty")
                         mddParser.close()
                     }
                 } catch (e: OutOfMemoryError) {

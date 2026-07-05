@@ -365,13 +365,20 @@ internal fun FrequencyDiamondsBlue(
 }
 
 /**
- * 判断 HTML 是否为柯林斯3rd词条（含 ◆◇ 词频棱形 或 绿色 669900 词性标签）。
+ * 判断 HTML 是否为柯林斯词条（3rd：◆◇ / 绿色 669900；Advanced：class="hom" / sensenum / id="collins_english_dictionary"）。
  * 供 WordDetailScreen / FlashcardScreen 共用，确保路由判断一致。
  */
-fun isCollins3rdEntry(definition: String): Boolean {
+fun isCollinsEntry(definition: String): Boolean {
     return definition.contains("◆") || definition.contains("◇") ||
-            definition.contains("669900", ignoreCase = true)
+            definition.contains("669900", ignoreCase = true) ||
+            definition.contains("class=\"hom\"") ||
+            definition.contains("class='hom'") ||
+            definition.contains("class=\"sensenum\"") ||
+            definition.contains("id=\"collins_english_dictionary\"")
 }
+
+@Deprecated("Use isCollinsEntry instead", ReplaceWith("isCollinsEntry(definition)"))
+fun isCollins3rdEntry(definition: String): Boolean = isCollinsEntry(definition)
 
 /**
  * 柯林斯3rd释义列表渲染（编号圆形 + POS 徽标 + 词头高亮释义 + 圆点例句）。
@@ -390,33 +397,36 @@ fun CollinsSensesList(
         // 编号圆形 + 词性徽标（同一水平线）
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(22.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .border(1.dp, primaryTint, RoundedCornerShape(11.dp)),
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, primaryTint, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "${index + 1}",
                     fontSize = 12.sp,
+                    lineHeight = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = primaryTint
                 )
             }
             if (def.pos.isNotEmpty()) {
-                Spacer(modifier = Modifier.width(10.dp))
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(GdictColors.Primary.copy(alpha = 0.12f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, primaryTint.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         def.pos,
                         fontSize = 12.sp,
+                        lineHeight = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = primaryTint
                     )
@@ -477,6 +487,18 @@ fun CollinsSensesList(
  *   +<b>read </b><font color="#669900">[N-SING...]</font> ...       ← 下一释义由 +<b> 分隔
  */
 internal fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
+    return when {
+        definition.contains("class=\"hom\"") ||
+                definition.contains("class='hom'") ||
+                definition.contains("class=\"sensenum\"") ||
+                definition.contains("id=\"collins_english_dictionary\"") ->
+            parseCollinsAdvancedEntry(definition, fallbackWord)
+
+        else -> parseCollins3rdEntry(definition, fallbackWord)
+    }
+}
+
+private fun parseCollins3rdEntry(definition: String, fallbackWord: String): CollinsEntry {
     // 0. 词频棱形：HTML 开头的 ◆◇◇◇◇ 序列，◆ 实心数 = 词频星级
     val freqMatch = Regex("""^[◆◇]+""").find(definition)
     val frequency = freqMatch?.value?.count { it == '◆' } ?: 0
@@ -523,6 +545,107 @@ internal fun parseCollinsEntry(definition: String, fallbackWord: String): Collin
 
     val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
     return CollinsEntry(word, pronunciations, definitions, wordForms, frequency, parsedOk)
+}
+
+private fun parseCollinsAdvancedEntry(definition: String, fallbackWord: String): CollinsEntry {
+    // 1. 单词
+    val word = Regex("""<h2[^>]*class=["']h2_entry["'][^>]*>.*?<span[^>]*class=["']orth["'][^>]*>(.*?)</span>.*?</h2>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
+        ?: Regex("""<span[^>]*class=["']orth["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+            .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
+        ?: fallbackWord
+
+    // 2. 词频 data-band 1-5
+    val frequency = Regex("""<span[^>]*class=["']word-frequency-img["'][^>]*\\bdata-band=["'](\\d)["']""",
+        RegexOption.IGNORE_CASE)
+        .find(definition)?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(0, 5) ?: 0
+
+    // 3. 词形变化
+    val wordForms = Regex("""<span[^>]*class=["']form inflected_forms[^"']*["'][^>]*>(.*?)</span>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
+        ?: ""
+
+    // 4. 发音（取第一个 .pron）
+    val ipa = Regex("""<span[^>]*class=["']pron type-["'][^>]*>(.*?)</span>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
+    val audioPath = Regex("""<a[^>]*class=["'][^"']*hwd_sound[^"']*["'][^>]*href=["']sound://([^"']+)["']""",
+        RegexOption.IGNORE_CASE)
+        .find(definition)?.groupValues?.get(1)
+        ?: Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+            .find(definition)?.groupValues?.get(1)
+    val pronunciations = listOfNotNull(
+        if (ipa.isNotEmpty() || !audioPath.isNullOrBlank())
+            CollinsPronunciation(region = "", ipa = ipa, audioPath = audioPath) else null
+    )
+
+    // 5. 释义列表
+    val homBlocks = Regex("""<div[^>]*class=["']hom["'][^>]*>(.*?)</div>\s*(?=<div[^>]*class=["']hom["']|<div[^>]*class=["']copyright|</div></div></div></div></div>)""",
+        RegexOption.DOT_MATCHES_ALL)
+        .findAll(definition).toList()
+
+    val definitions = if (homBlocks.isEmpty()) {
+        // 回退：按 sensenum 分段
+        parseCollinsAdvancedBySensenum(definition)
+    } else {
+        homBlocks.mapNotNull { parseCollinsAdvancedSense(it.groupValues[1]) }
+    }
+
+    val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
+    return CollinsEntry(word, pronunciations, definitions, wordForms, frequency, parsedOk)
+}
+
+private fun parseCollinsAdvancedSense(homHtml: String): CollinsDefinition? {
+    val pos = Regex("""<span[^>]*class=["']gramGrp["'][^>]*>.*?<span[^>]*class=["']pos["'][^>]*>(.*?)</span>.*?</span>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
+
+    val senseNum = Regex("""<span[^>]*class=["']sensenum["'][^>]*>(.*?)</span>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
+
+    val def = Regex("""<div[^>]*class=["']def["'][^>]*>(.*?)</div>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
+
+    val examples = Regex("""<div[^>]*class=["']cit type-example["'][^>]*>.*?<span[^>]*class=["']quote["'][^>]*>(.*?)</span>.*?</div>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .findAll(homHtml)
+        .map { cleanCollinsAdvancedText(it.groupValues[1]) }
+        .filter { it.isNotEmpty() }
+        .toList()
+
+    if (pos.isEmpty() && def.isEmpty() && examples.isEmpty()) return null
+    return CollinsDefinition(pos, "$senseNum$def", examples)
+}
+
+private fun parseCollinsAdvancedBySensenum(definition: String): List<CollinsDefinition> {
+    val sensenumMatches = Regex("""<span[^>]*class=["']sensenum["'][^>]*>.*?</span>""",
+        RegexOption.DOT_MATCHES_ALL)
+        .findAll(definition).toList()
+    if (sensenumMatches.isEmpty()) return emptyList()
+
+    val starts = sensenumMatches.map { it.range.first }
+    return sensenumMatches.mapIndexed { i, match ->
+        val start = match.range.first
+        val end = if (i + 1 < starts.size) starts[i + 1] else definition.length
+        val html = definition.substring(start, end)
+        parseCollinsAdvancedSense(html)
+    }.filterNotNull()
+}
+
+private fun cleanCollinsAdvancedText(html: String): String {
+    return html.replace(Regex("<[^>]+>"), "")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&nbsp;", " ")
+        .replace("&#39;", "'")
+        .replace("&quot;", "\"")
+        .replace(Regex("\\s+"), " ")
+        .trim()
 }
 
 private fun parseCollinsSense(html: String): CollinsDefinition? {

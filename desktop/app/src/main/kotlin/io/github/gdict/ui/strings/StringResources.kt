@@ -124,7 +124,4 @@ interface StringResources {
     val supportDeveloperDesc: String
     val donationAlipay: String
     val donationWechat: String
-    val donationCustomAmount: String
-    val donationAmountHint: String
-    val donationAmountError: String
 }

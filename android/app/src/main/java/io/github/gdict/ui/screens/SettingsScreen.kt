@@ -1,7 +1,9 @@
 package io.github.gdict.ui.screens
 
+import androidx.annotation.DrawableRes
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -56,6 +59,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -218,6 +222,10 @@ fun SettingsScreen(
                     onCheckedChange = { settingsViewModel.setScanPopup(it) }
                 )
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            DonationSection(darkMode = darkMode)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -586,6 +594,145 @@ private fun SettingsButtonItem(
             contentDescription = null,
             tint = GdictColors.Primary.copy(alpha = 0.6f),
             modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun DonationSection(darkMode: Boolean) {
+    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
+    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
+    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val cardBg = if (darkMode) GdictColors.DarkSurfaceVariant.copy(alpha = 0.4f) else GdictColors.SurfaceVariant.copy(alpha = 0.4f)
+    val cardBorder = if (darkMode) GdictColors.DarkOutlineVariant.copy(alpha = 0.5f) else GdictColors.BlueHighlightBorder.copy(alpha = 0.8f)
+
+    var selectedQr by remember { mutableStateOf<QrCode?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
+            .background(glassBg)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(GdictColors.Primary)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = Color(0xFFE53935),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.section_support),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.support_developer_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = subtitleColor
+            )
+
+            val alipayLabel = stringResource(R.string.donation_alipay)
+            val wechatLabel = stringResource(R.string.donation_wechat)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                QrThumbnail(
+                    label = alipayLabel,
+                    drawableRes = R.drawable.donation_alipay,
+                    cardBg = cardBg,
+                    cardBorder = cardBorder,
+                    textColor = textColor,
+                    onClick = { selectedQr = QrCode(alipayLabel, R.drawable.donation_alipay) }
+                )
+                QrThumbnail(
+                    label = wechatLabel,
+                    drawableRes = R.drawable.donation_wechat,
+                    cardBg = cardBg,
+                    cardBorder = cardBorder,
+                    textColor = textColor,
+                    onClick = { selectedQr = QrCode(wechatLabel, R.drawable.donation_wechat) }
+                )
+            }
+        }
+    }
+
+    selectedQr?.let { qr ->
+        AlertDialog(
+            onDismissRequest = { selectedQr = null },
+            title = { Text(qr.label) },
+            text = {
+                Image(
+                    painter = painterResource(qr.drawableRes),
+                    contentDescription = qr.label,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedQr = null }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
+}
+
+private data class QrCode(val label: String, @DrawableRes val drawableRes: Int)
+
+@Composable
+private fun QrThumbnail(
+    label: String,
+    @DrawableRes drawableRes: Int,
+    cardBg: Color,
+    cardBorder: Color,
+    textColor: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        Image(
+            painter = painterResource(drawableRes),
+            contentDescription = label,
+            modifier = Modifier.size(100.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = textColor
         )
     }
 }

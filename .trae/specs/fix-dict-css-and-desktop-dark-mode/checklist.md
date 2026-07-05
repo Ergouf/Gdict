@@ -1,0 +1,13 @@
+# Checklist
+- [x] 词典 CSS 非空时，`transformHtmlStatic` 不被执行（MDict 元素保持原样）
+- [x] 词典 CSS 为空时，`transformHtmlStatic` 正常执行 + `BASE_CSS` 注入
+- [x] `DefaultRenderer` 分支在有词典 CSS 时不注入 `BASE_CSS`
+- [x] 牛津高阶词典词条显示词典自带 CSS 定义的完整样式（元素选择器生效）
+- [x] 无 CSS 词典词条显示 `BASE_CSS` 兜底样式
+- [x] `RE_CSS_URL` 正则包含 `.css` 扩展名
+- [x] 含 `@import` 的词典 CSS 能正确加载子 CSS 文件
+- [x] 深色模式下 `DesktopApp` 顶层容器使用 `DarkBackground` 而非透明
+- [x] 深色模式下 `CollapsibleSidebar` 使用 `DarkSidebarBackground` 而非透明
+- [x] 深色模式下 `AmbientBackground` 绘制深色渐变而非空操作
+- [x] 亮色模式界面未受影响
+- [x] 桌面端编译通过

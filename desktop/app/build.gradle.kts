@@ -125,6 +125,26 @@ tasks.register<Copy>("fixBundledJavaExe") {
     into(outputDir)
 }
 
+// Copy JCEF bundle resources to the packaged application directory
+tasks.register<Copy>("copyJcefBundle") {
+    group = "gdict"
+    description = "Copy JCEF bundle resources to packaged application"
+    dependsOn("packageAppImage")
+
+    val jcefSourceDir = file("resources/windows-x64/jcef-bundle")
+    val packageName = (project.findProperty("compose.desktop.packageName") as? String)
+        ?: "Gdict"
+    val appDir = layout.buildDirectory.dir("compose/binaries/main/app/$packageName")
+
+    from(jcefSourceDir) {
+        into("jcef-bundle")
+    }
+    into(appDir)
+
+    // Only copy if source directory exists
+    onlyIf { jcefSourceDir.exists() }
+}
+
 tasks.named("build") {
     dependsOn("fixBundledJavaExe")
 }
@@ -133,4 +153,5 @@ tasks.named("build") {
 // so both need the java.exe workaround applied.
 tasks.matching { it.name == "packageExe" || it.name == "packageMsi" || it.name == "packageDeb" || it.name == "packageDmg" }.configureEach {
     dependsOn("fixBundledJavaExe")
+    dependsOn("copyJcefBundle")
 }

@@ -112,7 +112,4 @@ object ZhCnStrings : StringResources {
     override val supportDeveloperDesc = "如果觉得 Gdict 对你有帮助，欢迎捐赠支持"
     override val donationAlipay = "支付宝捐赠"
     override val donationWechat = "微信捐赠"
-    override val donationCustomAmount = "自定义金额"
-    override val donationAmountHint = "输入整数金额"
-    override val donationAmountError = "请输入有效的整数金额"
 }

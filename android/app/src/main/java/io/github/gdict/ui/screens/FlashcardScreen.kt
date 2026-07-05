@@ -377,7 +377,7 @@ private fun FlashcardReviewView(
     val dictName = remember(item.dictionaryName) { simplifyDictionaryName(item.dictionaryName) }
     // 柯林斯3rd：用原生解析 + 共享释义渲染（与详情页一致）
     val collinsEntry = remember(item.definition, item.word) {
-        if (isCollins3rdEntry(item.definition)) parseCollinsEntry(item.definition, item.word) else null
+        if (isCollinsEntry(item.definition)) parseCollinsEntry(item.definition, item.word) else null
     }
 
     val progress = (currentIndex + 1).toFloat() / totalCount

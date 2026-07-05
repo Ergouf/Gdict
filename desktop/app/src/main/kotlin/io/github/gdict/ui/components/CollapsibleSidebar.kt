@@ -63,6 +63,7 @@ fun CollapsibleSidebar(
     isCollapsed: Boolean,
     onItemSelected: (Int) -> Unit,
     onToggleCollapse: () -> Unit,
+    darkMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val targetWidth = if (isCollapsed) 56.dp else 180.dp
@@ -78,7 +79,7 @@ fun CollapsibleSidebar(
         modifier = modifier
             .width(animatedWidth)
             .fillMaxHeight()
-            .background(androidx.compose.ui.graphics.Color.Transparent)
+            .background(if (darkMode) GdictColors.DarkSidebarBackground else androidx.compose.ui.graphics.Color.Transparent)
     ) {
         Column(
             modifier = Modifier

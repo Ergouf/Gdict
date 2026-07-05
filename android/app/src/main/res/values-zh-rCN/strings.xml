@@ -37,6 +37,8 @@
     <string name="section_features">功能</string>
     <string name="scan_popup">扫描弹窗</string>
     <string name="scan_popup_desc">启用扫描弹窗功能</string>
+    <string name="section_support">支持开发者</string>
+    <string name="support_developer_desc">如果觉得 Gdict 对你有帮助，欢迎捐赠支持</string>
     <string name="section_about">关于</string>
     <string name="version_info">版本信息</string>
     <string name="project_repository">项目仓库</string>
@@ -102,4 +104,6 @@
     <string name="diagnostic_result">词典诊断结果</string>
     <string name="diagnostic_clip_label">诊断结果</string>
     <string name="add">添加</string>
+    <string name="donation_alipay">支付宝捐赠</string>
+    <string name="donation_wechat">微信捐赠</string>
 </resources>

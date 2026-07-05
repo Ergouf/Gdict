@@ -590,10 +590,9 @@ internal fun PronActionButton(
     Box(
         modifier = modifier
             .height(52.dp)
-            .shadow(2.dp, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .border(0.5.dp, glassBorder, RoundedCornerShape(24.dp))
-            .background(glassBg)
+            .background(Color.Transparent)
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -615,6 +614,9 @@ internal fun PronActionButton(
  */
 @Composable
 private fun FlagBadge(region: String, size: Dp = 26.dp) {
+    val isUk = region.equals("UK", ignoreCase = true) ||
+            region.equals("British", ignoreCase = true) ||
+            region.equals("GB", ignoreCase = true)
     Box(
         modifier = Modifier
             .size(size)
@@ -624,7 +626,7 @@ private fun FlagBadge(region: String, size: Dp = 26.dp) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = this.size.width
             val h = this.size.height
-            if (region.equals("UK", ignoreCase = true)) {
+            if (isUk) {
                 drawRect(Color(0xFF012169))
                 val whiteW = w * 0.16f
                 drawRect(

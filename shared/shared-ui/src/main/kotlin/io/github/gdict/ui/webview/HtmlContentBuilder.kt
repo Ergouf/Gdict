@@ -13,7 +13,7 @@ object HtmlContentBuilder {
     private val RE_SOUND_HREF = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
     private val RE_STYLESHEET_LINK = Regex("""<link[^>]*rel=["']stylesheet["'][^>]*>""", RegexOption.IGNORE_CASE)
     private val RE_RESOURCE_SRC = Regex("""(?i)(src|background|poster)=["']([^"']*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ico))["']""")
-    private val RE_CSS_URL = Regex("""(?i)url\(\s*['"]?([^"')]*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ttf|\.woff|\.woff2|\.eot|\.otf)[^"']*)['"]?\s*\)""")
+    private val RE_CSS_URL = Regex("""(?i)url\(\s*['"]?([^"')]*(?:\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.bmp|\.ico|\.ttf|\.woff|\.woff2|\.eot|\.otf|\.css)[^"']*)['"]?\s*\)""")
 
     private val BASE_CSS = """
 :root {
@@ -109,11 +109,12 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
 
     fun build(definition: String, css: String, darkMode: Boolean = false, resourcePrefix: String = "mdxres://"): String {
         val renderer = renderers.find { it.matches(definition) } ?: DefaultRenderer
+        val isDefaultRenderer = renderer is DefaultRenderer
 
         val cleanDefinition = definition.replace(RE_CONTROL_CHARS, "")
 
         val transformedDef = renderer.transformHtml(cleanDefinition).let { def ->
-            var result = MdxParser.transformHtmlStatic(def)
+            var result = if (css.isNotEmpty()) def else MdxParser.transformHtmlStatic(def)
             result = result.replace(RE_ENTRY_HREF) { match ->
                 val entry = match.groupValues[1]
                 "href=\"entry://$entry\""
@@ -141,13 +142,40 @@ document.addEventListener('DOMContentLoaded',fixInlineStyles)
             result
         }
 
-        val rendererCssBlock = renderer.getCssBlock()
-        val dictCssBlock = if (css.isNotEmpty()) "<style>\n$css\n</style>\n" else ""
         val bodyContent = renderer.wrapBody(transformedDef)
-
         val bodyClass = if (darkMode) "dark" else ""
 
-        return """
+        return if (isDefaultRenderer) {
+            val processedCss = if (css.isNotEmpty()) {
+                css.replace(RE_CSS_URL) { match ->
+                    val path = match.groupValues[1].trim()
+                    "url(${resourcePrefix}${path})"
+                }
+            } else ""
+            val dictCssBlock = if (processedCss.isNotEmpty()) "<style>\n$processedCss\n</style>\n" else ""
+            """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html, body { margin:0; padding:6px 10px; }
+$BASE_CSS
+</style>
+$dictCssBlock
+<style>html, body { background: transparent !important; }</style>
+</head>
+<body class="$bodyClass">
+$bodyContent
+</body>
+</html>
+            """.trimIndent()
+        } else {
+            val rendererCssBlock = renderer.getCssBlock()
+            val dictCssBlock = if (css.isNotEmpty()) "<style>\n$css\n</style>\n" else ""
+
+            """
 <!DOCTYPE html>
 <html>
 <head>
@@ -165,6 +193,7 @@ $THEME_JS
 <script>fixInlineStyles();</script>
 </body>
 </html>
-        """.trimIndent()
+            """.trimIndent()
+        }
     }
 }

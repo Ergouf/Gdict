@@ -112,7 +112,4 @@ object EnStrings : StringResources {
     override val supportDeveloperDesc = "If you find Gdict helpful, consider supporting development"
     override val donationAlipay = "Donate via Alipay"
     override val donationWechat = "Donate via WeChat"
-    override val donationCustomAmount = "Custom Amount"
-    override val donationAmountHint = "Enter integer amount"
-    override val donationAmountError = "Please enter a valid integer amount"
 }

@@ -84,15 +84,15 @@ fun WordDetailScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf(stringResource(R.string.tab_origin), stringResource(R.string.tab_examples), stringResource(R.string.tab_synonyms))
     val isPronunciationDict = definition.contains("cepd18.css", ignoreCase = true) ||
-            definition.contains("<arl", ignoreCase = true) ||
-            definition.contains("<prongrp", ignoreCase = true) ||
-            definition.contains("<soundfile", ignoreCase = true)
+            (definition.contains("<prongrp", ignoreCase = true) &&
+                    (definition.contains("uk_sound.png", ignoreCase = true) ||
+                            definition.contains("us_sound.png", ignoreCase = true)))
 
     // 柯林斯3rd词典检测：只有 HTML 含 ◆◇ 词频棱形 或 <font...669900...> 绿色词性标签
     // 的才是柯林斯3rd（ccald/css 名仅供参考）。COBUILD等同义词页结构不同，回退 WebView。
     val isCollinsDict = (dictionaryName.contains("collins", ignoreCase = true) ||
             dictionaryName.contains("柯林斯", ignoreCase = true)) &&
-            isCollins3rdEntry(definition)
+            isCollinsEntry(definition)
     android.util.Log.d("WordDetail", "isPronunciationDict=$isPronunciationDict isCollinsDict=$isCollinsDict dict=$dictionaryName word=$word cssHead=${css.take(100)} defHead=${definition.take(300)}")
 
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)

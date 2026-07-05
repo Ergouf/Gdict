@@ -55,17 +55,22 @@ object GdictColors {
     val SubtleHover = Color(0xFFF4F4F4)
     val SubtleSelected = Color(0xFFEAEAEA)
 
-    // Acrylic Glass 玻璃材质 token
-    val BlueSurfaceGlass = Color.White.copy(alpha = 0.72f)
+    // Acrylic Glass 玻璃材质 token（与 Android 端统一）
+    val BlueSurfaceGlass = Color(0xFFF7FAFE)
     val BlueSurfaceGlassDark = Color(0xCC1A2A3A)
     val BlueHighlightBorder = Color.White.copy(alpha = 0.60f)
-    val BlueCardBorder = Color(0x331E8CFF)
-    val BlueBackgroundTop = Color(0xFFF5FAFF)
+    val BlueCardBorder = Color(0x221E8CFF)
+    val BlueBackgroundTop = Color(0xFFDCEBFF)
     val BlueBackgroundBottom = Color(0xFFFFFFFF)
-    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.08f)
+    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.06f)
 
-    // 深色主题
-    val DarkBackground = Color(0xE61F1F1F) // 桌面端 90% 不透明，透出深色 Mica
+    // Android 玻璃拟态扩展 token
+    val BluePrimaryLight = Color(0xFFB3D8FF)
+    val BluePlaceholder = Color(0xFF1E8CFF).copy(alpha = 0.5f)
+    val HeadingDark = Color(0xFF102A56)
+
+    // 深色主题 — 统一为纯黑，确保标题栏、侧边栏、内容区颜色一致
+    val DarkBackground = Color(0xFF141414)
     val DarkSurface = Color(0xFF292929)
     val DarkSurfaceVariant = Color(0xFF141414)
     val DarkOnBackground = Color(0xFFFFFFFF)
@@ -88,6 +93,6 @@ object GdictColors {
     val SidebarSelected = Color(0xFFE3F0FF) // 选中态浅蓝填充
     val SidebarIconActive = Color(0xFF1E8CFF) // 品牌蓝
     val SidebarIconInactive = Color(0xFF565656)
-    val DarkSidebarBackground = Color(0x001C1F24)
+    val DarkSidebarBackground = Color(0xFF141414) // 与 DarkBackground 统一
     val DarkSidebarSelected = Color(0xFF0D3B6B)
 }

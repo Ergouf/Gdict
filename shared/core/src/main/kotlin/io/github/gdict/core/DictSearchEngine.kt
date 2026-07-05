@@ -106,7 +106,7 @@ class DictSearchEngine {
         val sb = StringBuilder()
         sb.append(parser.companionCss)
         val mddParser = loadedMdds[dictId]
-        if (mddParser != null && mddParser.wordCount > 0) {
+        if (mddParser != null && (mddParser.wordCount > 0 || mddParser.isResourceMode)) {
             try {
                 val cssKeys = cssKeysCache?.get(dictId) ?: mddParser.findResourceKeys(".css").also {
                     cssKeysCache?.put(dictId, it)

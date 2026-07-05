@@ -96,7 +96,8 @@ fun DesktopApp(
     settingsViewModel: SettingsViewModel,
     dictionaryRepository: DictionaryRepository,
     strings: StringResources,
-    awtWindow: Window
+    awtWindow: Window,
+    darkMode: Boolean = false
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showDictionaries by remember { mutableIntStateOf(0) }
@@ -127,12 +128,12 @@ fun DesktopApp(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
+            .background(if (darkMode) MaterialTheme.colorScheme.background else Color.Transparent)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Transparent)
+                .background(if (darkMode) MaterialTheme.colorScheme.background else Color.Transparent)
         ) {
         CollapsibleSidebar(
             items = sidebarItems,
@@ -149,6 +150,7 @@ fun DesktopApp(
                 }
             },
             onToggleCollapse = { isSidebarCollapsed = !isSidebarCollapsed },
+            darkMode = darkMode,
             modifier = Modifier.fillMaxHeight()
         )
 
@@ -161,7 +163,7 @@ fun DesktopApp(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .background(Color.Transparent)
+                .background(if (darkMode) MaterialTheme.colorScheme.background else Color.Transparent)
         ) {
             // We deliberately avoid AnimatedContent because the transition would
             // have to render BOTH the old screen and the new screen at the same
@@ -206,7 +208,7 @@ fun DesktopApp(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Transparent)
+                    .background(if (darkMode) MaterialTheme.colorScheme.background else Color.Transparent)
             ) {
                 if (showingDetail) {
                     WordDetailScreen(
@@ -253,6 +255,7 @@ fun DesktopApp(
                         flashcardViewModel = flashcardViewModel,
                         settingsViewModel = settingsViewModel,
                         bookmarkViewModel = bookmarkViewModel,
+                        strings = strings,
                         onBack = { showFlashcard = false }
                     )
                 } else if (showDictionaries == 1) {
@@ -268,13 +271,16 @@ fun DesktopApp(
                     0 -> SearchScreen(
                         searchViewModel = searchViewModel,
                         settingsViewModel = settingsViewModel,
+                        strings = strings,
                         onWordClick = onWordClick,
                         modifier = Modifier.fillMaxSize()
                     )
                     1 -> BookmarksScreen(
                         bookmarkViewModel = bookmarkViewModel,
                         settingsViewModel = settingsViewModel,
+                        strings = strings,
                         onWordClick = onWordClick,
+                        onFlashcardClick = { showFlashcard = true },
                         modifier = Modifier.fillMaxSize()
                     )
                     4 -> SettingsScreen(
@@ -287,6 +293,7 @@ fun DesktopApp(
                     else -> SearchScreen(
                         searchViewModel = searchViewModel,
                         settingsViewModel = settingsViewModel,
+                        strings = strings,
                         onWordClick = onWordClick,
                         modifier = Modifier.fillMaxSize()
                     )
