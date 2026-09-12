@@ -82,13 +82,15 @@
 ### 桌面端
 
 <div align="center">
-  <img src="screenshots/desktop-home.png" width="400" alt="搜索">
-  <img src="screenshots/desktop-favorites.png" width="400" alt="收藏">
+  <img src="screenshots/desktop-home.png" width="600" alt="搜索">
   <br><br>
-  <img src="screenshots/desktop-learning.png" width="400" alt="学习">
-  <img src="screenshots/desktop-dictionary.png" width="400" alt="词典">
+  <img src="screenshots/desktop-favorites.png" width="600" alt="收藏">
   <br><br>
-  <img src="screenshots/desktop-profile.png" width="400" alt="我的">
+  <img src="screenshots/desktop-learning.png" width="600" alt="学习">
+  <br><br>
+  <img src="screenshots/desktop-dictionary.png" width="600" alt="词典">
+  <br><br>
+  <img src="screenshots/desktop-profile.png" width="600" alt="我的">
 </div>
 
 ## 技术栈

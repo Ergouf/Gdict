@@ -48,13 +48,15 @@ A modern dictionary app for Android & Desktop following Material Design 3, suppo
 ### Desktop
 
 <div align="center">
-  <img src="screenshots/desktop-home.png" width="400" alt="Search">
-  <img src="screenshots/desktop-favorites.png" width="400" alt="Favorites">
+  <img src="screenshots/desktop-home.png" width="600" alt="Search">
   <br><br>
-  <img src="screenshots/desktop-learning.png" width="400" alt="Learning">
-  <img src="screenshots/desktop-dictionary.png" width="400" alt="Dictionary">
+  <img src="screenshots/desktop-favorites.png" width="600" alt="Favorites">
   <br><br>
-  <img src="screenshots/desktop-profile.png" width="400" alt="Profile">
+  <img src="screenshots/desktop-learning.png" width="600" alt="Learning">
+  <br><br>
+  <img src="screenshots/desktop-dictionary.png" width="600" alt="Dictionary">
+  <br><br>
+  <img src="screenshots/desktop-profile.png" width="600" alt="Profile">
 </div>
 
 ## Tech Stack
