@@ -69,8 +69,24 @@
 
 ## 应用截图
 
+### Android
+
 <div align="center">
-  <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict 界面预览">
+  <img src="screenshots/android-home.png" width="360" alt="Android 首页">
+</div>
+
+### 桌面端
+
+<div align="center">
+  <img src="screenshots/search.png" width="800" alt="搜索">
+  <br><br>
+  <img src="screenshots/search_result.png" width="800" alt="搜索结果">
+  <br><br>
+  <img src="screenshots/definition.png" width="800" alt="词义详情">
+  <br><br>
+  <img src="screenshots/definitions.png" width="800" alt="多词典释义">
+  <br><br>
+  <img src="screenshots/flashcard1.png" width="800" alt="闪卡复习">
 </div>
 
 ## 技术栈
@@ -189,7 +205,6 @@ Gdict/
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts                   # includeBuild("../shared")
 ├── screenshots/
-├── mockups/                                  # HTML/CSS UI 模型
 ├── BUILD.md
 ├── CONTRIBUTING.md
 ├── CONTRIBUTING.zh-CN.md

@@ -35,8 +35,24 @@ A modern dictionary app for Android & Desktop following Material Design 3, suppo
 
 ## Screenshots
 
+### Android
+
 <div align="center">
-  <img src="screenshots/mockup_preview.jpeg" width="800" alt="Gdict Mockup Preview">
+  <img src="screenshots/android-home.png" width="360" alt="Android Home">
+</div>
+
+### Desktop
+
+<div align="center">
+  <img src="screenshots/search.png" width="800" alt="Search">
+  <br><br>
+  <img src="screenshots/search_result.png" width="800" alt="Search Result">
+  <br><br>
+  <img src="screenshots/definition.png" width="800" alt="Word Definition">
+  <br><br>
+  <img src="screenshots/definitions.png" width="800" alt="Multiple Definitions">
+  <br><br>
+  <img src="screenshots/flashcard1.png" width="800" alt="Flashcard Review">
 </div>
 
 ## Tech Stack
@@ -155,7 +171,6 @@ Gdict/
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts                 # includeBuild("../shared")
 ├── screenshots/
-├── mockups/                                # HTML/CSS UI mockups
 ├── BUILD.md
 ├── CONTRIBUTING.md
 ├── CONTRIBUTING.zh-CN.md
