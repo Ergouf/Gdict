@@ -72,7 +72,11 @@
 ### Android
 
 <div align="center">
-  <img src="screenshots/android-home.png" width="360" alt="Android 首页">
+  <img src="screenshots/android-home.png" width="180" alt="搜索">
+  <img src="screenshots/android-definition.png" width="180" alt="词条释义">
+  <img src="screenshots/android-favorites.png" width="180" alt="收藏">
+  <img src="screenshots/android-learning.png" width="180" alt="学习">
+  <img src="screenshots/android-profile.png" width="180" alt="我的">
 </div>
 
 ### 桌面端

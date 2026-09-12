@@ -38,7 +38,11 @@ A modern dictionary app for Android & Desktop following Material Design 3, suppo
 ### Android
 
 <div align="center">
-  <img src="screenshots/android-home.png" width="360" alt="Android Home">
+  <img src="screenshots/android-home.png" width="180" alt="Search">
+  <img src="screenshots/android-definition.png" width="180" alt="Definition">
+  <img src="screenshots/android-favorites.png" width="180" alt="Favorites">
+  <img src="screenshots/android-learning.png" width="180" alt="Learning">
+  <img src="screenshots/android-profile.png" width="180" alt="Profile">
 </div>
 
 ### Desktop
