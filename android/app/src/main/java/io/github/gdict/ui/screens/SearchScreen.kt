@@ -2,6 +2,7 @@ package io.github.gdict.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -231,60 +232,69 @@ private fun SearchBar(
     val secondaryText = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val shape = RoundedCornerShape(18.dp)
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .shadow(1.dp, shape)
-            .clip(shape)
-            .background(background)
-            .border(0.5.dp, border, shape)
-            .padding(start = 14.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(52.dp),
+        shape = shape,
+        color = background,
+        border = BorderStroke(0.5.dp, border),
+        shadowElevation = 1.dp,
+        tonalElevation = 0.dp
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = null,
-            tint = secondaryText,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(9.dp))
-        BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-            interactionSource = interactionSource,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-            decorationBox = { innerTextField ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.search_hint),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = secondaryText
-                        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 14.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = secondaryText,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(9.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                interactionSource = interactionSource,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = textColor,
+                    background = Color.Transparent
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.search_hint),
+                                style = MaterialTheme.typography.bodyLarge.copy(background = Color.Transparent),
+                                color = secondaryText
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
                 }
-            }
-        )
-        if (query.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable { onQueryChange("") },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.cancel),
-                    tint = secondaryText,
-                    modifier = Modifier.size(18.dp)
-                )
+            )
+            if (query.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable { onQueryChange("") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.cancel),
+                        tint = secondaryText,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
