@@ -129,114 +129,123 @@ private fun GdictAppContent(
     val isDetailPage = currentDestination?.route?.startsWith("word_detail/") == true ||
         currentDestination?.route?.startsWith("dictionaries") == true
 
-    Scaffold(
-        containerColor = appBackground,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (!isDetailPage) {
-                GdictBottomBar(
-                    screens = screens,
-                    currentDestination = currentDestination,
-                    darkMode = darkMode,
-                    onNavigate = { screen ->
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(appBackground)
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = appBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Search.route,
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .padding(bottom = if (isDetailPage) 0.dp else 104.dp)
+            ) {
+                composable(Screen.Search.route) {
+                    SearchScreen(
+                        searchViewModel = searchViewModel,
+                        settingsViewModel = settingsViewModel,
+                        onWordClick = { word, definition, dictName, _ ->
+                            val encodedDef = Uri.encode(definition)
+                            val encodedDict = Uri.encode(dictName)
+                            navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
                         }
-                    }
-                )
+                    )
+                }
+                composable(Screen.Bookmarks.route) {
+                    BookmarksScreen(
+                        bookmarkViewModel = bookmarkViewModel,
+                        settingsViewModel = settingsViewModel,
+                        onWordClick = { word, definition, dictName, _ ->
+                            val encodedDef = Uri.encode(definition)
+                            val encodedDict = Uri.encode(dictName)
+                            navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
+                        },
+                        onFlashcardClick = { navController.navigate(Screen.Learning.route) }
+                    )
+                }
+                composable(Screen.Learning.route) {
+                    FlashcardScreen(
+                        flashcardViewModel = flashcardViewModel,
+                        settingsViewModel = settingsViewModel,
+                        bookmarkViewModel = bookmarkViewModel
+                    )
+                }
+                composable(Screen.Profile.route) {
+                    SettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateToDictionaries = { navController.navigate("dictionaries") }
+                    )
+                }
+                composable("dictionaries") {
+                    DictionariesScreen(
+                        dictionaryViewModel = dictionaryViewModel,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+                composable(
+                    route = "word_detail/{word}/{definition}/{dictionaryName}",
+                    arguments = listOf(
+                        navArgument("word") { type = NavType.StringType },
+                        navArgument("definition") { type = NavType.StringType },
+                        navArgument("dictionaryName") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val word = backStackEntry.arguments?.getString("word") ?: ""
+                    val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
+                    val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
+                    val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
+                    val css = searchViewModel.getCssForDictionary(dictionaryName)
+                    val entryCoroutineScope = rememberCoroutineScope()
+
+                    WordDetailScreen(
+                        word = word,
+                        definition = definition,
+                        dictionaryName = dictionaryName,
+                        css = css,
+                        isBookmarked = bookmarks.any { it.word == word && it.dictionaryName == dictionaryName },
+                        onBack = { navController.popBackStack() },
+                        onToggleBookmark = { bookmarkViewModel.toggleBookmark(word, definition, dictionaryName) },
+                        onEntryClick = { entryWord ->
+                            entryCoroutineScope.launch {
+                                val results = searchViewModel.searchWordForResult(entryWord)
+                                val result = results.find { it.dictionaryName == dictionaryName }
+                                    ?: results.firstOrNull()
+                                if (result != null) {
+                                    val encodedDef = Uri.encode(result.definition)
+                                    val encodedDict = Uri.encode(result.dictionaryName)
+                                    navController.navigate("word_detail/${Uri.encode(entryWord)}/$encodedDef/$encodedDict")
+                                }
+                            }
+                        },
+                        dictionaryRepository = (LocalContext.current.applicationContext as GdictApplication).dictionaryRepository,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
             }
         }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Search.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(Screen.Search.route) {
-                SearchScreen(
-                    searchViewModel = searchViewModel,
-                    settingsViewModel = settingsViewModel,
-                    onWordClick = { word, definition, dictName, _ ->
-                        val encodedDef = Uri.encode(definition)
-                        val encodedDict = Uri.encode(dictName)
-                        navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
-                    }
-                )
-            }
-            composable(Screen.Bookmarks.route) {
-                BookmarksScreen(
-                    bookmarkViewModel = bookmarkViewModel,
-                    settingsViewModel = settingsViewModel,
-                    onWordClick = { word, definition, dictName, _ ->
-                        val encodedDef = Uri.encode(definition)
-                        val encodedDict = Uri.encode(dictName)
-                        navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
-                    },
-                    onFlashcardClick = { navController.navigate(Screen.Learning.route) }
-                )
-            }
-            composable(Screen.Learning.route) {
-                FlashcardScreen(
-                    flashcardViewModel = flashcardViewModel,
-                    settingsViewModel = settingsViewModel,
-                    bookmarkViewModel = bookmarkViewModel
-                )
-            }
-            composable(Screen.Profile.route) {
-                SettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateToDictionaries = { navController.navigate("dictionaries") }
-                )
-            }
-            composable("dictionaries") {
-                DictionariesScreen(
-                    dictionaryViewModel = dictionaryViewModel,
-                    settingsViewModel = settingsViewModel
-                )
-            }
-            composable(
-                route = "word_detail/{word}/{definition}/{dictionaryName}",
-                arguments = listOf(
-                    navArgument("word") { type = NavType.StringType },
-                    navArgument("definition") { type = NavType.StringType },
-                    navArgument("dictionaryName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val word = backStackEntry.arguments?.getString("word") ?: ""
-                val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
-                val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
-                val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
-                val css = searchViewModel.getCssForDictionary(dictionaryName)
-                val entryCoroutineScope = rememberCoroutineScope()
 
-                WordDetailScreen(
-                    word = word,
-                    definition = definition,
-                    dictionaryName = dictionaryName,
-                    css = css,
-                    isBookmarked = bookmarks.any { it.word == word && it.dictionaryName == dictionaryName },
-                    onBack = { navController.popBackStack() },
-                    onToggleBookmark = { bookmarkViewModel.toggleBookmark(word, definition, dictionaryName) },
-                    onEntryClick = { entryWord ->
-                        entryCoroutineScope.launch {
-                            val results = searchViewModel.searchWordForResult(entryWord)
-                            val result = results.find { it.dictionaryName == dictionaryName }
-                                ?: results.firstOrNull()
-                            if (result != null) {
-                                val encodedDef = Uri.encode(result.definition)
-                                val encodedDict = Uri.encode(result.dictionaryName)
-                                navController.navigate("word_detail/${Uri.encode(entryWord)}/$encodedDef/$encodedDict")
-                            }
+        if (!isDetailPage) {
+            GdictBottomBar(
+                screens = screens,
+                currentDestination = currentDestination,
+                darkMode = darkMode,
+                onNavigate = { screen ->
+                    navController.navigate(screen.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
                         }
-                    },
-                    dictionaryRepository = (LocalContext.current.applicationContext as GdictApplication).dictionaryRepository,
-                    settingsViewModel = settingsViewModel
-                )
-            }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
@@ -246,16 +255,15 @@ fun GdictBottomBar(
     screens: List<Screen>,
     currentDestination: androidx.navigation.NavDestination?,
     darkMode: Boolean,
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val pageBackground = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
     val glassBackground = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
     val glassBorder = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .background(pageBackground)
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
