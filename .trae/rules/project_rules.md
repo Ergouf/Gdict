@@ -9,11 +9,14 @@ Gdict 是一款跨平台词典应用（Android + Desktop），支持 MDX/MDD 词
 
 ### 设计系统（双端差异）
 
-- **Android 端**：Material Design 3（遵循 Material You 平台惯例）+ Fluent Design 2 / Acrylic Glass 视觉
-- **Desktop 端**：Fluent Design 2 风格（通过 MD3 `colorScheme` 承载 Fluent 色板，复用 Mica/Acrylic 系统材料）
-- 两端共享同一套 `GdictColors` 色值定义（品牌蓝 accent + Fluent 中性色 + Acrylic Glass token），仅"应用层背景透明度"等平台特性有差异
-- 品牌主色（accent）固定为蓝色 `#1E8CFF`（Logo 同款蓝），全面采用 Fluent Design 2 / Windows 11 Acrylic Glass 视觉规范
-- 详细 UI 规范见 `docs/ui-redesign-roadmap.md`
+- **Android 端**：Jetpack Compose + Material Design 3 作为平台组件基础，视觉与交互遵循 `docs/apple-hig-ui-migration.md` 中的 Apple HIG-inspired 原则：内容优先、层级清晰、颜色克制、标准交互、可访问性优先。
+- **Desktop 端**：暂时保持 Fluent Design 2 风格（通过 MD3 `colorScheme` 承载 Fluent 色板）；除非另开 Desktop parity phase，不要把 Android 的页面实现直接复制到 Desktop。
+- Android 使用语义化 `GdictColors`：中性 Background/Surface/Glass/Separator/Label token；品牌蓝 `#1E8CFF` 只用于主要动作、链接、选择和有意义的状态。
+- “Glass” 只作为导航/交互 chrome 的轻量材质表达。Jetpack Compose 的普通 `Modifier.blur()` 不是 backdrop blur，禁止把它包装成伪 Liquid Glass。
+- 禁止页面自定义蓝白渐变、全局蓝色环境光斑、无业务含义的 stagger/page-enter/pulse 动画。
+- 搜索、滚动、返回、收藏、分享、设置等优先采用 Android 用户熟悉的标准交互；不得用 pinch、drag、swipe-only 等隐藏手势替代唯一可发现的显式控制。
+- 允许保留能解释状态的短动画，例如闪卡翻面、播放状态、明确的展开/收起。
+- Android UI 变更必须通过 `scripts/check-apple-hig-ui.sh`；详细阶段、例外规则和 Apple 官方参考见 `docs/apple-hig-ui-migration.md`。
 
 ## 架构
 
@@ -55,7 +58,7 @@ Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 - WordDetailScreen → DictionaryRepository + SettingsViewModel
 - BookmarksScreen → BookmarkViewModel + SettingsViewModel
 - FlashcardScreen → FlashcardViewModel + SettingsViewModel + BookmarkViewModel
-- DictionariesScreen → DictionaryViewModel
+- DictionariesScreen → DictionaryViewModel + SettingsViewModel
 - SettingsScreen → SettingsViewModel
 
 ## 代码风格
@@ -63,7 +66,7 @@ Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 ### 语言与框架
 
 - 100% Kotlin，UI 使用 Jetpack Compose
-- Android 端使用 Material Design 3；Desktop 端使用 Fluent Design 风格（通过 MD3 `colorScheme` token 承载 Fluent 色值，不引入第三方 Fluent 库）
+- Android 端使用 Material Design 3 组件基础 + HIG-inspired 语义 UI 系统；Desktop 端暂时使用 Fluent Design 风格
 - 禁止使用 XML 布局，所有 UI 必须用 Compose 编写
 - 状态管理使用 ViewModel + StateFlow，禁止 LiveData
 - 导航使用 Navigation Compose
@@ -80,39 +83,27 @@ Screen (Compose) → ViewModel (StateFlow) → Repository → core 模块
 - 不使用通配符 import
 - 不添加多余注释，代码应自解释
 - Compose 函数按 `@Composable` 注解标识
-- 色值使用 `GdictColors` 色板（定义在 `theme/Color.kt`），不硬编码颜色
+- 色值使用 `GdictColors` 色板（定义在 `theme/Color.kt`），页面禁止硬编码 RGB/ARGB 色值
 - 字体使用 `GdictTypography`（定义在 `theme/Type.kt`）
+- 交互控件默认保证至少约 48dp 的可点击区域
+- 用户可见字符串优先放入 string resource；诊断/开发信息除外
+- 动效必须能说明状态变化或任务结果；纯装饰性循环、入场编舞不得进入生产页面
 
 ## 构建与测试
 
-### 构建命令
+### 必过门禁
 
 ```bash
-cd android_project
-
-# Debug 构建
-./gradlew assembleDebug
-
-# Release 构建（需要签名配置）
-./gradlew assembleRelease
-
-# 清理
-./gradlew clean
+./scripts/check-apple-hig-ui.sh
+./gradlew testDebugUnitTest --stacktrace
+./gradlew assembleDebug --stacktrace
 ```
 
-### 测试命令
-
-```bash
-# core 模块单元测试（纯 JVM，无需模拟器）
-./gradlew :core:testDebugUnitTest --rerun-tasks
-
-# 指定 MDX 文件路径
-./gradlew :core:testDebugUnitTest -Dmdx.file.path=/path/to/dict.mdx
-```
+CI 还必须运行 shared core tests 与 Desktop compile，确保 Android UI 改造不破坏跨平台核心模块。
 
 ### 构建环境
 
-- JDK 17+（`JAVA_HOME` 必须指向 JDK 17）
+- JDK 17+
 - Android SDK API 34（`compileSdk`/`targetSdk`）
 - `minSdk` = 26
 - AGP 8.2.2 / Kotlin 1.9.24
@@ -126,7 +117,7 @@ cd android_project
 - `versionCode` = Git 提交总数（`git rev-list --count HEAD`）
 - `versionName` = 最近 Git 标签（`git describe --tags --always`，去除 `v` 前缀）
 
-发布新版本时打 Git tag 即可：`git tag v1.2.0 && git push --tags`
+发布新版本时打 Git tag：`git tag v1.2.0 && git push --tags`
 
 ## 签名配置
 
@@ -146,7 +137,7 @@ cd android_project
 
 ### 日志
 
-- core 模块使用 `GdictLogger` 接口（`core/src/.../GdictLogger.kt`），不直接使用 `android.util.Log`
+- core 模块使用 `GdictLogger` 接口，不直接使用 `android.util.Log`
 - app 模块在 `GdictApplication.onCreate()` 中注入 `AndroidLogger` 实现
 
 ### 搜索
@@ -160,37 +151,27 @@ cd android_project
 
 - 详情页使用 `MdxWebView` 组件（`ui/webview/MdxWebView.kt`）封装 WebView 逻辑
 - HTML 内容由 `HtmlContentBuilder`（`ui/webview/HtmlContentBuilder.kt`）构建，支持 CSS 注入和主题切换
-- 不同词典的定制化渲染通过 `DictionaryRenderer` 接口（`ui/webview/DictionaryRenderer.kt`）实现
-  - `DefaultRenderer`：默认渲染，直接透传 HTML
-  - `CambridgeEpdRenderer`：Cambridge EPD 专用，替换发音图片为 CSS 图标
-- 音频播放由 `AudioPlayer` 单例（`ui/webview/AudioPlayer.kt`）处理
-- 详情页通过 `WebViewClient.shouldInterceptRequest` 拦截资源请求
-- 从 MDD 同步读取 CSS/图片/音频/字体资源
+- 不同词典的定制化渲染通过 `DictionaryRenderer` 接口实现
+- 音频播放由 `AudioPlayer` 单例处理
 - `sound://` 自定义协议用于音频播放
-- `entry://` 自定义协议用于交叉引用跳转（`shouldOverrideUrlLoading` 拦截，提取目标词条名后异步搜索并导航）
-- 资源路径匹配：尝试多种格式（反斜杠、双反斜杠、仅文件名、正斜杠），URL 解码处理 `%20` 等编码字符
-- 支持拦截的文件类型：CSS、JS、图片（png/jpg/gif/svg/webp）、字体（ttf/woff/woff2）、音频（mp3/wav/ogg/spx）
-- `DictionaryManager` 维护 `resourceCache`（按路径缓存资源数据）和 `cssKeysCache`（按词典 ID 缓存 CSS 关键词列表）
-- `SearchViewModel` 维护按词典名缓存的 CSS，避免导航到详情页时重复从 MDD 读取
-- 卸载词典时清空 `resourceCache`，避免缓存残留
-- WebView 加载优化：`setTag/getTag` 内容去重避免重复 `loadDataWithBaseURL`；CSS 内联注入后移除原始 `<link>` 标签；`blockNetworkLoads = true`
+- `entry://` 自定义协议用于交叉引用跳转
+- MDD 资源路径匹配需兼容反斜杠、双反斜杠、文件名、正斜杠与 URL 解码
+- 支持 CSS、JS、图片、字体、音频等资源拦截
+- WebView 使用内容去重、CSS 内联和 `blockNetworkLoads = true` 等现有优化，不因 UI 重构而移除
 
 ### 发音
 
-- 优先使用微软 Edge TTS 云端 API（`tts/EdgeTtsClient.kt`）
-- 回退从 MDD 提取音频资源
-- 最终回退到 Android 本地 TTS
-- 需要 `INTERNET` 权限（已在 AndroidManifest.xml 声明）
-- 发音图标使用 CSS `::before` 伪元素渲染 Unicode ▶（U+25B6），不使用 emoji
-- Cambridge EPD 等词典的发音图片（speaker/play/sound/volume 等）替换为 `.speaker-icon` 元素
-- Cambridge 专用 CSS 始终注入，不受 MDD CSS 是否为空影响
-- `entry://` 交叉引用跳转通过 `SearchViewModel.searchWordForResult` 异步搜索后导航
+- 优先尝试词典 MDD 音频资源
+- 可回退微软 Edge TTS 云端 API和 Android 本地 TTS
+- `entry://` 交叉引用仍通过 `SearchViewModel.searchWordForResult` 搜索并导航
+- Cambridge/Collins 的原生详情视觉可以重构，但不得破坏音频路径、交叉引用或 WebView fallback
 
 ### FSRS 间隔重复
 
-- 实现了 FSRS 算法（非 SM-2）
+- 实现 FSRS 算法（非 SM-2）
 - 核心参数：Difficulty（1-10）、Stability、Retrievability
 - meanReversion 使用独立权重 w=0.4
+- UI 改造不得改变调度算法、评分语义或持久化格式
 
 ## 数据存储
 
@@ -202,7 +183,9 @@ cd android_project
 
 - 不要在 core 模块引入 Android UI 依赖
 - 不要使用 LiveData，统一用 StateFlow
-- 不要硬编码颜色值，使用 `GdictColors` 色板
+- 不要在迁移后的 Android 页面硬编码颜色值
+- 不要恢复全页蓝白渐变、Acrylic 环境光斑或伪 backdrop blur
+- 不要用隐藏手势作为唯一控制路径
 - 不要手动修改 `versionCode` / `versionName`
 - 不要将 `local.properties` 或 `*.keystore` 提交到 Git
 - 不要在 Compose 中使用 XML 布局
