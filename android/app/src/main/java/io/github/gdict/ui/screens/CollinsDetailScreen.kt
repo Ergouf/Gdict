@@ -2,7 +2,6 @@ package io.github.gdict.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,20 +23,14 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -49,18 +42,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.gdict.R
 import io.github.gdict.data.AndroidDictionaryRepository
-import io.github.gdict.ui.components.pageEnterAnimation
 import io.github.gdict.ui.theme.GdictColors
 import io.github.gdict.ui.webview.MdxWebView
-
-// region 柯林斯词典数据模型
 
 data class CollinsEntry(
     val word: String,
     val pronunciations: List<CollinsPronunciation>,
     val definitions: List<CollinsDefinition>,
     val wordForms: String,
-    val frequency: Int, // 词频星级 0-5（◆ 实心数）
+    val frequency: Int,
     val parsedOk: Boolean
 )
 
@@ -76,13 +66,6 @@ data class CollinsDefinition(
     val examples: List<String>
 )
 
-// endregion
-
-/**
- * 柯林斯3rd词典详情页 —— Fluent Design 2 / Acrylic Glass 原生渲染。
- * HTML 结构： <b>word forms</b><font color=#669900>[POS]</font> 释义 <img><font color=#004080><i>例句</i></font>
- * 多释义由 +<b> 分隔。
- */
 @Composable
 fun CollinsDetailContent(
     word: String,
@@ -99,253 +82,141 @@ fun CollinsDetailContent(
     playAudio: (audioPath: String?, fallbackWord: String) -> Unit
 ) {
     val data = remember(definition, word) { parseCollinsEntry(definition, word) }
-    var contentScale by remember { mutableStateOf(1f) }
-
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else Color.White.copy(alpha = 0.88f)
-    val glassBorder = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
-    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val background = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+    val surface = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val outline = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.OutlineVariant
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val primaryTint = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
+    val displayWord = data.word.ifBlank { word }
 
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
-    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+    Column(modifier = Modifier.fillMaxSize().background(background)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            GlassCircleButton(onClick = onBack, glassBg = surface, glassBorder = outline) {
+                Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = textColor, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = dictionaryName.ifBlank { "Collins" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+            )
+            GlassCircleButton(onClick = onShare, glassBg = surface, glassBorder = outline) {
+                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = secondary, modifier = Modifier.size(20.dp))
+            }
+        }
 
-    val cdBack = stringResource(R.string.cd_back)
-    val cdShare = stringResource(R.string.cd_share)
-    val savedText = stringResource(R.string.saved)
-    val favText = stringResource(R.string.add_to_favorites)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(pronunciationBgGradient(darkMode))
-            .pronunciationAmbientBackground(darkMode, screenWidthPx, screenHeightPx)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Floating Navigation Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                GlassCircleButton(onClick = onBack, glassBg = glassBg, glassBorder = glassBorder) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = cdBack, tint = primaryTint, modifier = Modifier.size(22.dp))
-                }
-                Text(
-                    dictionaryName.ifEmpty { "Collins" },
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PronActionButton(
+                    icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    text = if (isBookmarked) stringResource(R.string.saved) else stringResource(R.string.add_to_favorites),
+                    glassBg = surface,
+                    glassBorder = outline,
+                    darkMode = darkMode,
+                    modifier = Modifier.weight(1f),
+                    onClick = onToggleBookmark
                 )
-                GlassCircleButton(onClick = onShare, glassBg = glassBg, glassBorder = glassBorder) {
-                    Icon(Icons.Default.Share, contentDescription = cdShare, tint = primaryTint, modifier = Modifier.size(20.dp))
-                }
+                PronActionButton(
+                    icon = Icons.Default.Share,
+                    text = stringResource(R.string.cd_share),
+                    glassBg = surface,
+                    glassBorder = outline,
+                    darkMode = darkMode,
+                    modifier = Modifier.weight(1f),
+                    onClick = onShare
+                )
             }
 
-            // 可缩放 + 滚动的主体
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, _, zoom, _ ->
-                            contentScale = (contentScale * zoom).coerceIn(0.7f, 2.0f)
-                        }
-                    }
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = surface,
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, outline)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp)
-                ) {
-                    // 功能按钮区（两端间距与中间间距一致）
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        PronActionButton(
-                            icon = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            text = if (isBookmarked) savedText else favText,
-                            glassBg = glassBg,
-                            glassBorder = glassBorder,
-                            darkMode = darkMode,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 6.dp),
-                            onClick = onToggleBookmark
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = displayWord,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                            modifier = Modifier.weight(1f)
                         )
-                        PronActionButton(
-                            icon = Icons.Default.Share,
-                            text = cdShare,
-                            glassBg = glassBg,
-                            glassBorder = glassBorder,
-                            darkMode = darkMode,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 6.dp),
-                            onClick = onShare
+                        SpeakerButton(
+                            onPlay = { playAudio(data.pronunciations.firstOrNull()?.audioPath, displayWord) },
+                            size = 44.dp
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Floating Acrylic Card
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(6.dp, RoundedCornerShape(28.dp), ambientColor = GdictColors.Primary.copy(alpha = 0.10f), spotColor = GdictColors.Primary.copy(alpha = 0.06f))
-                            .clip(RoundedCornerShape(28.dp))
-                            .border(1.dp, glassBorder, RoundedCornerShape(28.dp))
-                            .background(glassBg)
-                            .pageEnterAnimation()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                        ) {
-                            val displayWord = data.word.ifEmpty { word }
-                            val audioPath = data.pronunciations.firstOrNull()?.audioPath
-
-                            // 单词标题 + 发音按钮
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    displayWord,
-                                    fontSize = 40.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                    lineHeight = 46.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                SpeakerButton(
-                                    onPlay = { playAudio(audioPath, displayWord) },
-                                    size = 44.dp
-                                )
-                            }
-
-                            // 词频棱形（◆◇◇◇◇ = 1 星低频词），品牌蓝主题色
-                            if (data.frequency > 0) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                FrequencyDiamondsBlue(
-                                    frequency = data.frequency,
-                                    primaryTint = primaryTint
-                                )
-                            }
-
-                            // 词形变化
-                            if (data.wordForms.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    data.wordForms,
-                                    fontSize = 15.sp,
-                                    color = subtitleColor,
-                                    fontStyle = FontStyle.Italic
-                                )
-                            }
-
-                            // 释义区域（按设计稿：编号圆形 + 词性徽标 + 释义 + 例句）
-                            if (data.definitions.isNotEmpty()) {
-                                CollinsSensesList(
-                                    definitions = data.definitions,
-                                    headword = displayWord,
-                                    textColor = textColor,
-                                    subtitleColor = subtitleColor,
-                                    primaryTint = primaryTint
-                                )
-                            } else {
-                                // 回退：WebView 渲染全部内容
-                                Spacer(modifier = Modifier.height(12.dp))
-                                MdxWebView(
-                                    definition = definition,
-                                    css = css,
-                                    darkMode = darkMode,
-                                    contentScale = contentScale,
-                                    dictionaryRepository = dictionaryRepository,
-                                    onEntryClick = onEntryClick,
-                                    onPlayAudio = { audioPath ->
-                                        playAudio(audioPath, displayWord)
-                                    }
-                                )
-                            }
-                        }
+                    if (data.frequency > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        FrequencyDiamondsBlue(data.frequency, primaryTint)
                     }
-
-                    Spacer(modifier = Modifier.height(28.dp))
+                    if (data.wordForms.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(data.wordForms, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = secondary)
+                    }
+                    if (data.definitions.isNotEmpty()) {
+                        CollinsSensesList(data.definitions, displayWord, textColor, secondary, primaryTint)
+                    } else {
+                        Spacer(Modifier.height(12.dp))
+                        MdxWebView(
+                            definition = definition,
+                            css = css,
+                            darkMode = darkMode,
+                            contentScale = 1f,
+                            dictionaryRepository = dictionaryRepository,
+                            onEntryClick = onEntryClick,
+                            onPlayAudio = { path -> playAudio(path, displayWord) }
+                        )
+                    }
                 }
             }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
-// region 释义文本高亮（词头加粗着色）
-
-/**
- * 构建带词头高亮的 AnnotatedString：在 [text] 中找到 [headword] 的所有出现，
- * 用 [highlightColor] + Bold 渲染，其余用 [baseColor]。
- * 大小写不敏感匹配整词。
- */
 private fun buildAnnotatedDef(
     text: String,
     headword: String,
     baseColor: Color,
     highlightColor: Color
 ): AnnotatedString {
-    if (headword.isEmpty()) {
-        return buildAnnotatedString { append(text) }
-    }
+    if (headword.isBlank()) return buildAnnotatedString { append(text) }
     return buildAnnotatedString {
-        var idx = 0
-        val lowerText = text.lowercase()
-        val lowerHead = headword.lowercase()
-        while (idx <= text.length - headword.length) {
-            val found = lowerText.indexOf(lowerHead, idx)
+        var index = 0
+        val source = text.lowercase()
+        val needle = headword.lowercase()
+        while (index < text.length) {
+            val found = source.indexOf(needle, index)
             if (found < 0) {
-                append(text.substring(idx))
+                withStyle(SpanStyle(color = baseColor)) { append(text.substring(index)) }
                 break
             }
-            // 整词边界检查：前/后字符（如有）须为非字母
-            val before = if (found > 0) text[found - 1] else ' '
-            val afterIdx = found + headword.length
-            val after = if (afterIdx < text.length) text[afterIdx] else ' '
-            val isWordBoundary = !before.isLetter() && !after.isLetter()
-            if (isWordBoundary) {
-                if (found > idx) {
-                    withStyle(SpanStyle(color = baseColor)) {
-                        append(text.substring(idx, found))
-                    }
-                }
-                withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) {
-                    append(text.substring(found, afterIdx))
-                }
-                idx = afterIdx
-            } else {
-                withStyle(SpanStyle(color = baseColor)) {
-                    append(text.substring(idx, found + 1))
-                }
-                idx = found + 1
+            val end = found + headword.length
+            val before = text.getOrNull(found - 1)
+            val after = text.getOrNull(end)
+            val boundary = before?.isLetter() != true && after?.isLetter() != true
+            if (!boundary) {
+                withStyle(SpanStyle(color = baseColor)) { append(text.substring(index, found + 1)) }
+                index = found + 1
+                continue
             }
+            if (found > index) withStyle(SpanStyle(color = baseColor)) { append(text.substring(index, found)) }
+            withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) { append(text.substring(found, end)) }
+            index = end
         }
     }
 }
 
-// endregion
-
-// region 词频棱形
-
-/**
- * Collins 词频棱形显示：5 个位置，前 [frequency] 个为实心 ◆，其余为空心 ◇。
- * 实心用品牌蓝，空心用品牌蓝 25% 透明度（替代原黑色的 ◆◇）。
- * 详情页与闪卡背面共用。
- */
 @Composable
 internal fun FrequencyDiamondsBlue(
     frequency: Int,
@@ -353,37 +224,26 @@ internal fun FrequencyDiamondsBlue(
     total: Int = 5
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
-        for (i in 0 until total) {
-            val filled = i < frequency
+        repeat(total) { index ->
             Text(
-                if (filled) "◆" else "◇",
+                text = if (index < frequency) "◆" else "◇",
                 fontSize = 14.sp,
-                color = if (filled) primaryTint else primaryTint.copy(alpha = 0.25f)
+                color = if (index < frequency) primaryTint else primaryTint.copy(alpha = 0.25f)
             )
         }
     }
 }
 
-/**
- * 判断 HTML 是否为柯林斯词条（3rd：◆◇ / 绿色 669900；Advanced：class="hom" / sensenum / id="collins_english_dictionary"）。
- * 供 WordDetailScreen / FlashcardScreen 共用，确保路由判断一致。
- */
-fun isCollinsEntry(definition: String): Boolean {
-    return definition.contains("◆") || definition.contains("◇") ||
-            definition.contains("669900", ignoreCase = true) ||
-            definition.contains("class=\"hom\"") ||
-            definition.contains("class='hom'") ||
-            definition.contains("class=\"sensenum\"") ||
-            definition.contains("id=\"collins_english_dictionary\"")
-}
+fun isCollinsEntry(definition: String): Boolean =
+    definition.contains("◆") || definition.contains("◇") ||
+        definition.contains("669900", ignoreCase = true) ||
+        definition.contains("class=\"hom\"") || definition.contains("class='hom'") ||
+        definition.contains("class=\"sensenum\"") ||
+        definition.contains("id=\"collins_english_dictionary\"")
 
 @Deprecated("Use isCollinsEntry instead", ReplaceWith("isCollinsEntry(definition)"))
 fun isCollins3rdEntry(definition: String): Boolean = isCollinsEntry(definition)
 
-/**
- * 柯林斯3rd释义列表渲染（编号圆形 + POS 徽标 + 词头高亮释义 + 圆点例句）。
- * 详情页和闪卡背面共用，确保视觉一致。
- */
 @Composable
 fun CollinsSensesList(
     definitions: List<CollinsDefinition>,
@@ -392,331 +252,152 @@ fun CollinsSensesList(
     subtitleColor: Color,
     primaryTint: Color
 ) {
-    definitions.forEachIndexed { index, def ->
-        Spacer(modifier = Modifier.height(18.dp))
-        // 编号圆形 + 词性徽标（同一水平线）
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, primaryTint, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
+    definitions.forEachIndexed { index, sense ->
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(
+                modifier = Modifier.size(26.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = Color.Transparent,
+                border = androidx.compose.foundation.BorderStroke(1.dp, primaryTint)
             ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("${index + 1}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = primaryTint)
+                }
+            }
+            if (sense.pos.isNotBlank()) {
                 Text(
-                    "${index + 1}",
-                    fontSize = 12.sp,
-                    lineHeight = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = sense.pos,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = primaryTint
                 )
             }
-            if (def.pos.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, primaryTint.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        def.pos,
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryTint
-                    )
-                }
-            }
         }
-        // 释义文本 + 例句（编号下方，左侧缩进对齐编号宽度）
-        if (def.definition.isNotEmpty() || def.examples.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Column(modifier = Modifier.padding(start = 32.dp)) {
-                if (def.definition.isNotEmpty()) {
-                    val annotated = remember(def.definition, headword) {
-                        buildAnnotatedDef(def.definition, headword, textColor, primaryTint)
-                    }
-                    Text(annotated, fontSize = 15.sp, lineHeight = 22.sp)
-                }
-                def.examples.forEach { ex ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 2.dp, top = 6.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 7.dp)
-                                .size(5.dp)
-                                .clip(RoundedCornerShape(2.5.dp))
-                                .background(primaryTint)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        val annotatedEx = remember(ex, headword) {
-                            buildAnnotatedDef(ex, headword, subtitleColor, primaryTint)
-                        }
-                        Text(
-                            annotatedEx,
-                            fontSize = 14.sp,
-                            fontStyle = FontStyle.Italic,
-                            lineHeight = 20.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+        if (sense.definition.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = buildAnnotatedDef(sense.definition, headword, textColor, primaryTint),
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 23.sp,
+                modifier = Modifier.padding(start = 36.dp)
+            )
+        }
+        sense.examples.forEach { example ->
+            Row(modifier = Modifier.padding(start = 36.dp, top = 7.dp), verticalAlignment = Alignment.Top) {
+                Box(modifier = Modifier.padding(top = 8.dp).size(4.dp).background(primaryTint, RoundedCornerShape(2.dp)))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = buildAnnotatedDef(example, headword, subtitleColor, primaryTint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
-// region 柯林斯 HTML 解析
-
-/**
- * 柯林斯3rd HTML 结构：
- *   C <br><img src="audio.png">              ← 节字母 + 音频图标
- *   <b>read reads reading read </b>          ← 单词 + 词形变化
- *   <font color=#669900">[VB]</font>         ← 词性（绿色方括号）
- *   <br> 释义文本 <br>                         ← 释义
- *   <img src="bullet.png"><font color="#004080"><i>例句</i></font>  ← 例句（蓝色斜体）
- *   +<b>read </b><font color="#669900">[N-SING...]</font> ...       ← 下一释义由 +<b> 分隔
- */
-internal fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry {
-    return when {
-        definition.contains("class=\"hom\"") ||
-                definition.contains("class='hom'") ||
-                definition.contains("class=\"sensenum\"") ||
-                definition.contains("id=\"collins_english_dictionary\"") ->
-            parseCollinsAdvancedEntry(definition, fallbackWord)
-
-        else -> parseCollins3rdEntry(definition, fallbackWord)
-    }
-}
+internal fun parseCollinsEntry(definition: String, fallbackWord: String): CollinsEntry =
+    if (
+        definition.contains("class=\"hom\"") || definition.contains("class='hom'") ||
+        definition.contains("class=\"sensenum\"") || definition.contains("id=\"collins_english_dictionary\"")
+    ) parseCollinsAdvancedEntry(definition, fallbackWord) else parseCollins3rdEntry(definition, fallbackWord)
 
 private fun parseCollins3rdEntry(definition: String, fallbackWord: String): CollinsEntry {
-    // 0. 词频棱形：HTML 开头的 ◆◇◇◇◇ 序列，◆ 实心数 = 词频星级
-    val freqMatch = Regex("""^[◆◇]+""").find(definition)
-    val frequency = freqMatch?.value?.count { it == '◆' } ?: 0
+    val frequency = Regex("""^[◆◇]+""").find(definition)?.value?.count { it == '◆' } ?: 0
+    val firstBold = Regex("""<b>(.*?)</b>""", RegexOption.DOT_MATCHES_ALL).find(definition)?.groupValues?.get(1).orEmpty()
+    val wordForms = cleanCollinsText(firstBold)
+    val word = wordForms.split(Regex("\\s+")).firstOrNull().orEmpty().ifBlank { fallbackWord }
 
-    // 1. 第一个 <b>...</b> = 单词 + 词形变化
-    val firstBoldMatch = Regex("""<b>(.*?)</b>""", RegexOption.DOT_MATCHES_ALL).find(definition)
-    val firstBoldRaw = firstBoldMatch?.groupValues?.get(1) ?: ""
-    val cleanedBold = cleanCollinsText(firstBoldRaw)
-    val tokens = cleanedBold.split(Regex("\\s+")).filter { it.isNotEmpty() }
-    val word = tokens.firstOrNull()?.ifEmpty { fallbackWord } ?: fallbackWord
-    val wordForms = cleanedBold
-
-    // 2. 以绿色词性标签 <font...669900...>...</font> 为释义锚点（鲁棒：只要 font 标签内
-    //    出现 669900 即认定，避免 color="#669900 / color=#669900" 等引号缺失变体导致漏匹配）。
-    //    每个释义的起点 = 该绿色标签之前最近的 <b>（词头）；终点 = 下一个释义的 <b> 起点（或末尾）。
-    val posFontPattern = Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
-    val posFonts = posFontPattern.findAll(definition).toList()
-
-    val definitions: List<CollinsDefinition> = if (posFonts.isEmpty()) {
-        // 无绿色词性：整体作为单个释义（回退）
-        val firstB = definition.indexOf("<b>")
-        val senseHtml = if (firstB >= 0) definition.substring(firstB) else definition
-        listOfNotNull(parseCollinsSense(senseHtml))
+    val posFonts = Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL).findAll(definition).toList()
+    val senses = if (posFonts.isEmpty()) {
+        listOfNotNull(parseCollinsSense(definition))
     } else {
-        // 计算每个释义的起点（绿色标签前最近的 <b>）
-        val senseStarts = posFonts.map { pf ->
-            val bIdx = definition.lastIndexOf("<b>", pf.range.first)
-            if (bIdx >= 0) bIdx else pf.range.first
+        val starts = posFonts.map { match -> definition.lastIndexOf("<b>", match.range.first).takeIf { it >= 0 } ?: match.range.first }
+        starts.mapIndexedNotNull { index, start ->
+            val end = starts.getOrNull(index + 1) ?: definition.length
+            parseCollinsSense(definition.substring(start, end))
         }
-        posFonts.mapIndexed { i, _ ->
-            val start = senseStarts[i]
-            val end = if (i + 1 < senseStarts.size) senseStarts[i + 1] else definition.length
-            val senseHtml = if (start < end) definition.substring(start, end) else ""
-            parseCollinsSense(senseHtml)
-        }.filterNotNull()
     }
 
-    // 3. 音频：sound:// 链接（若有）
-    val audioPath = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+    val audio = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
         .find(definition)?.groupValues?.get(1)
-    val pronunciations = listOfNotNull(
-        if (audioPath != null) CollinsPronunciation("", "", audioPath) else null
+    return CollinsEntry(
+        word = word,
+        pronunciations = listOfNotNull(audio?.let { CollinsPronunciation("", "", it) }),
+        definitions = senses,
+        wordForms = wordForms,
+        frequency = frequency,
+        parsedOk = senses.isNotEmpty()
     )
-
-    val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
-    return CollinsEntry(word, pronunciations, definitions, wordForms, frequency, parsedOk)
-}
-
-private fun parseCollinsAdvancedEntry(definition: String, fallbackWord: String): CollinsEntry {
-    // 1. 单词
-    val word = Regex("""<h2[^>]*class=["']h2_entry["'][^>]*>.*?<span[^>]*class=["']orth["'][^>]*>(.*?)</span>.*?</h2>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
-        ?: Regex("""<span[^>]*class=["']orth["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-            .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
-        ?: fallbackWord
-
-    // 2. 词频 data-band 1-5
-    val frequency = Regex("""<span[^>]*class=["']word-frequency-img["'][^>]*\\bdata-band=["'](\\d)["']""",
-        RegexOption.IGNORE_CASE)
-        .find(definition)?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(0, 5) ?: 0
-
-    // 3. 词形变化
-    val wordForms = Regex("""<span[^>]*class=["']form inflected_forms[^"']*["'][^>]*>(.*?)</span>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) }
-        ?: ""
-
-    // 4. 发音（取第一个 .pron）
-    val ipa = Regex("""<span[^>]*class=["']pron type-["'][^>]*>(.*?)</span>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(definition)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
-    val audioPath = Regex("""<a[^>]*class=["'][^"']*hwd_sound[^"']*["'][^>]*href=["']sound://([^"']+)["']""",
-        RegexOption.IGNORE_CASE)
-        .find(definition)?.groupValues?.get(1)
-        ?: Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
-            .find(definition)?.groupValues?.get(1)
-    val pronunciations = listOfNotNull(
-        if (ipa.isNotEmpty() || !audioPath.isNullOrBlank())
-            CollinsPronunciation(region = "", ipa = ipa, audioPath = audioPath) else null
-    )
-
-    // 5. 释义列表
-    val homBlocks = Regex("""<div[^>]*class=["']hom["'][^>]*>(.*?)</div>\s*(?=<div[^>]*class=["']hom["']|<div[^>]*class=["']copyright|</div></div></div></div></div>)""",
-        RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).toList()
-
-    val definitions = if (homBlocks.isEmpty()) {
-        // 回退：按 sensenum 分段
-        parseCollinsAdvancedBySensenum(definition)
-    } else {
-        homBlocks.mapNotNull { parseCollinsAdvancedSense(it.groupValues[1]) }
-    }
-
-    val parsedOk = word.isNotEmpty() && definitions.isNotEmpty()
-    return CollinsEntry(word, pronunciations, definitions, wordForms, frequency, parsedOk)
-}
-
-private fun parseCollinsAdvancedSense(homHtml: String): CollinsDefinition? {
-    val pos = Regex("""<span[^>]*class=["']gramGrp["'][^>]*>.*?<span[^>]*class=["']pos["'][^>]*>(.*?)</span>.*?</span>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
-
-    val senseNum = Regex("""<span[^>]*class=["']sensenum["'][^>]*>(.*?)</span>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
-
-    val def = Regex("""<div[^>]*class=["']def["'][^>]*>(.*?)</div>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .find(homHtml)?.groupValues?.get(1)?.let { cleanCollinsAdvancedText(it) } ?: ""
-
-    val examples = Regex("""<div[^>]*class=["']cit type-example["'][^>]*>.*?<span[^>]*class=["']quote["'][^>]*>(.*?)</span>.*?</div>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .findAll(homHtml)
-        .map { cleanCollinsAdvancedText(it.groupValues[1]) }
-        .filter { it.isNotEmpty() }
-        .toList()
-
-    if (pos.isEmpty() && def.isEmpty() && examples.isEmpty()) return null
-    return CollinsDefinition(pos, "$senseNum$def", examples)
-}
-
-private fun parseCollinsAdvancedBySensenum(definition: String): List<CollinsDefinition> {
-    val sensenumMatches = Regex("""<span[^>]*class=["']sensenum["'][^>]*>.*?</span>""",
-        RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).toList()
-    if (sensenumMatches.isEmpty()) return emptyList()
-
-    val starts = sensenumMatches.map { it.range.first }
-    return sensenumMatches.mapIndexed { i, match ->
-        val start = match.range.first
-        val end = if (i + 1 < starts.size) starts[i + 1] else definition.length
-        val html = definition.substring(start, end)
-        parseCollinsAdvancedSense(html)
-    }.filterNotNull()
-}
-
-private fun cleanCollinsAdvancedText(html: String): String {
-    return html.replace(Regex("<[^>]+>"), "")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&nbsp;", " ")
-        .replace("&#39;", "'")
-        .replace("&quot;", "\"")
-        .replace(Regex("\\s+"), " ")
-        .trim()
 }
 
 private fun parseCollinsSense(html: String): CollinsDefinition? {
-    val pos = extractGreenPos(html)
-    val examples = extractBlueExamples(html)
-    val defText = extractSenseDefinition(html, pos)
+    if (html.isBlank()) return null
+    val pos = Regex("""<font[^>]*669900[^>]*>(.*?)</font>""", RegexOption.DOT_MATCHES_ALL)
+        .find(html)?.groupValues?.get(1)?.let(::cleanCollinsText)?.removePrefix("[")?.removeSuffix("]").orEmpty()
+    val examples = Regex("""<font[^>]*(?:004080|4f81bd)[^>]*>\s*(?:<i>)?(.*?)(?:</i>)?\s*</font>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        .findAll(html).map { cleanCollinsText(it.groupValues[1]) }.filter { it.isNotBlank() }.toList()
 
-    if (defText.isEmpty() && examples.isEmpty() && pos.isEmpty()) return null
-    return CollinsDefinition(pos, defText, examples)
-}
-
-/** 提取绿色词性标签 <font...669900...>[VB]</font>，取冒号前的主词性。鲁棒匹配 669900 色值。 */
-private fun extractGreenPos(html: String): String {
-    val match = Regex("""<font[^>]*669900[^>]*>(.*?)</font>""", RegexOption.DOT_MATCHES_ALL)
-        .find(html) ?: return ""
-    val raw = cleanCollinsText(match.groupValues[1])
-        .removePrefix("[").removeSuffix("]").trim()
-    return raw.substringBefore(":").trim()
-}
-
-/** 提取蓝色斜体例句 <font...004080...><i>...</i></font>。鲁棒匹配 004080 色值。 */
-private fun extractBlueExamples(html: String): List<String> {
-    return Regex("""<font[^>]*004080[^>]*>\s*<i>(.*?)</i>\s*</font>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(html)
-        .map { cleanCollinsText(it.groupValues[1]) }
-        .filter { it.isNotEmpty() }
-        .toList()
-}
-
-/**
- * 提取释义文本：POS 标签之后、首个例句图标 <img / 下一释义 +<b> / 同义词 =<b> /
- * 独立成行的同义词条 <br><b>word</b><br> 之前。
- * 独立同义词判断：单独一行、内容为单个无空格词、紧接 <br> ——
- * 这样可保留句中内联的 <b>scrum</b>，只截断 <br><b>scrummage</b><br> 这类交叉引用。
- */
-private fun extractSenseDefinition(html: String, pos: String): String {
-    val startPos = if (pos.isNotEmpty()) {
-        Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL)
-            .find(html)?.range?.last?.plus(1) ?: 0
-    } else {
-        Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL).find(html)?.range?.last?.plus(1) ?: 0
-    }
-    val afterPos = if (startPos < html.length) html.substring(startPos) else ""
-
-    val imgIdx = afterPos.indexOf("<img")
-    val plusIdx = afterPos.indexOf("+<b>")
-    val eqIdx = afterPos.indexOf("=<b>")
-    // 独立同义词条：<br><b>单词</b><br>（单词不含空格）
-    val synonymIdx = Regex("""<br><b>(\w+)</b><br>""").find(afterPos)?.range?.first ?: -1
-
-    val endIdx = listOf(imgIdx, plusIdx, eqIdx, synonymIdx).filter { it >= 0 }.minOrNull() ?: afterPos.length
-    val defRegion = afterPos.substring(0, endIdx.coerceIn(0, afterPos.length))
-    return cleanCollinsText(defRegion).trim()
-}
-
-private fun cleanCollinsText(html: String): String {
-    return html.replace(Regex("<[^>]+>"), "")
-        // Collins 数据中部分内联加粗/斜体被损坏为 ^bp...^/by / ^ip...^/iy 形式，按伪标签清除
-        .replace(Regex("""\^/?[biu][a-z]?"""), "")
-        // 词频棱形字符（◆◇）不应出现在释义/词形文本中
-        .replace("◆", "")
-        .replace("◇", "")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&nbsp;", " ")
-        .replace("&#39;", "'")
-        .replace("&quot;", "\"")
-        .replace("^", "")
-        .replace(Regex("\\s+"), " ")
+    var definition = html
+        .replace(Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL), " ")
+        .replace(Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL), " ")
+        .replace(Regex("""<font[^>]*(?:004080|4f81bd)[^>]*>.*?</font>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), " ")
+    definition = cleanCollinsText(definition)
+        .replace(Regex("^[+\\s]+"), "")
         .trim()
+    return if (definition.isBlank() && examples.isEmpty()) null else CollinsDefinition(pos, definition, examples)
 }
 
-// endregion
+private fun parseCollinsAdvancedEntry(definition: String, fallbackWord: String): CollinsEntry {
+    val word = Regex("""<span[^>]*class=["'][^"']*\borth\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let(::cleanCollinsText).orEmpty().ifBlank { fallbackWord }
+    val frequency = Regex("""data-band=["'](\d)["']""", RegexOption.IGNORE_CASE)
+        .find(definition)?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(0, 5) ?: 0
+    val wordForms = Regex("""<span[^>]*class=["'][^"']*inflected_forms[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let(::cleanCollinsText).orEmpty()
+    val ipa = Regex("""<span[^>]*class=["'][^"']*\bpron\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .find(definition)?.groupValues?.get(1)?.let(::cleanCollinsText).orEmpty()
+    val audio = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
+        .find(definition)?.groupValues?.get(1)
+
+    val sensePattern = Regex("""<(?:div|li)[^>]*class=["'][^"']*\bsense\b[^"']*["'][^>]*>(.*?)</(?:div|li)>""", RegexOption.DOT_MATCHES_ALL)
+    var senses = sensePattern.findAll(definition).mapNotNull { match -> parseAdvancedSense(match.groupValues[1]) }.toList()
+    if (senses.isEmpty()) {
+        val blocks = Regex("""<span[^>]*class=["'][^"']*\bdef\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(definition).map { cleanCollinsText(it.groupValues[1]) }.filter { it.isNotBlank() }.toList()
+        senses = blocks.map { CollinsDefinition("", it, emptyList()) }
+    }
+
+    return CollinsEntry(
+        word = word,
+        pronunciations = if (ipa.isNotBlank() || audio != null) listOf(CollinsPronunciation("", ipa, audio)) else emptyList(),
+        definitions = senses,
+        wordForms = wordForms,
+        frequency = frequency,
+        parsedOk = senses.isNotEmpty()
+    )
+}
+
+private fun parseAdvancedSense(html: String): CollinsDefinition? {
+    val pos = Regex("""<span[^>]*class=["'][^"']*\bpos\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .find(html)?.groupValues?.get(1)?.let(::cleanCollinsText).orEmpty()
+    val definition = Regex("""<span[^>]*class=["'][^"']*\bdef\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
+        .find(html)?.groupValues?.get(1)?.let(::cleanCollinsText).orEmpty()
+    val examples = Regex("""<(?:span|div)[^>]*class=["'][^"']*(?:quote|example)[^"']*["'][^>]*>(.*?)</(?:span|div)>""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(html).map { cleanCollinsText(it.groupValues[1]) }.filter { it.isNotBlank() }.toList()
+    return if (definition.isBlank() && examples.isEmpty()) null else CollinsDefinition(pos, definition, examples)
+}
+
+private fun cleanCollinsText(html: String): String = html
+    .replace(Regex("<[^>]+>"), " ")
+    .replace("&nbsp;", " ")
+    .replace("&amp;", "&")
+    .replace("&lt;", "<")
+    .replace("&gt;", ">")
+    .replace("&#39;", "'")
+    .replace("&quot;", "\"")
+    .replace(Regex("\\s+"), " ")
+    .trim()
