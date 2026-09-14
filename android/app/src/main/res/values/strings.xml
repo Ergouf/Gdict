@@ -12,6 +12,8 @@
     <string name="search_hint">Search</string>
     <string name="recent_searches">Recent searches</string>
     <string name="word_of_the_day">Word of the Day</string>
+    <string name="no_results_for">No results for “%s”</string>
+    <string name="did_you_mean">Did you mean:</string>
 
     <!-- Bookmarks screen -->
     <string name="my_vocabulary">My Vocabulary</string>
@@ -92,7 +94,7 @@
     <string name="import_result">Import complete: %d succeeded, %d failed</string>
     <string name="import_exception">Batch import exception: %s</string>
     <string name="remove_dict_failed">Failed to remove dictionary: %s</string>
-    <string name="toggle_dict_failed">Failed to toggle dictionary: %s</string>
+    <string name="toggle_dict_failed">Failed to toggle dictionary status: %s</string>
     <string name="search_failed">Search failed: %s</string>
 
     <!-- Word of the day -->
