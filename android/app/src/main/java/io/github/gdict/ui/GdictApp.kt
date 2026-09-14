@@ -1,8 +1,8 @@
 package io.github.gdict.ui
 
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,8 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -260,6 +260,7 @@ fun GdictBottomBar(
 ) {
     val glassBackground = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
     val glassBorder = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
+    val shape = RoundedCornerShape(30.dp)
 
     Box(
         modifier = modifier
@@ -267,26 +268,32 @@ fun GdictBottomBar(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .shadow(2.dp, RoundedCornerShape(30.dp))
-                .clip(RoundedCornerShape(30.dp))
-                .border(0.5.dp, glassBorder, RoundedCornerShape(30.dp))
-                .background(glassBackground)
-                .padding(horizontal = 6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .height(64.dp),
+            shape = shape,
+            color = glassBackground,
+            border = BorderStroke(0.5.dp, glassBorder),
+            shadowElevation = 2.dp,
+            tonalElevation = 0.dp
         ) {
-            screens.forEach { screen ->
-                val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                GdictBottomNavItem(
-                    screen = screen,
-                    isSelected = isSelected,
-                    darkMode = darkMode,
-                    onClick = { onNavigate(screen) }
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                screens.forEach { screen ->
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    GdictBottomNavItem(
+                        screen = screen,
+                        isSelected = isSelected,
+                        darkMode = darkMode,
+                        onClick = { onNavigate(screen) }
+                    )
+                }
             }
         }
     }
@@ -309,7 +316,6 @@ fun RowScope.GdictBottomNavItem(
         modifier = Modifier
             .weight(1f)
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -325,7 +331,7 @@ fun RowScope.GdictBottomNavItem(
         )
         Text(
             text = stringResource(screen.titleResId),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(background = Color.Transparent),
             color = if (isSelected) selectedColor else idleColor,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
