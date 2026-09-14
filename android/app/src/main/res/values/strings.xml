@@ -21,6 +21,8 @@
     <string name="remove_bookmark_confirm">Are you sure you want to remove \"%s\" from your vocabulary?</string>
     <string name="remove">Remove</string>
     <string name="flashcard">Flashcard</string>
+    <string name="no_vocabulary_yet">No vocabulary yet</string>
+    <string name="flashcard_promo_desc">Practice and learn your saved words.</string>
 
     <!-- Flashcard screen -->
     <string name="add_words_to_favorites_first">Add words to favorites first</string>
