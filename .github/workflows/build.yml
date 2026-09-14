@@ -46,7 +46,7 @@ jobs:
         run: ./gradlew :core:test --stacktrace
 
   build-android:
-    name: Build Android (Debug)
+    name: Android UI Gate & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -70,8 +70,15 @@ jobs:
           key: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
           restore-keys: gradle-android-
 
+      - name: Run Apple HIG UI policy gate
+        run: bash scripts/check-apple-hig-ui.sh
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
+
+      - name: Run Android unit and Paparazzi smoke tests
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Build debug APK
         working-directory: android
