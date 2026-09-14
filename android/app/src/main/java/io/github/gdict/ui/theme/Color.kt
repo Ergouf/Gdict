@@ -3,88 +3,104 @@ package io.github.gdict.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Fluent Design 2 色板（品牌蓝主题）。
+ * Semantic color system for the Android UI.
  *
- * 通过 MD3 colorScheme token 承载，与桌面端共享同一套色值。
- * 品牌主色为 Logo 同款蓝 #1E8CFF，全面移除绿色。
- * 设计依据：Fluent 2 Color Tokens + Windows 11 Acrylic Glass。
+ * The palette follows Apple HIG principles rather than copying UIKit values or
+ * pretending that Android renders Apple's system Liquid Glass. Content uses
+ * quiet neutral surfaces; the Gdict brand blue is reserved for selection,
+ * links, focus and primary actions.
  */
 object GdictColors {
-    // 品牌主色（蓝色 accent）—— Fluent accent 语义
+    // Brand / interaction accent
     val Primary = Color(0xFF1E8CFF)
-    val PrimarySoft = Color(0xFF4DA3FF) // hover/pressed 反馈色
-    val PrimaryLight = Color(0xFF7BB8FF) // 深色主题下的主色（提亮以保证对比度）
+    val PrimarySoft = Color(0xFF4DA3FF)
+    val PrimaryLight = Color(0xFF64B0FF)
     val OnPrimary = Color.White
+    val PrimaryContainer = Color(0xFFE8F3FF)
+    val OnPrimaryContainer = Color(0xFF0B3A66)
 
-    val PrimaryContainer = Color(0xFFE3F0FF) // 浅蓝容器
-    val OnPrimaryContainer = Color(0xFF0D3B6B)
-
-    // 次级色（中性石板灰）—— 用于次要交互
-    val Secondary = Color(0xFF5B6B7C)
-    val SecondaryLight = Color(0xFF8495A8)
+    // Neutral secondary roles
+    val Secondary = Color(0xFF6E6E73)
+    val SecondaryLight = Color(0xFFAEAEB2)
     val OnSecondary = Color.White
-    val SecondaryContainer = Color(0xFFEFEFEF)
-    val OnSecondaryContainer = Color(0xFF3F4E5C)
-
-    // 第三色（用于 MD3 tertiary token）
-    val Tertiary = Color(0xFF6B7A90)
+    val SecondaryContainer = Color(0xFFEFEFF4)
+    val OnSecondaryContainer = Color(0xFF3A3A3C)
+    val Tertiary = Color(0xFF8E8E93)
     val OnTertiary = Color.White
 
-    val Accent = Color(0xFF6B7A90)
-    val TealAccent = Color(0xFF1E8CFF) // 别名，与 Primary 一致（蓝色）
-    val CoralAccent = Color(0xFFE08B82) // error / Again 评分
-    val AmberAccent = Color(0xFFE5A84B) // Hard 评分
-    val MintGreen = Color(0xFF5BC0EB) // Easy 评分（改为青蓝）
+    // Semantic state accents
+    val Accent = Color(0xFF8E8E93)
+    val TealAccent = Color(0xFF32ADE6)
+    val CoralAccent = Color(0xFFFF453A)
+    val AmberAccent = Color(0xFFFF9F0A)
+    val MintGreen = Color(0xFF30D158)
 
-    // Fluent 中性背景（纯灰阶，Android 不透明）
-    val Background = Color(0xFFF5FAFF) // 蓝白渐变顶部色
-    val Surface = Color(0xFFFAFAFA) // colorNeutralCardBackground
-    val SurfaceVariant = Color(0xFFF4F4F4) // colorNeutralBackground3
+    // Content surfaces — intentionally neutral
+    val Background = Color(0xFFF2F2F7)
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceVariant = Color(0xFFF2F2F7)
+    val OnBackground = Color(0xFF1C1C1E)
+    val OnSurface = Color(0xFF1C1C1E)
+    val OnSurfaceVariant = Color(0xFF6E6E73)
 
-    // Fluent 中性前景
-    val OnBackground = Color(0xFF102A56) // 深蓝黑色
-    val OnSurface = Color(0xFF242424)
-    val OnSurfaceVariant = Color(0xFF6B7A90) // 浅灰蓝辅助文字
+    // Separators and low-emphasis fills
+    val Outline = Color(0xFFC6C6C8)
+    val OutlineVariant = Color(0xFFE5E5EA)
+    val CardStroke = OutlineVariant
+    val SubtleHover = Color(0xFFF2F2F7)
+    val SubtleSelected = Color(0xFFE5E5EA)
 
-    // Fluent 描边
-    val Outline = Color(0xFFD1D1D1)
-    val OutlineVariant = Color(0xFFE0E0E0)
-    val CardStroke = Color(0xFFE0E0E0)
+    // Glass is an interaction/chrome material, not a page background.
+    // These translucent fills are a Compose approximation; they are not
+    // advertised as backdrop blur.
+    val GlassSurface = Color.White.copy(alpha = 0.82f)
+    val GlassSurfaceStrong = Color.White.copy(alpha = 0.92f)
+    val GlassBorder = Color.White.copy(alpha = 0.72f)
+    val GlassSeparator = Color.Black.copy(alpha = 0.08f)
 
-    // Fluent 微妙填充（hover / selected 态）
-    val SubtleHover = Color(0xFFF4F4F4)
-    val SubtleSelected = Color(0xFFEAEAEA)
+    val DarkGlassSurface = Color(0xD92C2C2E)
+    val DarkGlassSurfaceStrong = Color(0xF23A3A3C)
+    val DarkGlassBorder = Color.White.copy(alpha = 0.14f)
+    val DarkGlassSeparator = Color.White.copy(alpha = 0.12f)
 
-    // Acrylic Glass 玻璃材质 token — 参考设计稿：通透白+极淡蓝调，模拟半透明白玻璃
-    val BlueSurfaceGlass = Color(0xFFF7FAFE) // 通透感白玻璃（接近白，带极淡蓝调）
-    val BlueSurfaceGlassDark = Color(0xCC1A2A3A) // 深色模式 Acrylic 填充
-    val BlueHighlightBorder = Color.White.copy(alpha = 0.6f) // 高光白边（增强玻璃质感）
-    val BlueCardBorder = Color(0x221E8CFF) // 浅蓝微描边
-    val BlueBackgroundTop = Color(0xFFDCEBFF) // 页面渐变顶部（更饱和蓝）
-    val BlueBackgroundBottom = Color(0xFFFFFFFF) // 页面渐变底部
-    val AmbientLight = Color(0xFF1E8CFF).copy(alpha = 0.06f) // 环境光斑
+    // Compatibility aliases during the phased migration. New code should use
+    // the semantic Glass* / Background / Surface names above.
+    val BlueSurfaceGlass = GlassSurface
+    val BlueSurfaceGlassDark = DarkGlassSurface
+    val BlueHighlightBorder = GlassBorder
+    val BlueCardBorder = GlassSeparator
+    val BlueBackgroundTop = Background
+    val BlueBackgroundBottom = Background
+    val AmbientLight = Color.Transparent
+    val BluePrimaryLight = PrimaryContainer
+    val BluePlaceholder = OnSurfaceVariant
+    val HeadingDark = OnBackground
 
-    // 路线图补充 token — 选中态胶囊背景 / 占位文字 / 标题色
-    val BluePrimaryLight = Color(0xFFB3D8FF) // 浅蓝玻璃胶囊背景、选中态背景
-    val BluePlaceholder = Color(0xFF1E8CFF).copy(alpha = 0.5f) // 搜索框占位文字（品牌蓝半透明）
-    val HeadingDark = Color(0xFF102A56) // 深蓝黑色标题
+    // Dark semantic surfaces
+    val DarkBackground = Color(0xFF000000)
+    val DarkSurface = Color(0xFF1C1C1E)
+    val DarkSurfaceVariant = Color(0xFF2C2C2E)
+    val DarkOnBackground = Color(0xFFF2F2F7)
+    val DarkOnSurface = Color(0xFFF2F2F7)
+    val DarkOnSurfaceVariant = Color(0xFFAEAEB2)
+    val DarkOutline = Color(0xFF636366)
+    val DarkOutlineVariant = Color(0xFF38383A)
+    val DarkCardStroke = DarkOutlineVariant
+    val DarkSubtleHover = Color(0xFF2C2C2E)
+    val DarkSubtleSelected = Color(0xFF3A3A3C)
+    val DarkPrimaryContainer = Color(0xFF0A3B69)
+    val DarkOnPrimaryContainer = Color(0xFFD8ECFF)
+    val DarkSecondaryContainer = Color(0xFF2C2C2E)
+    val DarkOnSecondaryContainer = Color(0xFFD1D1D6)
 
-    // 深色主题
-    val DarkBackground = Color(0xFF1F1F1F)
-    val DarkSurface = Color(0xFF292929)
-    val DarkSurfaceVariant = Color(0xFF141414)
-    val DarkOnBackground = Color(0xFFFFFFFF)
-    val DarkOnSurface = Color(0xFFFFFFFF)
-    val DarkOnSurfaceVariant = Color(0xFFD4D4D4)
-    val DarkOutline = Color(0xFF595959)
-    val DarkOutlineVariant = Color(0xFF404040)
-    val DarkCardStroke = Color(0xFF404040)
-    val DarkSubtleHover = Color(0xFF2B2B2B)
-    val DarkSubtleSelected = Color(0xFF333333)
-    val DarkPrimaryContainer = Color(0xFF0D3B6B)
-    val DarkOnPrimaryContainer = Color(0xFFB3D8FF)
-    val DarkSecondaryContainer = Color(0xFF2B2B2B)
-    val DarkOnSecondaryContainer = Color(0xFFD4D4D4)
+    val Scrim = Color.Black
 
-    val Scrim = Color(0xFF000000)
+    // Legacy snapshot aliases. Kept only so old Paparazzi fixtures remain
+    // compilable until Phase 5 replaces them with production-composable goldens.
+    val NavyBlue = Color(0xFF2C4A6E)
+    val NavyBlueLight = Color(0xFF3D5F85)
+    val NavyBlueDark = Color(0xFF1E3A5F)
+    val LightGray = Color(0xFFF5F5F5)
+    val MediumGray = Color(0xFF9E9E9E)
+    val DarkGray = Color(0xFF424242)
 }
