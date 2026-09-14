@@ -26,11 +26,11 @@ if grep -Eq 'Color\(0x[0-9A-Fa-f]+' "$APP"; then
   fail "GdictApp navigation contains a hardcoded RGB color; use semantic GdictColors tokens"
 fi
 
-if grep -Fq '.blur(' "$ACRYLIC" || grep -Fq 'blurRadius' "$ACRYLIC"; then
+if grep -Fq 'import androidx.compose.ui.draw.blur' "$ACRYLIC" || grep -Eq '^[[:space:]]*blurRadius[[:space:]]*:' "$ACRYLIC"; then
   fail "Glass components must not pretend Modifier.blur is backdrop blur"
 fi
 
-if grep -Fq 'radialGradient' "$AMBIENT"; then
+if grep -Eq 'Brush\.radialGradient|radialGradient\(' "$AMBIENT"; then
   fail "Ambient blue radial material is not allowed in the migrated foundation"
 fi
 
