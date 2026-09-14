@@ -10,12 +10,16 @@
     <string name="search_hint">搜索</string>
     <string name="recent_searches">最近搜索</string>
     <string name="word_of_the_day">每日一词</string>
+    <string name="no_results_for">没有找到“%s”</string>
+    <string name="did_you_mean">你是不是想找：</string>
 
     <string name="my_vocabulary">我的词汇</string>
     <string name="remove_bookmark">移除收藏</string>
     <string name="remove_bookmark_confirm">确定要从词汇表中移除「%s」吗？</string>
     <string name="remove">移除</string>
     <string name="flashcard">闪卡</string>
+    <string name="no_vocabulary_yet">还没有收藏词汇</string>
+    <string name="flashcard_promo_desc">练习并学习你收藏的单词。</string>
 
     <string name="add_words_to_favorites_first">请先将单词添加到收藏</string>
     <string name="tap_to_reveal">点击翻转</string>
