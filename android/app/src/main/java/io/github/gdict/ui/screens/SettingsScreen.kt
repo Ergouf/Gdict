@@ -1,11 +1,10 @@
 package io.github.gdict.ui.screens
 
-import androidx.annotation.DrawableRes
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -35,10 +35,12 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -50,9 +52,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -82,11 +81,7 @@ private val GitHubMark: ImageVector by lazy {
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {
-        // 官方 GitHub Octocat mark 路径（24x24 viewBox）
-        path(
-            fill = SolidColor(Color.Black),
-            pathFillType = PathFillType.NonZero
-        ) {
+        path(fill = SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
             moveTo(12f, 0.297f)
             curveTo(5.37f, 0.297f, 0f, 5.67f, 0f, 12f)
             curveTo(0f, 17.303f, 3.438f, 21.8f, 8.205f, 23.385f)
@@ -126,170 +121,95 @@ fun SettingsScreen(
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle()
     val scanPopup by settingsViewModel.scanPopup.collectAsStateWithLifecycle()
     val currentLanguage by settingsViewModel.language.collectAsStateWithLifecycle()
-    val bgColor = if (darkMode) GdictColors.DarkBackground else GdictColors.BlueBackgroundTop
-    // 真实渐变：顶部明显蓝 → 中段浅蓝 → 底部接近白，对比度足够在浅色背景上能看出来
-    val bgGradient = if (darkMode) {
-        Brush.verticalGradient(
-            0.0f to GdictColors.DarkBackground,
-            1.0f to GdictColors.DarkSurfaceVariant
-        )
-    } else {
-        Brush.verticalGradient(
-            0.0f to Color(0xFFDCEBFF),
-            0.6f to Color(0xFFEDF4FF),
-            1.0f to Color(0xFFFFFFFF)
-        )
-    }
-    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
-    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    val background = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+    val textColor = if (darkMode) GdictColors.DarkOnBackground else GdictColors.OnBackground
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgGradient)
+            .background(background)
             .verticalScroll(rememberScrollState())
+            .statusBarsPadding()
     ) {
-        ProfileHero(
-            darkMode = darkMode,
-            textColor = textColor,
-            subtitleColor = subtitleColor
-        )
+        ProfileHeader(textColor = textColor, secondary = secondary, darkMode = darkMode)
 
-        Column(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-        ) {
-            SettingsSection(
-                title = stringResource(R.string.section_dictionaries),
+        SettingsSection(stringResource(R.string.section_dictionaries), darkMode) {
+            SettingsButtonItem(
+                title = stringResource(R.string.dictionary_management),
+                description = stringResource(R.string.dictionary_management_desc),
+                icon = Icons.Outlined.MenuBook,
                 darkMode = darkMode,
-                textColor = textColor
-            ) {
-                SettingsButtonItem(
-                    title = stringResource(R.string.dictionary_management),
-                    description = stringResource(R.string.dictionary_management_desc),
-                    icon = Icons.Outlined.MenuBook,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onClick = onNavigateToDictionaries
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            SettingsSection(
-                title = stringResource(R.string.section_appearance),
-                darkMode = darkMode,
-                textColor = textColor
-            ) {
-                SettingsSwitchItem(
-                    title = stringResource(R.string.dark_mode),
-                    description = stringResource(R.string.dark_mode_desc),
-                    icon = Icons.Outlined.DarkMode,
-                    checked = darkMode,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onCheckedChange = { settingsViewModel.setDarkMode(it) }
-                )
-                SettingsButtonItem(
-                    title = stringResource(R.string.language),
-                    description = stringResource(R.string.language_desc),
-                    icon = Icons.Outlined.Language,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onClick = { showLanguageDialog = true }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            SettingsSection(
-                title = stringResource(R.string.section_features),
-                darkMode = darkMode,
-                textColor = textColor
-            ) {
-                SettingsSwitchItem(
-                    title = stringResource(R.string.scan_popup),
-                    description = stringResource(R.string.scan_popup_desc),
-                    icon = Icons.Outlined.QrCodeScanner,
-                    checked = scanPopup,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onCheckedChange = { settingsViewModel.setScanPopup(it) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            DonationSection(darkMode = darkMode)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            SettingsSection(
-                title = stringResource(R.string.section_about),
-                darkMode = darkMode,
-                textColor = textColor
-            ) {
-                SettingsButtonItem(
-                    title = stringResource(R.string.version_info),
-                    description = "Gdict v${BuildConfig.VERSION_NAME}",
-                    icon = Icons.Outlined.Info,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    badgeText = "v${BuildConfig.VERSION_NAME}",
-                    onClick = { }
-                )
-                SettingsButtonItem(
-                    title = stringResource(R.string.project_repository),
-                    description = GITHUB_REPO_URL,
-                    icon = GitHubMark,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO_URL))
-                        context.startActivity(intent)
-                    }
-                )
-                var showClearDialog by remember { mutableStateOf(false) }
-                SettingsButtonItem(
-                    title = stringResource(R.string.clear_data),
-                    description = stringResource(R.string.clear_data_desc),
-                    icon = Icons.Outlined.DeleteOutline,
-                    darkMode = darkMode,
-                    textColor = textColor,
-                    subtitleColor = subtitleColor,
-                    onClick = { showClearDialog = true }
-                )
-                if (showClearDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showClearDialog = false },
-                        title = { Text(stringResource(R.string.confirm_clear)) },
-                        text = { Text(stringResource(R.string.confirm_clear_message)) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                settingsViewModel.clearAllData()
-                                showClearDialog = false
-                            }) {
-                                Text(stringResource(R.string.clear), color = GdictColors.CoralAccent)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showClearDialog = false }) {
-                                Text(stringResource(R.string.cancel))
-                            }
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
+                onClick = onNavigateToDictionaries
+            )
         }
+
+        SettingsSection(stringResource(R.string.section_appearance), darkMode) {
+            SettingsSwitchItem(
+                title = stringResource(R.string.dark_mode),
+                description = stringResource(R.string.dark_mode_desc),
+                icon = Icons.Outlined.DarkMode,
+                checked = darkMode,
+                darkMode = darkMode,
+                onCheckedChange = settingsViewModel::setDarkMode
+            )
+            SectionDivider(darkMode)
+            SettingsButtonItem(
+                title = stringResource(R.string.language),
+                description = stringResource(R.string.language_desc),
+                icon = Icons.Outlined.Language,
+                darkMode = darkMode,
+                onClick = { showLanguageDialog = true }
+            )
+        }
+
+        SettingsSection(stringResource(R.string.section_features), darkMode) {
+            SettingsSwitchItem(
+                title = stringResource(R.string.scan_popup),
+                description = stringResource(R.string.scan_popup_desc),
+                icon = Icons.Outlined.QrCodeScanner,
+                checked = scanPopup,
+                darkMode = darkMode,
+                onCheckedChange = settingsViewModel::setScanPopup
+            )
+        }
+
+        DonationSection(darkMode)
+
+        SettingsSection(stringResource(R.string.section_about), darkMode) {
+            SettingsButtonItem(
+                title = stringResource(R.string.version_info),
+                description = "Gdict v${BuildConfig.VERSION_NAME}",
+                icon = Icons.Outlined.Info,
+                darkMode = darkMode,
+                trailingText = "v${BuildConfig.VERSION_NAME}",
+                onClick = {}
+            )
+            SectionDivider(darkMode)
+            SettingsButtonItem(
+                title = stringResource(R.string.project_repository),
+                description = GITHUB_REPO_URL,
+                icon = GitHubMark,
+                darkMode = darkMode,
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO_URL)))
+                }
+            )
+            SectionDivider(darkMode)
+            SettingsButtonItem(
+                title = stringResource(R.string.clear_data),
+                description = stringResource(R.string.clear_data_desc),
+                icon = Icons.Outlined.DeleteOutline,
+                darkMode = darkMode,
+                destructive = true,
+                onClick = { showClearDialog = true }
+            )
+        }
+        Spacer(Modifier.height(32.dp))
     }
 
     if (showLanguageDialog) {
@@ -303,53 +223,169 @@ fun SettingsScreen(
             onDismiss = { showLanguageDialog = false }
         )
     }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text(stringResource(R.string.confirm_clear)) },
+            text = { Text(stringResource(R.string.confirm_clear_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    settingsViewModel.clearAllData()
+                    showClearDialog = false
+                }) { Text(stringResource(R.string.clear), color = GdictColors.CoralAccent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
 }
 
 @Composable
-private fun ProfileHero(
-    darkMode: Boolean,
-    textColor: Color,
-    subtitleColor: Color
-) {
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
-    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-
+private fun ProfileHeader(textColor: Color, secondary: Color, darkMode: Boolean) {
     Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 24.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .shadow(8.dp, CircleShape)
-                .clip(CircleShape)
-                .border(1.dp, borderColor, CircleShape)
-                .background(glassBg),
-            contentAlignment = Alignment.Center
+        Surface(
+            modifier = Modifier.size(52.dp),
+            shape = CircleShape,
+            color = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
         ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
-                contentDescription = null,
-                tint = GdictColors.Primary,
-                modifier = Modifier.size(36.dp)
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Person, contentDescription = null, tint = GdictColors.Primary, modifier = Modifier.size(26.dp))
+            }
         }
         Column {
             Text(
-                stringResource(R.string.profile),
-                fontSize = 30.sp,
+                text = stringResource(R.string.profile),
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = textColor
             )
             Text(
-                stringResource(R.string.manage_your_settings),
+                text = stringResource(R.string.manage_your_settings),
                 style = MaterialTheme.typography.bodyMedium,
-                color = subtitleColor
+                color = secondary
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    darkMode: Boolean,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val surface = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val outline = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.OutlineVariant
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = secondary,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = surface,
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, outline)
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
+private fun SectionDivider(darkMode: Boolean) {
+    HorizontalDivider(
+        color = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.OutlineVariant,
+        modifier = Modifier.padding(start = 68.dp)
+    )
+}
+
+@Composable
+private fun SettingsSwitchItem(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    checked: Boolean,
+    darkMode: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SettingsIcon(icon, darkMode)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = textColor)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = secondary)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = GdictColors.Primary)
+        )
+    }
+}
+
+@Composable
+private fun SettingsButtonItem(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    darkMode: Boolean,
+    trailingText: String? = null,
+    destructive: Boolean = false,
+    onClick: () -> Unit
+) {
+    val textColor = if (destructive) GdictColors.CoralAccent else if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SettingsIcon(icon, darkMode, destructive)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = textColor)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1)
+        }
+        if (trailingText != null) {
+            Text(trailingText, style = MaterialTheme.typography.bodyMedium, color = secondary)
+        } else {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = secondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsIcon(icon: ImageVector, darkMode: Boolean, destructive: Boolean = false) {
+    val tint = if (destructive) GdictColors.CoralAccent else GdictColors.Primary
+    val background = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    Surface(modifier = Modifier.size(40.dp), shape = RoundedCornerShape(10.dp), color = background) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(21.dp))
         }
     }
 }
@@ -366,7 +402,6 @@ private fun LanguageSelectionDialog(
         LocaleHelper.LANG_SIMPLIFIED_CHINESE to stringResource(R.string.lang_simplified_chinese),
         LocaleHelper.LANG_TRADITIONAL_CHINESE to stringResource(R.string.lang_traditional_chinese)
     )
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.select_language)) },
@@ -374,309 +409,65 @@ private fun LanguageSelectionDialog(
             Column {
                 options.forEach { (tag, label) ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onSelect(tag) }
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { onSelect(tag) },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = tag == currentLanguage,
                             onClick = { onSelect(tag) },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = GdictColors.Primary
-                            )
+                            colors = RadioButtonDefaults.colors(selectedColor = GdictColors.Primary)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.clickable { onSelect(tag) }
-                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    darkMode: Boolean,
-    textColor: Color,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
-    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
-            .background(glassBg)
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height(20.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(GdictColors.Primary)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-            }
-            content()
-        }
-    }
-}
-
-@Composable
-private fun SettingsSwitchItem(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    checked: Boolean,
-    darkMode: Boolean,
-    textColor: Color,
-    subtitleColor: Color,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    val iconContainerBg = GdictColors.Primary.copy(alpha = 0.12f)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(iconContainerBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = GdictColors.Primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = subtitleColor
-                )
-            }
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = GdictColors.Primary,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
-            )
-        )
-    }
-}
-
-@Composable
-private fun SettingsButtonItem(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    darkMode: Boolean,
-    textColor: Color,
-    subtitleColor: Color,
-    badgeText: String? = null,
-    onClick: () -> Unit
-) {
-    val iconContainerBg = GdictColors.Primary.copy(alpha = 0.12f)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(iconContainerBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = GdictColors.Primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (badgeText != null) GdictColors.Primary else subtitleColor
-                )
-            }
-        }
-        if (badgeText != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, GdictColors.Primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                    .background(GdictColors.Primary.copy(alpha = 0.08f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = badgeText,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GdictColors.Primary
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = GdictColors.Primary.copy(alpha = 0.6f),
-            modifier = Modifier.size(22.dp)
-        )
-    }
-}
-
-@Composable
 private fun DonationSection(darkMode: Boolean) {
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
-    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnBackground
-    val subtitleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
-    val cardBg = if (darkMode) GdictColors.DarkSurfaceVariant.copy(alpha = 0.4f) else GdictColors.SurfaceVariant.copy(alpha = 0.4f)
-    val cardBorder = if (darkMode) GdictColors.DarkOutlineVariant.copy(alpha = 0.5f) else GdictColors.BlueHighlightBorder.copy(alpha = 0.8f)
-
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
+    val secondary = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
+    val surface = if (darkMode) GdictColors.DarkSurface else GdictColors.Surface
+    val outline = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.OutlineVariant
     var selectedQr by remember { mutableStateOf<QrCode?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(28.dp))
-            .background(glassBg)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height(20.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(GdictColors.Primary)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Text(
+            text = stringResource(R.string.section_support).uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = secondary,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = surface,
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, outline)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = Color(0xFFE53935),
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.section_support),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
+                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = GdictColors.CoralAccent, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.section_support), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = textColor)
                 }
-            }
-
-            Text(
-                text = stringResource(R.string.support_developer_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = subtitleColor
-            )
-
-            val alipayLabel = stringResource(R.string.donation_alipay)
-            val wechatLabel = stringResource(R.string.donation_wechat)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                QrThumbnail(
-                    label = alipayLabel,
-                    drawableRes = R.drawable.donation_alipay,
-                    cardBg = cardBg,
-                    cardBorder = cardBorder,
-                    textColor = textColor,
-                    onClick = { selectedQr = QrCode(alipayLabel, R.drawable.donation_alipay) }
-                )
-                QrThumbnail(
-                    label = wechatLabel,
-                    drawableRes = R.drawable.donation_wechat,
-                    cardBg = cardBg,
-                    cardBorder = cardBorder,
-                    textColor = textColor,
-                    onClick = { selectedQr = QrCode(wechatLabel, R.drawable.donation_wechat) }
-                )
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.support_developer_desc), style = MaterialTheme.typography.bodySmall, color = secondary)
+                Spacer(Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val alipay = stringResource(R.string.donation_alipay)
+                    val wechat = stringResource(R.string.donation_wechat)
+                    QrThumbnail(alipay, R.drawable.donation_alipay, darkMode, Modifier.weight(1f)) {
+                        selectedQr = QrCode(alipay, R.drawable.donation_alipay)
+                    }
+                    QrThumbnail(wechat, R.drawable.donation_wechat, darkMode, Modifier.weight(1f)) {
+                        selectedQr = QrCode(wechat, R.drawable.donation_wechat)
+                    }
+                }
             }
         }
     }
@@ -689,15 +480,11 @@ private fun DonationSection(darkMode: Boolean) {
                 Image(
                     painter = painterResource(qr.drawableRes),
                     contentDescription = qr.label,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp)
+                    modifier = Modifier.fillMaxWidth().height(280.dp)
                 )
             },
             confirmButton = {
-                TextButton(onClick = { selectedQr = null }) {
-                    Text(stringResource(R.string.close))
-                }
+                TextButton(onClick = { selectedQr = null }) { Text(stringResource(R.string.close)) }
             }
         )
     }
@@ -709,30 +496,21 @@ private data class QrCode(val label: String, @DrawableRes val drawableRes: Int)
 private fun QrThumbnail(
     label: String,
     @DrawableRes drawableRes: Int,
-    cardBg: Color,
-    cardBorder: Color,
-    textColor: Color,
+    darkMode: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val background = if (darkMode) GdictColors.DarkSurfaceVariant else GdictColors.SurfaceVariant
+    val textColor = if (darkMode) GdictColors.DarkOnSurface else GdictColors.OnSurface
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
-            .background(cardBg)
+        modifier = modifier
             .clickable(onClick = onClick)
-            .padding(12.dp)
+            .background(background, RoundedCornerShape(14.dp))
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(drawableRes),
-            contentDescription = label,
-            modifier = Modifier.size(100.dp)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = textColor
-        )
+        Image(painter = painterResource(drawableRes), contentDescription = label, modifier = Modifier.size(96.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = textColor)
     }
 }
