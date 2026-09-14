@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -516,8 +517,8 @@ private fun RatingButtonsRow(
         Rating.Easy to ("Easy" to GdictColors.MintGreen)
     )
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         labels.forEach { (rating, labelAndColor) ->
             val schedule = scheduling[rating]
@@ -525,15 +526,31 @@ private fun RatingButtonsRow(
             OutlinedButton(
                 onClick = { onRate(rating) },
                 enabled = schedule != null,
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 60.dp),
                 shape = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, if (schedule != null) tint.copy(alpha = 0.5f) else outline),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (schedule != null) tint.copy(alpha = 0.5f) else outline
+                ),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = tint)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip
+                    )
                     if (schedule != null) {
-                        Text(formatInterval(schedule.scheduledDays), style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = formatInterval(schedule.scheduledDays),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }
