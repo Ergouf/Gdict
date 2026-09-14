@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Person
@@ -30,7 +30,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,9 +42,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -57,7 +56,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.gdict.GdictApplication
-import androidx.compose.ui.res.stringResource
 import io.github.gdict.R
 import io.github.gdict.ui.screens.BookmarksScreen
 import io.github.gdict.ui.screens.DictionariesScreen
@@ -97,19 +95,13 @@ fun GdictApp(
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
 
     GdictTheme(darkTheme = darkMode) {
-        // Acrylic: 顶层必须是透明，渐变背景由各 Screen 自己画在根 Column 上；
-        // 没画渐变的页面由 Scaffold 的 containerColor 作浅色 fallback，避免透明露底。
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            GdictAppContent(
-                settingsViewModel = settingsViewModel,
-                searchViewModel = searchViewModel,
-                bookmarkViewModel = bookmarkViewModel,
-                flashcardViewModel = flashcardViewModel,
-                dictionaryViewModel = dictionaryViewModel
-            )
-        }
+        GdictAppContent(
+            settingsViewModel = settingsViewModel,
+            searchViewModel = searchViewModel,
+            bookmarkViewModel = bookmarkViewModel,
+            flashcardViewModel = flashcardViewModel,
+            dictionaryViewModel = dictionaryViewModel
+        )
     }
 }
 
@@ -125,6 +117,7 @@ private fun GdictAppContent(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
+    val appBackground = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
 
     val screens = listOf(
         Screen.Search,
@@ -134,11 +127,10 @@ private fun GdictAppContent(
     )
 
     val isDetailPage = currentDestination?.route?.startsWith("word_detail/") == true ||
-                       currentDestination?.route?.startsWith("dictionaries") == true
+        currentDestination?.route?.startsWith("dictionaries") == true
 
     Scaffold(
-        // containerColor 透明，让各 Screen 自己画渐变能透过来
-        containerColor = Color.Transparent,
+        containerColor = appBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (!isDetailPage) {
@@ -171,7 +163,7 @@ private fun GdictAppContent(
                     onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
-                        navController.navigate("word_detail/$word/$encodedDef/$encodedDict")
+                        navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
                     }
                 )
             }
@@ -182,11 +174,9 @@ private fun GdictAppContent(
                     onWordClick = { word, definition, dictName, _ ->
                         val encodedDef = Uri.encode(definition)
                         val encodedDict = Uri.encode(dictName)
-                        navController.navigate("word_detail/$word/$encodedDef/$encodedDict")
+                        navController.navigate("word_detail/${Uri.encode(word)}/$encodedDef/$encodedDict")
                     },
-                    onFlashcardClick = {
-                        navController.navigate(Screen.Learning.route)
-                    }
+                    onFlashcardClick = { navController.navigate(Screen.Learning.route) }
                 )
             }
             composable(Screen.Learning.route) {
@@ -203,7 +193,10 @@ private fun GdictAppContent(
                 )
             }
             composable("dictionaries") {
-                DictionariesScreen(dictionaryViewModel = dictionaryViewModel, settingsViewModel = settingsViewModel)
+                DictionariesScreen(
+                    dictionaryViewModel = dictionaryViewModel,
+                    settingsViewModel = settingsViewModel
+                )
             }
             composable(
                 route = "word_detail/{word}/{definition}/{dictionaryName}",
@@ -216,7 +209,7 @@ private fun GdictAppContent(
                 val word = backStackEntry.arguments?.getString("word") ?: ""
                 val definition = Uri.decode(backStackEntry.arguments?.getString("definition") ?: "")
                 val dictionaryName = Uri.decode(backStackEntry.arguments?.getString("dictionaryName") ?: "")
-                val isBookmarked by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
+                val bookmarks by bookmarkViewModel.bookmarks.collectAsStateWithLifecycle(initialValue = emptyList())
                 val css = searchViewModel.getCssForDictionary(dictionaryName)
                 val entryCoroutineScope = rememberCoroutineScope()
 
@@ -225,7 +218,7 @@ private fun GdictAppContent(
                     definition = definition,
                     dictionaryName = dictionaryName,
                     css = css,
-                    isBookmarked = isBookmarked.any { it.word == word && it.dictionaryName == dictionaryName },
+                    isBookmarked = bookmarks.any { it.word == word && it.dictionaryName == dictionaryName },
                     onBack = { navController.popBackStack() },
                     onToggleBookmark = { bookmarkViewModel.toggleBookmark(word, definition, dictionaryName) },
                     onEntryClick = { entryWord ->
@@ -255,39 +248,27 @@ fun GdictBottomBar(
     darkMode: Boolean,
     onNavigate: (Screen) -> Unit
 ) {
-    val glassBg = if (darkMode) GdictColors.BlueSurfaceGlassDark else GdictColors.BlueSurfaceGlass
-    val borderColor = if (darkMode) GdictColors.DarkOutlineVariant else GdictColors.BlueHighlightBorder
-    // 底栏区域背景：与各页面渐变底部一致，遮住窗口白色背景（主题为 Material.Light，
-    // 窗口始终白底，浮动导航栏周围的透明区会露出白色，夜间模式下尤其突兀）。
-    val barAreaGradient = if (darkMode) {
-        Brush.verticalGradient(
-            0.0f to GdictColors.DarkBackground,
-            1.0f to GdictColors.DarkSurfaceVariant
-        )
-    } else {
-        Brush.verticalGradient(
-            0.0f to GdictColors.Background,
-            1.0f to Color.White
-        )
-    }
+    val pageBackground = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+    val glassBackground = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
+    val glassBorder = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(barAreaGradient)
+            .background(pageBackground)
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .shadow(4.dp, RoundedCornerShape(32.dp))
-                .clip(RoundedCornerShape(32.dp))
-                .border(0.5.dp, borderColor, RoundedCornerShape(32.dp))
-                .background(glassBg)
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .height(64.dp)
+                .shadow(2.dp, RoundedCornerShape(30.dp))
+                .clip(RoundedCornerShape(30.dp))
+                .border(0.5.dp, glassBorder, RoundedCornerShape(30.dp))
+                .background(glassBackground)
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             screens.forEach { screen ->
@@ -311,40 +292,34 @@ fun GdictBottomNavItem(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val capsuleBg = if (isSelected) GdictColors.BluePrimaryLight.copy(alpha = 0.35f) else Color.Transparent
+    val selectedColor = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
+    val idleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .weight(1f)
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(capsuleBg)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
-                contentDescription = stringResource(screen.titleResId),
-                tint = if (isSelected) GdictColors.Primary else GdictColors.OnSurfaceVariant,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+        Icon(
+            imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+            contentDescription = stringResource(screen.titleResId),
+            tint = if (isSelected) selectedColor else idleColor,
+            modifier = Modifier.size(22.dp)
+        )
         Text(
             text = stringResource(screen.titleResId),
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-            ),
-            color = if (isSelected) GdictColors.Primary else GdictColors.OnSurfaceVariant,
-            fontSize = 11.sp
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) selectedColor else idleColor,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }
