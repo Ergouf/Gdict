@@ -43,10 +43,10 @@ import io.github.gdict.ui.theme.GdictColors
  * 3. Foreground content is drawn last and is never passed through the shader.
  * 4. Older Android versions keep the proven opaque v1.10.3 fallback.
  *
- * The Haze child always receives an opaque background color. This is important for
- * bottom-edge controls: the blur kernel can extend past the captured window bounds,
- * and allowing those samples to become transparent creates dark/white compositing seams.
- * Noise is deliberately disabled; Liquid Glass should read as optically clear, not grainy.
+ * Haze 0.7.3 owns its edge background on the source modifier rather than HazeStyle.
+ * GdictApp therefore supplies the opaque app background to the Haze source. Noise is
+ * deliberately disabled here and at the source; Liquid Glass should look optically
+ * clear rather than grainy/frosted.
  *
  * This does not yet displace the captured backdrop texture itself. The shader creates
  * the dynamic optical/highlight field while Haze owns backdrop sampling. Keeping those
@@ -62,7 +62,6 @@ fun LiquidGlassSurface(
     content: @Composable BoxScope.() -> Unit
 ) {
     val fallbackColor = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
-    val backdropBaseColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
     val borderColor = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
     val hazeTint = if (darkMode) {
         Color.White.copy(alpha = 0.07f)
@@ -80,7 +79,6 @@ fun LiquidGlassSurface(
                         state = hazeState!!,
                         shape = shape,
                         style = HazeStyle(
-                            backgroundColor = backdropBaseColor,
                             tint = hazeTint,
                             blurRadius = blurRadius,
                             noiseFactor = 0f
@@ -100,8 +98,6 @@ fun LiquidGlassSurface(
                     .clip(shape)
             )
         } else if (backdropEnabled) {
-            // Android 12/12L: real backdrop blur without AGSL. Keep the highlight clean
-            // and shape-bound; no noise or full-surface milky overlay.
             Canvas(
                 Modifier
                     .fillMaxSize()
@@ -151,8 +147,6 @@ private fun LiquidOpticsOverlay(
         shader.setFloatUniform("strength", highlightAlpha)
         drawRect(brush = brush)
 
-        // Crisp optical rim on top of the shader. This gives the surface a lens edge
-        // while keeping all foreground controls outside the shader path.
         drawRoundRect(
             color = Color.White.copy(alpha = if (darkMode) 0.11f else 0.24f),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()),
@@ -180,17 +174,13 @@ private const val LIQUID_OPTICS_SHADER = """
         float2 uv = p / max(resolution, float2(1.0));
         float t = phase * 6.2831853;
 
-        // Distance to the closest edge, used as a lens/rim field.
         float edgeDistance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
         float rim = 1.0 - smoothstep(0.012, 0.13, edgeDistance);
 
-        // Slowly moving interference fields emulate shifting optical normals / caustics.
         float waveA = sin((uv.x * 6.4 + uv.y * 2.2) * 6.2831853 + t);
         float waveB = sin((uv.y * 7.2 - uv.x * 1.9) * 6.2831853 - t * 0.68);
         float lens = 0.5 + 0.5 * waveA * waveB;
 
-        // One restrained moving specular streak. The material should stay clear rather
-        // than looking frosted or pearlescent.
         float streakAxis = uv.x * 0.82 + uv.y * 0.34;
         float streakCenter = 0.5 + 0.16 * sin(t * 0.47);
         float streak = exp(-pow((streakAxis - streakCenter) * 9.0, 2.0));
