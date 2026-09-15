@@ -1,0 +1,88 @@
+name: Update README Android renders
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/readme-screenshot-version'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render-android-readme:
+    name: Render Android README screenshots
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-readme-render-${{ hashFiles('android/**/*.gradle.kts', 'android/**/gradle-wrapper.properties', 'shared/**/*.gradle.kts') }}
+          restore-keys: gradle-readme-render-
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Render Paparazzi snapshots
+        working-directory: android
+        run: ./gradlew :app:recordPaparazziDebug --stacktrace
+
+      - name: Copy rendered screens into README assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAP_DIR='android/app/src/test/snapshots/images'
+          copy_render() {
+            pattern="$1"
+            target="$2"
+            source="$(find "$SNAP_DIR" -type f -name "*$pattern*.png" | head -n 1)"
+            if [ -z "$source" ]; then
+              echo "Missing Paparazzi render for $pattern" >&2
+              find "$SNAP_DIR" -maxdepth 1 -type f -print
+              exit 1
+            fi
+            cp "$source" "$target"
+            echo "$pattern -> $target"
+          }
+
+          copy_render 'captureSearchScreen' 'screenshots/android-home.png'
+          copy_render 'captureDetailScreen' 'screenshots/android-definition.png'
+          copy_render 'captureBookmarksScreen' 'screenshots/android-favorites.png'
+          copy_render 'captureFlashcardScreen' 'screenshots/android-learning.png'
+          copy_render 'captureSettingsScreen' 'screenshots/android-profile.png'
+
+      - name: Commit README render assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- screenshots/android-home.png screenshots/android-definition.png screenshots/android-favorites.png screenshots/android-learning.png screenshots/android-profile.png; then
+            echo 'README Android renders are already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add screenshots/android-home.png screenshots/android-definition.png screenshots/android-favorites.png screenshots/android-learning.png screenshots/android-profile.png
+          git commit -m 'docs: refresh Android README renders'
+          git push origin HEAD:master
