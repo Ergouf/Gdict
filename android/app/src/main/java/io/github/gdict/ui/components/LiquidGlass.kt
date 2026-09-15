@@ -1,132 +1,65 @@
 package io.github.gdict.ui.components
 
+import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.RuntimeShader
+import android.graphics.Shader as AndroidShader
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeChild
 import io.github.gdict.ui.theme.GdictColors
 
 /**
- * Experimental Android liquid-glass surface.
+ * Experimental liquid-glass surface backed only by Compose GraphicsLayer + Android RenderEffect.
  *
- * Layers are intentionally separated:
- * 1. Haze samples and blurs content behind the control on Android 12+.
- * 2. API 33+ adds a low-amplitude AGSL caustic/specular field.
- * 3. Foreground content is drawn last and is never passed through the shader.
- * 4. Older Android versions keep the proven opaque v1.10.3 fallback.
+ * There is deliberately no Haze dependency here. The app records the page into [backdropLayer].
+ * This surface crops the matching region into its own graphics layer, applies blur/refraction to
+ * that copy, and finally draws foreground controls normally. Icons/text therefore never pass
+ * through the optical shader.
  *
- * Haze 0.7.3 owns its edge background on the source modifier rather than HazeStyle.
- * GdictApp therefore supplies the opaque app background to the Haze source. Noise is
- * deliberately disabled here and at the source; Liquid Glass should look optically
- * clear rather than grainy/frosted.
- *
- * This does not yet displace the captured backdrop texture itself. The shader creates
- * the dynamic optical/highlight field while Haze owns backdrop sampling. Keeping those
- * concerns separate avoids distorting text/icons and gives us a safe fallback path.
+ * Android 13+: backdrop blur + true AGSL displacement sampling.
+ * Android 12/12L: backdrop blur only.
+ * Android 11 and below (and previews without a captured layer): stable opaque v1.10.3 fallback.
  */
 @Composable
 fun LiquidGlassSurface(
-    hazeState: HazeState?,
+    backdropLayer: GraphicsLayer?,
     darkMode: Boolean,
     shape: Shape,
     modifier: Modifier = Modifier,
-    blurRadius: Dp = 18.dp,
+    blurRadius: Dp = 14.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     val fallbackColor = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
     val borderColor = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
-    val hazeTint = if (darkMode) {
-        Color.White.copy(alpha = 0.07f)
-    } else {
-        Color.White.copy(alpha = 0.18f)
-    }
+    val glassLayer = rememberGraphicsLayer()
+    var rootPosition by remember { mutableStateOf(Offset.Zero) }
 
-    val backdropEnabled = hazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-
-    Box(
-        modifier = modifier
-            .then(
-                if (backdropEnabled) {
-                    Modifier.hazeChild(
-                        state = hazeState!!,
-                        shape = shape,
-                        style = HazeStyle(
-                            tint = hazeTint,
-                            blurRadius = blurRadius,
-                            noiseFactor = 0f
-                        )
-                    )
-                } else {
-                    Modifier.background(fallbackColor, shape)
-                }
-            )
-            .border(0.6.dp, borderColor, shape)
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            LiquidOpticsOverlay(
-                darkMode = darkMode,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-            )
-        } else if (backdropEnabled) {
-            Canvas(
-                Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-            ) {
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = if (darkMode) 0.07f else 0.18f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = if (darkMode) 0.025f else 0.01f)
-                        )
-                    ),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx())
-                )
-            }
-        }
-
-        content()
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
-@Composable
-private fun LiquidOpticsOverlay(
-    darkMode: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val transition = rememberInfiniteTransition(label = "liquidGlassOptics")
+    val transition = rememberInfiniteTransition(label = "liquidGlassRefraction")
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -134,59 +67,118 @@ private fun LiquidOpticsOverlay(
             animation = tween(durationMillis = 9000),
             repeatMode = RepeatMode.Restart
         ),
-        label = "liquidGlassPhase"
+        label = "liquidGlassRefractionPhase"
     )
 
-    val shader = remember { RuntimeShader(LIQUID_OPTICS_SHADER) }
-    val brush = remember(shader) { RuntimeShaderBrush(shader) }
-    val highlightAlpha = if (darkMode) 0.38f else 0.52f
+    val runtimeShader = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        remember { RuntimeShader(LIQUID_REFRACTION_SHADER) }
+    } else {
+        null
+    }
 
-    Canvas(modifier = modifier) {
-        shader.setFloatUniform("resolution", size.width, size.height)
-        shader.setFloatUniform("phase", phase)
-        shader.setFloatUniform("strength", highlightAlpha)
-        drawRect(brush = brush)
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { rootPosition = it.positionInRoot() }
+            .then(
+                if (backdropLayer == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                    Modifier.background(fallbackColor, shape)
+                } else {
+                    Modifier.drawWithContent {
+                        val width = size.width.coerceAtLeast(1f)
+                        val height = size.height.coerceAtLeast(1f)
 
-        drawRoundRect(
-            color = Color.White.copy(alpha = if (darkMode) 0.11f else 0.24f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()),
-            style = Stroke(width = 0.6.dp.toPx(), pathEffect = PathEffect.cornerPathEffect(0.5.dp.toPx()))
-        )
+                        // Record only the pixels that geometrically sit behind this surface.
+                        // The negative translation aligns the full-page recording to local coords.
+                        glassLayer.record {
+                            withTransform({
+                                translate(-rootPosition.x, -rootPosition.y)
+                            }) {
+                                drawLayer(backdropLayer)
+                            }
+                        }
+
+                        val radiusPx = blurRadius.toPx()
+                        glassLayer.renderEffect = if (
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            runtimeShader != null
+                        ) {
+                            runtimeShader.setFloatUniform("resolution", width, height)
+                            runtimeShader.setFloatUniform("phase", phase)
+                            runtimeShader.setFloatUniform("amplitude", 2.4f)
+
+                            val blur = AndroidRenderEffect.createBlurEffect(
+                                radiusPx,
+                                radiusPx,
+                                AndroidShader.TileMode.CLAMP
+                            )
+                            val refraction = AndroidRenderEffect.createRuntimeShaderEffect(
+                                runtimeShader,
+                                "backdrop"
+                            )
+                            AndroidRenderEffect.createChainEffect(refraction, blur)
+                                .asComposeRenderEffect()
+                        } else {
+                            AndroidRenderEffect.createBlurEffect(
+                                radiusPx,
+                                radiusPx,
+                                AndroidShader.TileMode.CLAMP
+                            ).asComposeRenderEffect()
+                        }
+
+                        // The captured layer is the background only. Foreground content is drawn
+                        // afterwards and therefore remains pixel-perfect and undistorted.
+                        drawLayer(glassLayer)
+
+                        // A tiny neutral tint improves contrast without turning the material gray.
+                        drawRect(
+                            color = if (darkMode) {
+                                Color.Black.copy(alpha = 0.10f)
+                            } else {
+                                Color.White.copy(alpha = 0.09f)
+                            }
+                        )
+                        drawContent()
+                    }
+                }
+            )
+            .border(0.65.dp, borderColor, shape)
+    ) {
+        content()
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
-private class RuntimeShaderBrush(
-    private val runtimeShader: RuntimeShader
-) : ShaderBrush() {
-    override fun createShader(size: Size): Shader {
-        runtimeShader.setFloatUniform("resolution", size.width, size.height)
-        return runtimeShader
-    }
-}
-
-private const val LIQUID_OPTICS_SHADER = """
+/**
+ * Samples the actual captured backdrop. No grain and no full-width highlight streaks: those made
+ * the previous Haze prototypes look dirty and also made seam diagnosis ambiguous.
+ */
+private const val LIQUID_REFRACTION_SHADER = """
+    uniform shader backdrop;
     uniform float2 resolution;
     uniform float phase;
-    uniform float strength;
+    uniform float amplitude;
 
     half4 main(float2 p) {
-        float2 uv = p / max(resolution, float2(1.0));
+        float2 safeResolution = max(resolution, float2(1.0));
+        float2 uv = p / safeResolution;
         float t = phase * 6.2831853;
 
-        float edgeDistance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-        float rim = 1.0 - smoothstep(0.012, 0.13, edgeDistance);
+        // Lens field grows only near the rounded surface boundary. Keep displacement very small
+        // in the center so text/content under the glass remains recognizable.
+        float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+        float edgeField = 1.0 - smoothstep(0.035, 0.22, edge);
 
-        float waveA = sin((uv.x * 6.4 + uv.y * 2.2) * 6.2831853 + t);
-        float waveB = sin((uv.y * 7.2 - uv.x * 1.9) * 6.2831853 - t * 0.68);
-        float lens = 0.5 + 0.5 * waveA * waveB;
+        float waveX = sin(uv.y * 10.0 + t) * 0.55 + sin(uv.x * 4.0 - t * 0.61) * 0.45;
+        float waveY = cos(uv.x * 9.0 - t * 0.83) * 0.55 + cos(uv.y * 3.5 + t * 0.47) * 0.45;
+        float2 displacement = float2(waveX, waveY) * amplitude * (0.22 + 0.78 * edgeField);
 
-        float streakAxis = uv.x * 0.82 + uv.y * 0.34;
-        float streakCenter = 0.5 + 0.16 * sin(t * 0.47);
-        float streak = exp(-pow((streakAxis - streakCenter) * 9.0, 2.0));
+        // Clamp sample coordinates so the shader never asks for pixels outside this local layer.
+        float2 margin = float2(2.5);
+        float2 samplePoint = clamp(p + displacement, margin, safeResolution - margin);
+        half4 c = backdrop.eval(samplePoint);
 
-        float alpha = strength * (rim * (0.040 + 0.028 * lens) + streak * 0.018);
-        float coolShift = 0.006 * lens;
-        return half4(1.0 - coolShift, 1.0, 1.0, alpha);
+        // Subtle lens lift at the perimeter, not a horizontal streak.
+        float rim = edgeField * 0.035;
+        c.rgb = mix(c.rgb, half3(1.0), rim);
+        return c;
     }
 """
