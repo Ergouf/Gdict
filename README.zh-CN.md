@@ -20,10 +20,10 @@ Gdict 是一款使用 Kotlin 编写的 Android 与桌面端词典应用。它读
 ### Android
 
 <div align="center">
-  <img src="screenshots/android-home.png" width="180" alt="搜索">
-  <img src="screenshots/android-favorites.png" width="180" alt="收藏">
-  <img src="screenshots/android-learning.png" width="180" alt="闪卡复习">
-  <img src="screenshots/android-profile.png" width="180" alt="个人中心">
+  <img src="screenshots/android-search.png" width="180" alt="搜索">
+  <img src="screenshots/android-vocabulary.png" width="180" alt="收藏">
+  <img src="screenshots/android-flashcard-review.png" width="180" alt="闪卡复习">
+  <img src="screenshots/android-profile-new.png" width="180" alt="个人中心">
 </div>
 
 ### 桌面端

@@ -20,10 +20,10 @@ Gdict is a Kotlin dictionary app for Android and desktop. It reads MDX dictionar
 ### Android
 
 <div align="center">
-  <img src="screenshots/android-home.png" width="180" alt="Search">
-  <img src="screenshots/android-favorites.png" width="180" alt="Favorites">
-  <img src="screenshots/android-learning.png" width="180" alt="Flashcard review">
-  <img src="screenshots/android-profile.png" width="180" alt="Profile">
+  <img src="screenshots/android-search.png" width="180" alt="Search">
+  <img src="screenshots/android-vocabulary.png" width="180" alt="Favorites">
+  <img src="screenshots/android-flashcard-review.png" width="180" alt="Flashcard review">
+  <img src="screenshots/android-profile-new.png" width="180" alt="Profile">
 </div>
 
 ### Desktop
