@@ -260,3 +260,19 @@ jobs:
           name: GDict v${{ steps.version.outputs.version }}
           generate_release_notes: true
           files: ./release-assets/*
+
+      - name: Remove older GitHub releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_TAG: v${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '.[] | [.id, .tag_name] | @tsv' |
+          while IFS=$'\t' read -r release_id release_tag; do
+            if [[ -n "$release_id" && "$release_tag" != "$CURRENT_TAG" ]]; then
+              echo "Deleting old release ${release_tag} (${release_id})"
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+            fi
+          done
