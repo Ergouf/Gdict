@@ -107,6 +107,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
+    // Real backdrop capture/blur. 0.7.3 is aligned with the Compose 1.6 generation
+    // used by this project, avoiding a broad Compose upgrade for the glass experiment.
+    implementation("dev.chrisbanes.haze:haze:0.7.3")
     
     // DataStore
     val dataStoreVersion = "1.0.0"
