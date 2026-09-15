@@ -64,11 +64,10 @@ if grep -Eq 'rememberInfiniteTransition|infiniteRepeatable' "$PRON"; then
   fail "Pronunciation controls must not pulse indefinitely for decoration"
 fi
 
-# Liquid-glass v3 safety rails. The two Haze prototypes produced a device-specific
-# horizontal seam, so this renderer must stay entirely on the official Compose
-# GraphicsLayer + Android RenderEffect path.
+# Liquid-glass v3 safety rails. Match executable APIs/dependencies, not prose comments.
 if [[ -f "$LIQUID" ]]; then
-  if grep -Rqi 'dev\.chrisbanes\.haze\|HazeState\|hazeChild\|Modifier\.haze' "$APP" "$LIQUID" "$BUILD"; then
+  if grep -Eq '^import dev\.chrisbanes\.haze|HazeState|\.hazeChild\(|\.haze\(' "$APP" "$LIQUID" || \
+     grep -Fq 'dev.chrisbanes.haze:haze:' "$BUILD"; then
     fail "Liquid glass must not reintroduce Haze; real-device testing showed a compositing seam"
   fi
   grep -Fq 'rememberGraphicsLayer' "$APP" ||
@@ -89,8 +88,8 @@ if [[ -f "$LIQUID" ]]; then
     fail "Liquid glass must preserve the stable light opaque fallback"
   grep -Fq 'GdictColors.DarkGlassSurface' "$LIQUID" ||
     fail "Liquid glass must preserve the stable dark opaque fallback"
-  if grep -Eqi 'noiseFactor|haze|streak' "$LIQUID"; then
-    fail "Liquid glass must remain optically clean: no Haze, grain, or full-width streak effect"
+  if grep -Eq 'noiseFactor[[:space:]]*=|float[[:space:]]+streak[[:space:]]*=' "$LIQUID"; then
+    fail "Liquid glass must remain optically clean: no grain or full-width streak effect"
   fi
   grep -Fq 'drawContent()' "$LIQUID" ||
     fail "Liquid glass foreground content must be drawn after the optical backdrop"
