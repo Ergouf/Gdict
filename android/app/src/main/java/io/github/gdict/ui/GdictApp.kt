@@ -1,7 +1,6 @@
 package io.github.gdict.ui
 
 import android.net.Uri
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -55,8 +54,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import io.github.gdict.GdictApplication
 import io.github.gdict.R
+import io.github.gdict.ui.components.LiquidGlassSurface
 import io.github.gdict.ui.screens.BookmarksScreen
 import io.github.gdict.ui.screens.DictionariesScreen
 import io.github.gdict.ui.screens.FlashcardScreen
@@ -118,6 +121,7 @@ private fun GdictAppContent(
     val currentDestination = navBackStackEntry?.destination
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val appBackground = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
+    val liquidGlassState = remember { HazeState() }
 
     val screens = listOf(
         Screen.Search,
@@ -135,7 +139,17 @@ private fun GdictAppContent(
             .background(appBackground)
     ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(
+                    state = liquidGlassState,
+                    style = HazeDefaults.style(
+                        backgroundColor = appBackground,
+                        tint = Color.Transparent,
+                        blurRadius = 24.dp,
+                        noiseFactor = 0.045f
+                    )
+                ),
             containerColor = appBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
@@ -235,6 +249,7 @@ private fun GdictAppContent(
                 screens = screens,
                 currentDestination = currentDestination,
                 darkMode = darkMode,
+                hazeState = liquidGlassState,
                 onNavigate = { screen ->
                     navController.navigate(screen.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -256,10 +271,9 @@ fun GdictBottomBar(
     currentDestination: androidx.navigation.NavDestination?,
     darkMode: Boolean,
     onNavigate: (Screen) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null
 ) {
-    val glassBackground = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
-    val glassBorder = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
     val shape = RoundedCornerShape(30.dp)
 
     Box(
@@ -268,15 +282,15 @@ fun GdictBottomBar(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Surface(
+        LiquidGlassSurface(
+            hazeState = hazeState,
+            darkMode = darkMode,
+            shape = shape,
+            blurRadius = 26.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp),
-            shape = shape,
-            color = glassBackground,
-            border = BorderStroke(0.5.dp, glassBorder),
-            shadowElevation = 2.dp,
-            tonalElevation = 0.dp
+                .height(64.dp)
+                .shadow(3.dp, shape, clip = false)
         ) {
             Row(
                 modifier = Modifier
