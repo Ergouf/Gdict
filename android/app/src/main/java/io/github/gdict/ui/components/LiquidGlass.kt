@@ -43,6 +43,11 @@ import io.github.gdict.ui.theme.GdictColors
  * 3. Foreground content is drawn last and is never passed through the shader.
  * 4. Older Android versions keep the proven opaque v1.10.3 fallback.
  *
+ * The Haze child always receives an opaque background color. This is important for
+ * bottom-edge controls: the blur kernel can extend past the captured window bounds,
+ * and allowing those samples to become transparent creates dark/white compositing seams.
+ * Noise is deliberately disabled; Liquid Glass should read as optically clear, not grainy.
+ *
  * This does not yet displace the captured backdrop texture itself. The shader creates
  * the dynamic optical/highlight field while Haze owns backdrop sampling. Keeping those
  * concerns separate avoids distorting text/icons and gives us a safe fallback path.
@@ -53,54 +58,61 @@ fun LiquidGlassSurface(
     darkMode: Boolean,
     shape: Shape,
     modifier: Modifier = Modifier,
-    blurRadius: Dp = 24.dp,
+    blurRadius: Dp = 18.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     val fallbackColor = if (darkMode) GdictColors.DarkGlassSurface else GdictColors.GlassSurface
+    val backdropBaseColor = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
     val borderColor = if (darkMode) GdictColors.DarkGlassBorder else GdictColors.GlassBorder
     val hazeTint = if (darkMode) {
-        Color(0xFF1C1C1E).copy(alpha = 0.62f)
+        Color.White.copy(alpha = 0.07f)
     } else {
-        Color.White.copy(alpha = 0.54f)
+        Color.White.copy(alpha = 0.18f)
     }
 
     val backdropEnabled = hazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     Box(
         modifier = modifier
-            .clip(shape)
             .then(
                 if (backdropEnabled) {
                     Modifier.hazeChild(
                         state = hazeState!!,
                         shape = shape,
                         style = HazeStyle(
+                            backgroundColor = backdropBaseColor,
                             tint = hazeTint,
                             blurRadius = blurRadius,
-                            noiseFactor = 0.045f
+                            noiseFactor = 0f
                         )
                     )
                 } else {
-                    Modifier.background(fallbackColor)
+                    Modifier.background(fallbackColor, shape)
                 }
             )
-            .border(0.75.dp, borderColor, shape)
+            .border(0.6.dp, borderColor, shape)
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             LiquidOpticsOverlay(
                 darkMode = darkMode,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(shape)
             )
         } else if (backdropEnabled) {
-            // Android 12/12L: real backdrop blur without AGSL. A static edge highlight
-            // provides shape definition without adding another translucent rectangle.
-            Canvas(Modifier.fillMaxSize()) {
+            // Android 12/12L: real backdrop blur without AGSL. Keep the highlight clean
+            // and shape-bound; no noise or full-surface milky overlay.
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .clip(shape)
+            ) {
                 drawRoundRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = if (darkMode) 0.11f else 0.28f),
+                            Color.White.copy(alpha = if (darkMode) 0.07f else 0.18f),
                             Color.Transparent,
-                            Color.Black.copy(alpha = if (darkMode) 0.08f else 0.025f)
+                            Color.Black.copy(alpha = if (darkMode) 0.025f else 0.01f)
                         )
                     ),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx())
@@ -123,7 +135,7 @@ private fun LiquidOpticsOverlay(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 7000),
+            animation = tween(durationMillis = 9000),
             repeatMode = RepeatMode.Restart
         ),
         label = "liquidGlassPhase"
@@ -131,7 +143,7 @@ private fun LiquidOpticsOverlay(
 
     val shader = remember { RuntimeShader(LIQUID_OPTICS_SHADER) }
     val brush = remember(shader) { RuntimeShaderBrush(shader) }
-    val highlightAlpha = if (darkMode) 0.58f else 0.82f
+    val highlightAlpha = if (darkMode) 0.38f else 0.52f
 
     Canvas(modifier = modifier) {
         shader.setFloatUniform("resolution", size.width, size.height)
@@ -142,9 +154,9 @@ private fun LiquidOpticsOverlay(
         // Crisp optical rim on top of the shader. This gives the surface a lens edge
         // while keeping all foreground controls outside the shader path.
         drawRoundRect(
-            color = Color.White.copy(alpha = if (darkMode) 0.16f else 0.34f),
+            color = Color.White.copy(alpha = if (darkMode) 0.11f else 0.24f),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()),
-            style = Stroke(width = 0.7.dp.toPx(), pathEffect = PathEffect.cornerPathEffect(0.5.dp.toPx()))
+            style = Stroke(width = 0.6.dp.toPx(), pathEffect = PathEffect.cornerPathEffect(0.5.dp.toPx()))
         )
     }
 }
@@ -170,20 +182,21 @@ private const val LIQUID_OPTICS_SHADER = """
 
         // Distance to the closest edge, used as a lens/rim field.
         float edgeDistance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-        float rim = 1.0 - smoothstep(0.015, 0.16, edgeDistance);
+        float rim = 1.0 - smoothstep(0.012, 0.13, edgeDistance);
 
-        // Slowly moving interference fields emulate shifting refraction normals / caustics.
-        float waveA = sin((uv.x * 7.5 + uv.y * 2.8) * 6.2831853 + t);
-        float waveB = sin((uv.y * 9.0 - uv.x * 2.2) * 6.2831853 - t * 0.73);
+        // Slowly moving interference fields emulate shifting optical normals / caustics.
+        float waveA = sin((uv.x * 6.4 + uv.y * 2.2) * 6.2831853 + t);
+        float waveB = sin((uv.y * 7.2 - uv.x * 1.9) * 6.2831853 - t * 0.68);
         float lens = 0.5 + 0.5 * waveA * waveB;
 
-        // A restrained moving specular streak; intentionally subtle so text stays legible.
+        // One restrained moving specular streak. The material should stay clear rather
+        // than looking frosted or pearlescent.
         float streakAxis = uv.x * 0.82 + uv.y * 0.34;
-        float streakCenter = 0.5 + 0.18 * sin(t * 0.52);
-        float streak = exp(-pow((streakAxis - streakCenter) * 8.0, 2.0));
+        float streakCenter = 0.5 + 0.16 * sin(t * 0.47);
+        float streak = exp(-pow((streakAxis - streakCenter) * 9.0, 2.0));
 
-        float alpha = strength * (rim * (0.055 + 0.045 * lens) + streak * 0.032);
-        float coolShift = 0.012 * lens;
+        float alpha = strength * (rim * (0.040 + 0.028 * lens) + streak * 0.018);
+        float coolShift = 0.006 * lens;
         return half4(1.0 - coolShift, 1.0, 1.0, alpha);
     }
 """
