@@ -14,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -90,12 +89,12 @@ fun LiquidGlassSurface(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             LiquidOpticsOverlay(
                 darkMode = darkMode,
-                modifier = Modifier.matchParentSize()
+                modifier = Modifier.fillMaxSize()
             )
         } else if (backdropEnabled) {
             // Android 12/12L: real backdrop blur without AGSL. A static edge highlight
             // provides shape definition without adding another translucent rectangle.
-            Canvas(Modifier.matchParentSize()) {
+            Canvas(Modifier.fillMaxSize()) {
                 drawRoundRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
