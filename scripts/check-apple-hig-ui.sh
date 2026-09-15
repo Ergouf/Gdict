@@ -7,7 +7,9 @@ SEARCH="$UI/screens/SearchScreen.kt"
 APP="$UI/GdictApp.kt"
 AMBIENT="$UI/components/AmbientBackground.kt"
 ACRYLIC="$UI/components/AcrylicComponents.kt"
+LIQUID="$UI/components/LiquidGlass.kt"
 PRON="$UI/screens/PronunciationDetailScreen.kt"
+BUILD="$ROOT/android/app/build.gradle.kts"
 
 MIGRATED_SCREENS=(
   "$UI/screens/SearchScreen.kt"
@@ -60,6 +62,24 @@ fi
 
 if grep -Eq 'rememberInfiniteTransition|infiniteRepeatable' "$PRON"; then
   fail "Pronunciation controls must not pulse indefinitely for decoration"
+fi
+
+# Experimental liquid-glass renderer safety rails. These deliberately keep the
+# v1.10.3 opaque material available as a guaranteed fallback while the enhanced
+# renderer is evaluated on real devices.
+if [[ -f "$LIQUID" ]]; then
+  grep -Fq 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU' "$LIQUID" ||
+    fail "RuntimeShader optics must remain guarded to Android 13+"
+  grep -Fq 'GdictColors.GlassSurface' "$LIQUID" ||
+    fail "Liquid glass must preserve the stable light opaque fallback"
+  grep -Fq 'GdictColors.DarkGlassSurface' "$LIQUID" ||
+    fail "Liquid glass must preserve the stable dark opaque fallback"
+  grep -Fq 'Modifier.hazeChild' "$LIQUID" ||
+    fail "Liquid glass backdrop must use real backdrop sampling, not self blur"
+  grep -Fq 'content()' "$LIQUID" ||
+    fail "Liquid glass foreground content must remain a separate final layer"
+  grep -Fq 'implementation("dev.chrisbanes.haze:haze:0.7.3")' "$BUILD" ||
+    fail "Haze must stay pinned to the Compose-1.6-compatible 0.7.3 line until the project Compose stack is intentionally upgraded"
 fi
 
 echo "Apple HIG UI policy gate passed."
