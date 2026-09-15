@@ -43,6 +43,7 @@ fun MdxWebView(
     darkMode: Boolean,
     contentScale: Float = 1f,
     dictionaryRepository: AndroidDictionaryRepository,
+    fallbackWord: String? = null,
     onEntryClick: (String) -> Unit = {},
     onPlayAudio: (String) -> Unit = {}
 ) {
@@ -54,6 +55,7 @@ fun MdxWebView(
     val currentOnEntryClick by rememberUpdatedState(onEntryClick)
     val currentOnPlayAudio by rememberUpdatedState(onPlayAudio)
     val currentScale by rememberUpdatedState(contentScale)
+    val currentFallbackWord by rememberUpdatedState(fallbackWord)
 
     AndroidView(
         factory = { ctx ->
@@ -99,14 +101,9 @@ fun MdxWebView(
                             coroutineScope.launch {
                                 try {
                                     val audioData = dictionaryRepository.getAudioResourceByPath(audioPath)
-                                        ?: dictionaryRepository.getAudioResource(
-                                            audioPath.removeSuffix(".mp3")
-                                                .removeSuffix(".wav")
-                                                .removeSuffix(".ogg")
-                                                .removeSuffix(".spx")
-                                                .substringAfterLast("/")
-                                                .substringAfterLast("\\")
-                                        )
+                                        ?: currentFallbackWord
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?.let { dictionaryRepository.getAudioResource(it) }
                                     var played = false
                                     if (audioData != null) {
                                         played = withContext(Dispatchers.IO) {

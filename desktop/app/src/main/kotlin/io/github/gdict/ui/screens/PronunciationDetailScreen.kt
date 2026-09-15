@@ -234,7 +234,7 @@ fun PronunciationDetailContent(
                                     pronunciations = data.pronunciations,
                                     darkMode = darkMode
                                 ) { entry ->
-                                    playAudio(entry.audioPath, displayWord)
+                                    playAudio(entry.audioPath, word)
                                 }
                             } else {
                                 // —— 回退：WebView 渲染全部内容 ——
@@ -252,7 +252,7 @@ fun PronunciationDetailContent(
                                     darkMode = darkMode,
                                     dictionaryRepository = dictionaryRepository,
                                     onEntryClick = onEntryClick,
-                                    onPlayAudio = { playAudio(it, displayWord) },
+                                    onPlayAudio = { playAudio(it, word) },
                                     webViewVisible = webViewVisible
                                 )
                             }
@@ -438,11 +438,21 @@ private fun FlagBadge(region: String, size: Dp = 26.dp) {
 // region 发音词典 HTML 解析
 
 private fun parsePronunciationData(definition: String, fallbackWord: String): PronunciationData {
-    val word = extractHeadword(definition).ifEmpty { fallbackWord }
-    val pronunciations = parsePronunciations(definition)
-    val wordForms = parseHitInflections(definition)
+    val primaryDefinition = extractPrimaryEpdEntry(definition)
+    val word = extractHeadword(primaryDefinition).ifEmpty { fallbackWord }
+    val pronunciations = parsePronunciations(primaryDefinition)
+    val wordForms = parseHitInflections(primaryDefinition)
     val parsedOk = pronunciations.isNotEmpty() || wordForms.isNotEmpty()
-    return PronunciationData(word, pronunciations, wordForms, hasReadingContent(definition), parsedOk)
+    return PronunciationData(word, pronunciations, wordForms, hasReadingContent(primaryDefinition), parsedOk)
+}
+
+private fun extractPrimaryEpdEntry(definition: String): String {
+    val headPattern = Regex(
+        """<(?:span|div)[^>]*class=["'][^"']*\bdi-head\b[^"']*["'][^>]*>""",
+        RegexOption.IGNORE_CASE
+    )
+    val heads = headPattern.findAll(definition).toList()
+    return if (heads.size > 1) definition.substring(0, heads[1].range.first) else definition
 }
 
 /** 从 <hit targettype="inflection"> 提取词形变化 */
@@ -463,36 +473,56 @@ private fun parseHitInflections(definition: String): List<WordFormEntry> {
 
 /** 解析发音 */
 private fun parsePronunciations(definition: String): List<PronunciationEntry> {
+    val primaryDefinition = extractPrimaryEpdEntry(definition)
     // 1. 搜索国旗图片
     val flagPattern = Regex(
         """<img[^>]*src=["'][^"']*(uk_sound|us_sound)\.png[^"']*["'][^>]*>""",
         RegexOption.IGNORE_CASE
     )
-    val flags = flagPattern.findAll(definition).toList()
+    val soundfileEntries = Regex(
+        """<soundfile\b[^>]*>(.*?)</soundfile>""",
+        setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+    ).findAll(primaryDefinition).mapNotNull { soundfile ->
+        val content = soundfile.groupValues[1]
+        val region = flagPattern.find(content)?.groupValues?.get(1) ?: return@mapNotNull null
+        val audioPath = extractSoundPath(content) ?: return@mapNotNull null
+        (if (region.equals("uk_sound", ignoreCase = true)) "UK" else "US") to audioPath
+    }.toList()
+    val flags = flagPattern.findAll(primaryDefinition).toList()
 
     // 2. 搜索所有 sound:// 音频链接
     val audioPattern = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
-    val audios = audioPattern.findAll(definition).map { it.groupValues[1] }.toList()
+    val audios = audioPattern.findAll(primaryDefinition).map { it.groupValues[1] }.toList()
 
     // 3. 搜索所有 IPA
     val ipas = mutableListOf<String>()
     Regex("""<span[^>]*class=["'][^"']*phon[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+        .findAll(primaryDefinition).forEach { ipas.add(cleanText(it.groupValues[1])) }
     Regex("""<span[^>]*class=["'][^"']*\bipa\b[^"']*["'][^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+        .findAll(primaryDefinition).forEach { ipas.add(cleanText(it.groupValues[1])) }
     Regex("""<ipa[^>]*>(.*?)</ipa>""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(definition).forEach { ipas.add(cleanText(it.groupValues[1])) }
+        .findAll(primaryDefinition).forEach { ipas.add(cleanText(it.groupValues[1])) }
     // 文本中的 /IPA/ 模式
     Regex("""/([a-zA-Zˈˌːˈˌɪiːæɑːʌʊuːeɛəɜːɔːɒːθðʃʒŋɲʎɽɾʀʁʋʍʜʢʡɕʑʝʎɣχʁβɸθðszfvbdgkptmnɲŋlrjwhæɑɒʌʊeɛəɪiːæɑːɔːuːɜːəˈˌːˈ]+)/""")
-        .findAll(definition).forEach { ipas.add("/${it.groupValues[1]}/") }
+        .findAll(primaryDefinition).forEach { ipas.add("/${it.groupValues[1]}/") }
     val cleanIpas = ipas.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+    // EPD keeps each region marker with its own sound link. Parsing the text
+    // between adjacent flags can capture the following region's link because
+    // the link appears before that region's image.
+    if (soundfileEntries.isNotEmpty()) {
+        val ipa = cleanIpas.firstOrNull() ?: ""
+        return soundfileEntries.map { (region, audioPath) ->
+            PronunciationEntry(region, ipa, audioPath)
+        }
+    }
 
     if (flags.isNotEmpty()) {
         return flags.mapIndexed { i, flag ->
             val region = if (flag.groupValues[1].equals("uk_sound", ignoreCase = true)) "UK" else "US"
             val segStart = flag.range.last + 1
-            val segEnd = if (i + 1 < flags.size) flags[i + 1].range.first else definition.length
-            val segment = definition.substring(segStart, segEnd)
+            val segEnd = if (i + 1 < flags.size) flags[i + 1].range.first else primaryDefinition.length
+            val segment = primaryDefinition.substring(segStart, segEnd)
             var ipa = extractIpa(segment)
             if (ipa.isEmpty() && i < cleanIpas.size) ipa = cleanIpas[i]
             val audio = extractSoundPath(segment) ?: audios.getOrNull(i)

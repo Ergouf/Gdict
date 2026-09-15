@@ -215,7 +215,7 @@ fun CollinsDetailContent(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 SpeakerButton(
-                                    onPlay = { playAudio(audioPath, displayWord) },
+                                    onPlay = { playAudio(audioPath, word) },
                                     size = 44.dp
                                 )
                             }

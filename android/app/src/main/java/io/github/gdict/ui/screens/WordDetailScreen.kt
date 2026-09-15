@@ -244,12 +244,9 @@ fun WordDetailScreen(
                         darkMode = darkMode,
                         contentScale = 1f,
                         dictionaryRepository = dictionaryRepository,
+                        fallbackWord = word,
                         onEntryClick = onEntryClick,
-                        onPlayAudio = { path ->
-                            val fallback = path.substringAfterLast('/').substringAfterLast('\\')
-                                .removeSuffix(".mp3").removeSuffix(".wav").removeSuffix(".ogg").removeSuffix(".spx")
-                            playAudio(path, fallback)
-                        }
+                        onPlayAudio = { path -> playAudio(path, word) }
                     )
                 }
                 1 -> ContentSurface(darkMode) {

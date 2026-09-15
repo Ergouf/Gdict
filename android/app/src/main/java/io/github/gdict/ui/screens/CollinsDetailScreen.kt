@@ -151,7 +151,7 @@ fun CollinsDetailContent(
                             modifier = Modifier.weight(1f)
                         )
                         SpeakerButton(
-                            onPlay = { playAudio(data.pronunciations.firstOrNull()?.audioPath, displayWord) },
+                            onPlay = { playAudio(data.pronunciations.firstOrNull()?.audioPath, word) },
                             size = 44.dp
                         )
                     }
@@ -173,8 +173,9 @@ fun CollinsDetailContent(
                             darkMode = darkMode,
                             contentScale = 1f,
                             dictionaryRepository = dictionaryRepository,
+                            fallbackWord = word,
                             onEntryClick = onEntryClick,
-                            onPlayAudio = { path -> playAudio(path, displayWord) }
+                            onPlayAudio = { path -> playAudio(path, word) }
                         )
                     }
                 }
@@ -336,19 +337,56 @@ private fun parseCollins3rdEntry(definition: String, fallbackWord: String): Coll
 
 private fun parseCollinsSense(html: String): CollinsDefinition? {
     if (html.isBlank()) return null
-    val pos = Regex("""<font[^>]*669900[^>]*>(.*?)</font>""", RegexOption.DOT_MATCHES_ALL)
-        .find(html)?.groupValues?.get(1)?.let(::cleanCollinsText)?.removePrefix("[")?.removeSuffix("]").orEmpty()
+    val pos = extractCollinsPos(html)
     val examples = Regex("""<font[^>]*(?:004080|4f81bd)[^>]*>\s*(?:<i>)?(.*?)(?:</i>)?\s*</font>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
         .findAll(html).map { cleanCollinsText(it.groupValues[1]) }.filter { it.isNotBlank() }.toList()
 
-    var definition = html
-        .replace(Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL), " ")
-        .replace(Regex("""<font[^>]*669900[^>]*>.*?</font>""", RegexOption.DOT_MATCHES_ALL), " ")
-        .replace(Regex("""<font[^>]*(?:004080|4f81bd)[^>]*>.*?</font>""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), " ")
-    definition = cleanCollinsText(definition)
+    // Only discard the sense header. Inline <b> tags contain the queried word
+    // in definitions (for example: "When you <b>cook</b> a meal") and must
+    // remain in the rendered text.
+    val definition = extractCollinsSenseDefinition(html, pos)
+    return if (definition.isBlank() && examples.isEmpty()) null else CollinsDefinition(pos, definition, examples)
+}
+
+private fun extractCollinsPos(html: String): String {
+    val match = Regex(
+        """<font[^>]*669900[^>]*>(.*?)</font>""",
+        setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+    ).find(html) ?: return ""
+    return cleanCollinsText(match.groupValues[1])
+        .removePrefix("[")
+        .removeSuffix("]")
+        .substringBefore(":")
+        .trim()
+}
+
+private fun extractCollinsSenseDefinition(html: String, pos: String): String {
+    val start = if (pos.isNotBlank()) {
+        Regex(
+            """<font[^>]*669900[^>]*>.*?</font>""",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+        ).find(html)?.range?.last?.plus(1) ?: 0
+    } else {
+        Regex("""<b>.*?</b>""", RegexOption.DOT_MATCHES_ALL)
+            .find(html)?.range?.last?.plus(1) ?: 0
+    }
+    val afterHeader = html.substring(start.coerceIn(0, html.length))
+
+    val imageIndex = afterHeader.indexOf("<img", ignoreCase = true)
+    val plusIndex = afterHeader.indexOf("+<b>", ignoreCase = true)
+    val equalsIndex = afterHeader.indexOf("=<b>", ignoreCase = true)
+    val synonymIndex = Regex(
+        """<br><b>\w+</b><br>""",
+        RegexOption.IGNORE_CASE
+    ).find(afterHeader)?.range?.first ?: -1
+    val end = listOf(imageIndex, plusIndex, equalsIndex, synonymIndex)
+        .filter { it >= 0 }
+        .minOrNull()
+        ?: afterHeader.length
+
+    return cleanCollinsText(afterHeader.substring(0, end.coerceIn(0, afterHeader.length)))
         .replace(Regex("^[+\\s]+"), "")
         .trim()
-    return if (definition.isBlank() && examples.isEmpty()) null else CollinsDefinition(pos, definition, examples)
 }
 
 private fun parseCollinsAdvancedEntry(definition: String, fallbackWord: String): CollinsEntry {

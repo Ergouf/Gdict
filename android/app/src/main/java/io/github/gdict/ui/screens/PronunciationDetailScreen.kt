@@ -53,7 +53,7 @@ import io.github.gdict.ui.webview.MdxWebView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private data class PronunciationEntry(
+internal data class PronunciationEntry(
     val region: String,
     val ipa: String,
     val audioPath: String?
@@ -149,7 +149,7 @@ fun PronunciationDetailContent(
                         Spacer(Modifier.height(16.dp))
                         data.pronunciations.forEach { pronunciation ->
                             PronunciationRow(pronunciation, darkMode) {
-                                playAudio(pronunciation.audioPath, displayWord)
+                                playAudio(pronunciation.audioPath, word)
                             }
                             Spacer(Modifier.height(8.dp))
                         }
@@ -178,8 +178,9 @@ fun PronunciationDetailContent(
                         darkMode = darkMode,
                         contentScale = 1f,
                         dictionaryRepository = dictionaryRepository,
+                        fallbackWord = word,
                         onEntryClick = onEntryClick,
-                        onPlayAudio = { path -> playAudio(path, displayWord) }
+                        onPlayAudio = { path -> playAudio(path, word) }
                     )
                 }
             }
@@ -292,25 +293,55 @@ internal fun Modifier.pronunciationAmbientBackground(
 private const val HIDE_PRON_CSS = "\n.cpepd .main-headword,.cpepd .main-ipa,.cpepd .main-pronunciation,.cpepd .main-audio-btns,.cpepd .cepd-forms-section{display:none !important;}"
 
 private fun parsePronunciationData(definition: String, fallbackWord: String): PronunciationData {
-    val word = extractHeadword(definition).ifBlank { fallbackWord }
-    val pronunciations = parsePronunciations(definition)
+    val primaryDefinition = extractPrimaryEpdEntry(definition)
+    val word = extractHeadword(primaryDefinition).ifBlank { fallbackWord }
+    val pronunciations = parsePronunciations(primaryDefinition)
     return PronunciationData(word, pronunciations, pronunciations.isNotEmpty())
 }
 
-private fun parsePronunciations(definition: String): List<PronunciationEntry> {
+private fun extractPrimaryEpdEntry(definition: String): String {
+    val headPattern = Regex(
+        """<(?:span|div)[^>]*class=["'][^"']*\bdi-head\b[^"']*["'][^>]*>""",
+        RegexOption.IGNORE_CASE
+    )
+    val heads = headPattern.findAll(definition).toList()
+    return if (heads.size > 1) definition.substring(0, heads[1].range.first) else definition
+}
+
+internal fun parsePronunciations(definition: String): List<PronunciationEntry> {
+    val primaryDefinition = extractPrimaryEpdEntry(definition)
     val flagPattern = Regex(
         """<img[^>]*src=["'][^"']*(uk_sound|us_sound)\.png[^"']*["'][^>]*>""",
         RegexOption.IGNORE_CASE
     )
-    val flags = flagPattern.findAll(definition).toList()
+    val soundfileEntries = Regex(
+        """<soundfile\b[^>]*>(.*?)</soundfile>""",
+        setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+    ).findAll(primaryDefinition).mapNotNull { soundfile ->
+        val content = soundfile.groupValues[1]
+        val region = flagPattern.find(content)?.groupValues?.get(1) ?: return@mapNotNull null
+        val audioPath = extractSoundPath(content) ?: return@mapNotNull null
+        (if (region.equals("uk_sound", ignoreCase = true)) "UK" else "US") to audioPath
+    }.toList()
+    val flags = flagPattern.findAll(primaryDefinition).toList()
     val audios = Regex("""href=["']sound://([^"']+)["']""", RegexOption.IGNORE_CASE)
-        .findAll(definition).map { it.groupValues[1] }.toList()
+        .findAll(primaryDefinition).map { it.groupValues[1] }.toList()
+
+    // EPD puts the sound link and its region marker in the same soundfile
+    // element. Do not derive a link from the text between two flags: the
+    // next region's link can occur there because the link precedes its image.
+    if (soundfileEntries.isNotEmpty()) {
+        val ipa = extractIpa(primaryDefinition)
+        return soundfileEntries.map { (region, audioPath) ->
+            PronunciationEntry(region, ipa, audioPath)
+        }
+    }
 
     if (flags.isNotEmpty()) {
         return flags.mapIndexed { index, flag ->
             val start = flag.range.last + 1
-            val end = flags.getOrNull(index + 1)?.range?.first ?: definition.length
-            val segment = definition.substring(start, end)
+            val end = flags.getOrNull(index + 1)?.range?.first ?: primaryDefinition.length
+            val segment = primaryDefinition.substring(start, end)
             PronunciationEntry(
                 region = if (flag.groupValues[1].equals("uk_sound", true)) "UK" else "US",
                 ipa = extractIpa(segment),
@@ -319,7 +350,7 @@ private fun parsePronunciations(definition: String): List<PronunciationEntry> {
         }
     }
 
-    val ipa = extractIpa(definition)
+    val ipa = extractIpa(primaryDefinition)
     if (ipa.isNotBlank() || audios.isNotEmpty()) {
         return listOf(PronunciationEntry("", ipa, audios.firstOrNull()))
     }
