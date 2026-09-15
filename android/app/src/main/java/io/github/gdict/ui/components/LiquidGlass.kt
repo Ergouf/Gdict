@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -90,9 +91,10 @@ fun LiquidGlassSurface(
                         // Record only the pixels that geometrically sit behind this surface.
                         // The negative translation aligns the full-page recording to local coords.
                         glassLayer.record {
-                            withTransform({
-                                translate(-rootPosition.x, -rootPosition.y)
-                            }) {
+                            translate(
+                                left = -rootPosition.x,
+                                top = -rootPosition.y
+                            ) {
                                 drawLayer(backdropLayer)
                             }
                         }
