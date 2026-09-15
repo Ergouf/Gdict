@@ -76,6 +76,10 @@ if [[ -f "$LIQUID" ]]; then
     fail "Liquid glass must preserve the stable dark opaque fallback"
   grep -Fq 'Modifier.hazeChild' "$LIQUID" ||
     fail "Liquid glass backdrop must use real backdrop sampling, not self blur"
+  grep -Fq 'backgroundColor = backdropBaseColor' "$LIQUID" ||
+    fail "Liquid glass blur sampling must provide an opaque edge background to avoid window-edge seams"
+  grep -Fq 'noiseFactor = 0f' "$LIQUID" ||
+    fail "Liquid glass must remain optically clean; grain/noise is disabled"
   grep -Fq 'content()' "$LIQUID" ||
     fail "Liquid glass foreground content must remain a separate final layer"
   grep -Fq 'implementation("dev.chrisbanes.haze:haze:0.7.3")' "$BUILD" ||
