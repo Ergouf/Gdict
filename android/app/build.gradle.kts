@@ -100,24 +100,24 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.02.02"))
+
+    // The experimental liquid-glass renderer uses rememberGraphicsLayer(), introduced
+    // in Compose UI 1.7. Keep this upgrade isolated to the experiment branch until the
+    // renderer is validated on real devices.
+    implementation(platform("androidx.compose:compose-bom:2024.09.02"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-
-    // Real backdrop capture/blur. 0.7.3 is aligned with the Compose 1.6 generation
-    // used by this project, avoiding a broad Compose upgrade for the glass experiment.
-    implementation("dev.chrisbanes.haze:haze:0.7.3")
     
     // DataStore
     val dataStoreVersion = "1.0.0"
     implementation("androidx.datastore:datastore-preferences:$dataStoreVersion")
     
-    // 图标库
-    implementation("androidx.compose.material:material-icons-extended:1.6.3")
+    // 图标库; version follows the Compose BOM to avoid mixing 1.6 and 1.7 artifacts.
+    implementation("androidx.compose.material:material-icons-extended")
 
     implementation("androidx.documentfile:documentfile:1.0.1")
 
@@ -129,7 +129,7 @@ dependencies {
     testImplementation("app.cash.paparazzi:paparazzi:1.3.4")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.02"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
