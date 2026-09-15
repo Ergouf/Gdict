@@ -146,8 +146,8 @@ private fun GdictAppContent(
                     style = HazeDefaults.style(
                         backgroundColor = appBackground,
                         tint = Color.Transparent,
-                        blurRadius = 24.dp,
-                        noiseFactor = 0.045f
+                        blurRadius = 18.dp,
+                        noiseFactor = 0f
                     )
                 ),
             containerColor = appBackground,
@@ -158,7 +158,7 @@ private fun GdictAppContent(
                 startDestination = Screen.Search.route,
                 modifier = Modifier
                     .padding(innerPadding)
-                    .padding(bottom = if (isDetailPage) 0.dp else 104.dp)
+                    .padding(bottom = if (isDetailPage) 0.dp else 112.dp)
             ) {
                 composable(Screen.Search.route) {
                     SearchScreen(
@@ -280,17 +280,17 @@ fun GdictBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 18.dp)
     ) {
         LiquidGlassSurface(
             hazeState = hazeState,
             darkMode = darkMode,
             shape = shape,
-            blurRadius = 26.dp,
+            blurRadius = 18.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .shadow(3.dp, shape, clip = false)
+                .shadow(2.dp, shape, clip = false)
         ) {
             Row(
                 modifier = Modifier
