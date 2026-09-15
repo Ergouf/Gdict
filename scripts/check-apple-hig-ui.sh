@@ -64,9 +64,6 @@ if grep -Eq 'rememberInfiniteTransition|infiniteRepeatable' "$PRON"; then
   fail "Pronunciation controls must not pulse indefinitely for decoration"
 fi
 
-# Experimental liquid-glass renderer safety rails. These deliberately keep the
-# v1.10.3 opaque material available as a guaranteed fallback while the enhanced
-# renderer is evaluated on real devices.
 if [[ -f "$LIQUID" ]]; then
   grep -Fq 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU' "$LIQUID" ||
     fail "RuntimeShader optics must remain guarded to Android 13+"
@@ -76,10 +73,14 @@ if [[ -f "$LIQUID" ]]; then
     fail "Liquid glass must preserve the stable dark opaque fallback"
   grep -Fq 'Modifier.hazeChild' "$LIQUID" ||
     fail "Liquid glass backdrop must use real backdrop sampling, not self blur"
-  grep -Fq 'backgroundColor = backdropBaseColor' "$LIQUID" ||
-    fail "Liquid glass blur sampling must provide an opaque edge background to avoid window-edge seams"
   grep -Fq 'noiseFactor = 0f' "$LIQUID" ||
-    fail "Liquid glass must remain optically clean; grain/noise is disabled"
+    fail "Liquid glass must remain optically clean; child grain/noise is disabled"
+  grep -Fq 'backgroundColor = appBackground' "$APP" ||
+    fail "Haze source must provide an opaque app background for window-edge sampling"
+  grep -Fq 'noiseFactor = 0f' "$APP" ||
+    fail "Haze source grain/noise must remain disabled"
+  grep -Fq 'bottom = 18.dp' "$APP" ||
+    fail "Floating glass bottom bar must keep breathing room from the window edge"
   grep -Fq 'content()' "$LIQUID" ||
     fail "Liquid glass foreground content must remain a separate final layer"
   grep -Fq 'implementation("dev.chrisbanes.haze:haze:0.7.3")' "$BUILD" ||
