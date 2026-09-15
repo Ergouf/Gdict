@@ -64,27 +64,40 @@ if grep -Eq 'rememberInfiniteTransition|infiniteRepeatable' "$PRON"; then
   fail "Pronunciation controls must not pulse indefinitely for decoration"
 fi
 
+# Liquid-glass v3 safety rails. The two Haze prototypes produced a device-specific
+# horizontal seam, so this renderer must stay entirely on the official Compose
+# GraphicsLayer + Android RenderEffect path.
 if [[ -f "$LIQUID" ]]; then
+  if grep -Rqi 'dev\.chrisbanes\.haze\|HazeState\|hazeChild\|Modifier\.haze' "$APP" "$LIQUID" "$BUILD"; then
+    fail "Liquid glass must not reintroduce Haze; real-device testing showed a compositing seam"
+  fi
+  grep -Fq 'rememberGraphicsLayer' "$APP" ||
+    fail "App backdrop must be recorded with Compose rememberGraphicsLayer()"
+  grep -Fq 'backdropLayer.record' "$APP" ||
+    fail "App backdrop GraphicsLayer must record the actual page draw commands"
+  grep -Fq 'drawLayer(backdropLayer)' "$LIQUID" ||
+    fail "Liquid glass must sample the recorded app backdrop layer"
+  grep -Fq 'uniform shader backdrop' "$LIQUID" ||
+    fail "Android 13+ refraction shader must sample the real backdrop texture"
+  grep -Fq 'createRuntimeShaderEffect' "$LIQUID" ||
+    fail "Android 13+ liquid glass must use RuntimeShader as a RenderEffect"
   grep -Fq 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU' "$LIQUID" ||
-    fail "RuntimeShader optics must remain guarded to Android 13+"
+    fail "RuntimeShader refraction must remain guarded to Android 13+"
+  grep -Fq 'AndroidShader.TileMode.CLAMP' "$LIQUID" ||
+    fail "Backdrop blur must clamp edge samples to avoid window-edge seams"
   grep -Fq 'GdictColors.GlassSurface' "$LIQUID" ||
     fail "Liquid glass must preserve the stable light opaque fallback"
   grep -Fq 'GdictColors.DarkGlassSurface' "$LIQUID" ||
     fail "Liquid glass must preserve the stable dark opaque fallback"
-  grep -Fq 'Modifier.hazeChild' "$LIQUID" ||
-    fail "Liquid glass backdrop must use real backdrop sampling, not self blur"
-  grep -Fq 'noiseFactor = 0f' "$LIQUID" ||
-    fail "Liquid glass must remain optically clean; child grain/noise is disabled"
-  grep -Fq 'backgroundColor = appBackground' "$APP" ||
-    fail "Haze source must provide an opaque app background for window-edge sampling"
-  grep -Fq 'noiseFactor = 0f' "$APP" ||
-    fail "Haze source grain/noise must remain disabled"
+  if grep -Eqi 'noiseFactor|haze|streak' "$LIQUID"; then
+    fail "Liquid glass must remain optically clean: no Haze, grain, or full-width streak effect"
+  fi
+  grep -Fq 'drawContent()' "$LIQUID" ||
+    fail "Liquid glass foreground content must be drawn after the optical backdrop"
+  grep -Fq 'compose-bom:2024.09.02' "$BUILD" ||
+    fail "GraphicsLayer experiment requires the pinned Compose 1.7-generation BOM"
   grep -Fq 'bottom = 18.dp' "$APP" ||
     fail "Floating glass bottom bar must keep breathing room from the window edge"
-  grep -Fq 'content()' "$LIQUID" ||
-    fail "Liquid glass foreground content must remain a separate final layer"
-  grep -Fq 'implementation("dev.chrisbanes.haze:haze:0.7.3")' "$BUILD" ||
-    fail "Haze must stay pinned to the Compose-1.6-compatible 0.7.3 line until the project Compose stack is intentionally upgraded"
 fi
 
 echo "Apple HIG UI policy gate passed."
