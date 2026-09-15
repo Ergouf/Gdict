@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -80,6 +81,10 @@ fun LiquidGlassSurface(
     Box(
         modifier = modifier
             .onGloballyPositioned { rootPosition = it.positionInRoot() }
+            // Clip the final optical surface, not the recorded source. The external shadow in the
+            // caller remains outside this clip while captured backdrop pixels cannot leak through
+            // the rounded corners as a rectangular layer.
+            .clip(shape)
             .then(
                 if (backdropLayer == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                     Modifier.background(fallbackColor, shape)
