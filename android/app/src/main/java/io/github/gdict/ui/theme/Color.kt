@@ -50,16 +50,18 @@ object GdictColors {
     val SubtleHover = Color(0xFFF2F2F7)
     val SubtleSelected = Color(0xFFE5E5EA)
 
-    // Glass is an interaction/chrome material, not a page background.
-    // These translucent fills are a Compose approximation; they are not
-    // advertised as backdrop blur.
-    val GlassSurface = Color.White.copy(alpha = 0.82f)
-    val GlassSurfaceStrong = Color.White.copy(alpha = 0.92f)
+    // Android chrome surfaces are deliberately opaque. Earlier faux-glass
+    // alpha fills caused visible rectangular compositing bands around text and
+    // navigation content on some Android GPU/driver combinations. Keep the
+    // rounded material, border and elevation, but avoid translucent parent
+    // surfaces until real backdrop material is available.
+    val GlassSurface = Color(0xFFFFFFFF)
+    val GlassSurfaceStrong = Color(0xFFFFFFFF)
     val GlassBorder = Color.White.copy(alpha = 0.72f)
     val GlassSeparator = Color.Black.copy(alpha = 0.08f)
 
-    val DarkGlassSurface = Color(0xD92C2C2E)
-    val DarkGlassSurfaceStrong = Color(0xF23A3A3C)
+    val DarkGlassSurface = Color(0xFF2C2C2E)
+    val DarkGlassSurfaceStrong = Color(0xFF3A3A3C)
     val DarkGlassBorder = Color.White.copy(alpha = 0.14f)
     val DarkGlassSeparator = Color.White.copy(alpha = 0.12f)
 
