@@ -33,12 +33,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,9 +57,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
 import io.github.gdict.GdictApplication
 import io.github.gdict.R
 import io.github.gdict.ui.components.LiquidGlassSurface
@@ -121,7 +121,7 @@ private fun GdictAppContent(
     val currentDestination = navBackStackEntry?.destination
     val darkMode by settingsViewModel.darkMode.collectAsStateWithLifecycle(initialValue = false)
     val appBackground = if (darkMode) GdictColors.DarkBackground else GdictColors.Background
-    val liquidGlassState = remember { HazeState() }
+    val backdropLayer = rememberGraphicsLayer()
 
     val screens = listOf(
         Screen.Search,
@@ -138,27 +138,25 @@ private fun GdictAppContent(
             .fillMaxSize()
             .background(appBackground)
     ) {
+        // Record the page into a reusable GraphicsLayer and draw that same layer normally.
+        // The bottom glass later samples this recording, so there is no screenshot/readback and
+        // no third-party backdrop compositor in the rendering path.
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .haze(
-                    state = liquidGlassState,
-                    style = HazeDefaults.style(
-                        backgroundColor = appBackground,
-                        tint = Color.Transparent,
-                        blurRadius = 18.dp,
-                        noiseFactor = 0f
-                    )
-                ),
+                .drawWithContent {
+                    backdropLayer.record {
+                        this@drawWithContent.drawContent()
+                    }
+                    drawLayer(backdropLayer)
+                },
             containerColor = appBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
             NavHost(
                 navController = navController,
                 startDestination = Screen.Search.route,
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .padding(bottom = if (isDetailPage) 0.dp else 112.dp)
+                modifier = Modifier.padding(innerPadding)
             ) {
                 composable(Screen.Search.route) {
                     SearchScreen(
@@ -249,7 +247,7 @@ private fun GdictAppContent(
                 screens = screens,
                 currentDestination = currentDestination,
                 darkMode = darkMode,
-                hazeState = liquidGlassState,
+                backdropLayer = backdropLayer,
                 onNavigate = { screen ->
                     navController.navigate(screen.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -272,7 +270,7 @@ fun GdictBottomBar(
     darkMode: Boolean,
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    backdropLayer: GraphicsLayer? = null
 ) {
     val shape = RoundedCornerShape(30.dp)
 
@@ -283,10 +281,10 @@ fun GdictBottomBar(
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 18.dp)
     ) {
         LiquidGlassSurface(
-            hazeState = hazeState,
+            backdropLayer = backdropLayer,
             darkMode = darkMode,
             shape = shape,
-            blurRadius = 18.dp,
+            blurRadius = 14.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
@@ -320,7 +318,7 @@ fun RowScope.GdictBottomNavItem(
     darkMode: Boolean,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = androidx.compose.runtime.remember { MutableInteractionSource() }
     val selectedColor = if (darkMode) GdictColors.PrimaryLight else GdictColors.Primary
     val idleColor = if (darkMode) GdictColors.DarkOnSurfaceVariant else GdictColors.OnSurfaceVariant
 
